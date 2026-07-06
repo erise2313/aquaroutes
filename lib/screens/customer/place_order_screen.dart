@@ -2,14 +2,17 @@ import 'package:flutter/material.dart';
 
 class PlaceOrderScreen extends StatelessWidget {
   final String stationName;
-  PlaceOrderScreen({required this.stationName});
+  const PlaceOrderScreen({super.key, required this.stationName});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: Text(stationName),
-        leading: IconButton(icon: const Icon(Icons.arrow_back), onPressed: () => Navigator.pop(context)),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.pop(context),
+        ),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -20,29 +23,51 @@ class PlaceOrderScreen extends StatelessWidget {
             Expanded(
               child: Card(
                 elevation: 2,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(15),
+                ),
+                child: const Padding(
+                  padding: EdgeInsets.all(16.0),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
-                    children: const [
-                      Text("Address", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                      Text("Home - Block 4 Lot 2, General Trias, Cavite", style: TextStyle(color: Colors.grey)),
+                    children: [
+                      Text(
+                        "Address",
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                      Text(
+                        "Home - Block 4 Lot 2, General Trias, Cavite",
+                        style: TextStyle(color: Colors.grey),
+                      ),
                       SizedBox(height: 24),
-                      Text("Gallons stuff", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                      Text("• 3x 5-Gallon Slim Jug (Blue Key)", style: TextStyle(fontSize: 15)),
+                      Text(
+                        "Gallons stuff",
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                      Text(
+                        "• 3x 5-Gallon Slim Jug (Blue Key)",
+                        style: TextStyle(fontSize: 15),
+                      ),
                     ],
                   ),
                 ),
               ),
             ),
-            
+
             const SizedBox(height: 15),
 
             // Financial Breakdown Card Block
             Card(
               elevation: 2,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(15),
+              ),
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: Column(
@@ -55,7 +80,7 @@ class PlaceOrderScreen extends StatelessWidget {
                 ),
               ),
             ),
-            
+
             const SizedBox(height: 20),
 
             // Submit Button Action Wrapper
@@ -63,13 +88,24 @@ class PlaceOrderScreen extends StatelessWidget {
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.blue.shade400,
                 padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(30),
+                ),
               ),
               onPressed: () {
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Order Sent Successfully!")));
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text("Order Sent Successfully!")),
+                );
                 Navigator.pop(context);
               },
-              child: const Text("Place Order", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
+              child: const Text(
+                "Place Order",
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
             ),
           ],
         ),
@@ -83,8 +119,20 @@ class PlaceOrderScreen extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: TextStyle(color: isBold ? Colors.black : Colors.grey, fontWeight: isBold ? FontWeight.bold : FontWeight.normal)),
-          Text(cost, style: TextStyle(fontSize: isBold ? 18 : 14, fontWeight: isBold ? FontWeight.bold : FontWeight.normal)),
+          Text(
+            label,
+            style: TextStyle(
+              color: isBold ? Colors.black : Colors.grey,
+              fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
+            ),
+          ),
+          Text(
+            cost,
+            style: TextStyle(
+              fontSize: isBold ? 18 : 14,
+              fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
+            ),
+          ),
         ],
       ),
     );

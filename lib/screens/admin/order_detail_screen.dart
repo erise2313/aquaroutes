@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 class OrderDetailScreen extends StatelessWidget {
   final String orderId;
 
-  OrderDetailScreen({required this.orderId});
+  const OrderDetailScreen({super.key, required this.orderId});
 
   @override
   Widget build(BuildContext context) {
@@ -17,25 +17,29 @@ class OrderDetailScreen extends StatelessWidget {
             _buildDetailRow("Customer", "Juan Dela Cruz"),
             _buildDetailRow("Address", "General Trias, Cavite"),
             _buildDetailRow("Status", "Delivered"),
-            Divider(height: 30),
+            const Divider(height: 30),
             _buildDetailRow("Total Amount", "₱150.00", isBold: true),
             _buildDetailRow("Jug Status", "3/3 Returned"),
-            SizedBox(height: 30),
+            const SizedBox(height: 30),
             Row(
               children: [
                 Expanded(
                   child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.redAccent,
+                    ),
                     onPressed: () {},
-                    child: Text("Mark as Unpaid"),
+                    child: const Text("Mark as Unpaid"),
                   ),
                 ),
-                SizedBox(width: 10),
+                const SizedBox(width: 10),
                 Expanded(
                   child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green,
+                    ),
                     onPressed: () {},
-                    child: Text("Close Order"),
+                    child: const Text("Close Order"),
                   ),
                 ),
               ],
@@ -52,8 +56,13 @@ class OrderDetailScreen extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: TextStyle(color: Colors.grey)),
-          Text(value, style: TextStyle(fontWeight: isBold ? FontWeight.bold : FontWeight.normal)),
+          Text(label, style: const TextStyle(color: Colors.grey)),
+          Text(
+            value,
+            style: TextStyle(
+              fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
+            ),
+          ),
         ],
       ),
     );

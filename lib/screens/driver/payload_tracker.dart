@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 class PayloadTracker extends StatefulWidget {
+  const PayloadTracker({super.key});
+
   @override
   _PayloadTrackerState createState() => _PayloadTrackerState();
 }
@@ -12,26 +14,37 @@ class _PayloadTrackerState extends State<PayloadTracker> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text("Inventory Management")),
+      appBar: AppBar(title: const Text("Inventory Management")),
       body: Padding(
         padding: const EdgeInsets.all(20.0),
         child: Column(
           children: [
-            _buildStatCard("Current Full Load", "$currentLoad / 20", Colors.blue),
-            SizedBox(height: 20),
-            _buildStatCard("Empty Jugs Collected", "$emptyJugsCollected", Colors.green),
-            SizedBox(height: 40),
+            _buildStatCard(
+              "Current Full Load",
+              "$currentLoad / 20",
+              Colors.blue,
+            ),
+            const SizedBox(height: 20),
+            _buildStatCard(
+              "Empty Jugs Collected",
+              "$emptyJugsCollected",
+              Colors.green,
+            ),
+            const SizedBox(height: 40),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
                 FloatingActionButton(
                   onPressed: () => setState(() => emptyJugsCollected++),
-                  child: Icon(Icons.add),
+                  child: const Icon(Icons.add),
                 ),
-                Text("Scan/Update Returns", style: TextStyle(fontSize: 16)),
+                const Text(
+                  "Scan/Update Returns",
+                  style: TextStyle(fontSize: 16),
+                ),
                 FloatingActionButton(
                   onPressed: () => setState(() => emptyJugsCollected--),
-                  child: Icon(Icons.remove),
+                  child: const Icon(Icons.remove),
                 ),
               ],
             ),
@@ -46,7 +59,14 @@ class _PayloadTrackerState extends State<PayloadTracker> {
       elevation: 4,
       child: ListTile(
         title: Text(title),
-        trailing: Text(value, style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: color)),
+        trailing: Text(
+          value,
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: color,
+          ),
+        ),
       ),
     );
   }

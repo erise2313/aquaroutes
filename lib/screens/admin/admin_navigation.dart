@@ -4,6 +4,8 @@ import 'orders_screen.dart';
 import 'tracking_screen.dart';
 
 class AdminNavigation extends StatefulWidget {
+  const AdminNavigation({super.key});
+
   @override
   _AdminNavigationState createState() => _AdminNavigationState();
 }
@@ -11,9 +13,9 @@ class AdminNavigation extends StatefulWidget {
 class _AdminNavigationState extends State<AdminNavigation> {
   int _currentIndex = 0;
   final List<Widget> _pages = [
-    AdminDashboard(), // Home/Overview
-    Center(child: Text("Orders Screen")), // Orders
-    Center(child: Text("Tracking Screen")), // Map/Track
+    AdminDashboard(),
+    OrdersScreen(), // Replace Center(child: Text("Orders Screen"))
+    TrackingScreen(), // Replace Center(child: Text("Tracking Screen"))
   ];
 
   @override
@@ -24,7 +26,7 @@ class _AdminNavigationState extends State<AdminNavigation> {
         currentIndex: _currentIndex,
         onTap: (index) => setState(() => _currentIndex = index),
         type: BottomNavigationBarType.fixed,
-        items: [
+        items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
           BottomNavigationBarItem(icon: Icon(Icons.list_alt), label: 'Orders'),
           BottomNavigationBarItem(icon: Icon(Icons.map), label: 'Track'),

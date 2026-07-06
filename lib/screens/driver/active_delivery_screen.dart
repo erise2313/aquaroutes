@@ -2,13 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 class ActiveDeliveryScreen extends StatelessWidget {
+  const ActiveDeliveryScreen({super.key});
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: Stack(
         children: [
-          GoogleMap(
-            initialCameraPosition: CameraPosition(target: LatLng(14.3498, 120.8936), zoom: 15),
+          const GoogleMap(
+            initialCameraPosition: CameraPosition(
+              target: LatLng(14.3498, 120.8936),
+              zoom: 15,
+            ),
           ),
           Positioned(
             bottom: 20,
@@ -19,16 +24,23 @@ class ActiveDeliveryScreen extends StatelessWidget {
                 padding: const EdgeInsets.all(16.0),
                 child: Column(
                   children: [
-                    Text("Next Stop: Customer A", style: TextStyle(fontWeight: FontWeight.bold)),
-                    SizedBox(height: 10),
-                    LinearProgressIndicator(value: 0.75), // Visualization of Payload
-                    SizedBox(height: 10),
+                    const Text(
+                      "Next Stop: Customer A",
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 10),
+                    const LinearProgressIndicator(
+                      value: 0.75,
+                    ), // Visualization of Payload
+                    const SizedBox(height: 10),
                     ElevatedButton(
-                      style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green,
+                      ),
                       onPressed: () {
                         // This button triggers the weight decrement
                       },
-                      child: Text("Mark as Delivered"),
+                      child: const Text("Mark as Delivered"),
                     ),
                   ],
                 ),

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 class TrackingScreen extends StatefulWidget {
+  const TrackingScreen({super.key});
+
   @override
   _TrackingScreenState createState() => _TrackingScreenState();
 }
@@ -19,7 +21,7 @@ class _TrackingScreenState extends State<TrackingScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text("Live Fleet Tracking")),
+      appBar: AppBar(title: const Text("Live Fleet Tracking")),
       body: Column(
         children: [
           // 1. Map View
@@ -32,11 +34,11 @@ class _TrackingScreenState extends State<TrackingScreen> {
               ),
             ),
           ),
-          
+
           // 2. Driver Telemetry Summary (Real-time data placeholder)
           Container(
-            padding: EdgeInsets.all(16),
-            child: Column(
+            padding: const EdgeInsets.all(16),
+            child: const Column(
               children: [
                 ListTile(
                   leading: Icon(Icons.delivery_dining, color: Colors.blue),

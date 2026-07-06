@@ -4,6 +4,8 @@ import 'customer_orders_screen.dart';
 import 'customer_tracking_screen.dart';
 
 class CustomerNavigation extends StatefulWidget {
+  const CustomerNavigation({super.key});
+
   @override
   _CustomerNavigationState createState() => _CustomerNavigationState();
 }
@@ -11,10 +13,10 @@ class CustomerNavigation extends StatefulWidget {
 class _CustomerNavigationState extends State<CustomerNavigation> {
   int _currentIndex = 0;
   final List<Widget> _pages = [
-    CustomerHome(),
-    CustomerOrdersScreen(),
-    CustomerTrackingScreen(),
-    Center(child: Text("Profile Screen")),
+    const CustomerHome(),
+    const CustomerOrdersScreen(),
+    const CustomerTrackingScreen(),
+    const Center(child: Text("Profile Screen")),
   ];
 
   @override
@@ -26,10 +28,25 @@ class _CustomerNavigationState extends State<CustomerNavigation> {
         onTap: (index) => setState(() => _currentIndex = index),
         type: BottomNavigationBarType.fixed,
         items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home_outlined), activeIcon: Icon(Icons.home), label: 'Home'),
-          BottomNavigationBarItem(icon: Icon(Icons.access_time), label: 'Orders'),
-          BottomNavigationBarItem(icon: Icon(Icons.map_outlined), activeIcon: Icon(Icons.map), label: 'Tracking'),
-          BottomNavigationBarItem(icon: Icon(Icons.person_outline), activeIcon: Icon(Icons.person), label: 'Profile'),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.home_outlined),
+            activeIcon: Icon(Icons.home),
+            label: 'Home',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.access_time),
+            label: 'Orders',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.map_outlined),
+            activeIcon: Icon(Icons.map),
+            label: 'Tracking',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person_outline),
+            activeIcon: Icon(Icons.person),
+            label: 'Profile',
+          ),
         ],
       ),
     );
