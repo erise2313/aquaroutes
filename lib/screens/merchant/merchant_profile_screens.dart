@@ -1,10 +1,23 @@
 import 'package:aquaroute/screens/auth/login_screen.dart';
+import 'package:aquaroute/screens/merchant/location_picker_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 // Adjust this import to point to your actual settings/logout screen if needed
 import 'settings_screen.dart';
 
 bool _isLoggingOut = false;
+
+Map<String, dynamic> buildProfileUpdatePayload({
+  required String fullName,
+  required String businessName,
+  required String stationAddress,
+}) {
+  return {
+    'full_name': fullName.trim(),
+    'business_name': businessName.trim(),
+    'station_address': stationAddress.trim(),
+  };
+}
 
 class MerchantProfileScreen extends StatefulWidget {
   const MerchantProfileScreen({super.key});
@@ -17,12 +30,37 @@ class _MerchantProfileScreenState extends State<MerchantProfileScreen> {
   final supabase = Supabase.instance.client;
 
   bool _isLoading = true;
+  bool _isSaving = false;
   Map<String, dynamic>? _profileData;
+  late final TextEditingController _fullNameController;
+  late final TextEditingController _businessNameController;
+  late final TextEditingController _stationAddressController;
+  late final TextEditingController _emailController;
+  late final TextEditingController _latitudeController;
+  late final TextEditingController _longitudeController;
+  int _selectedTabIndex = 0;
 
   @override
   void initState() {
     super.initState();
+    _fullNameController = TextEditingController();
+    _businessNameController = TextEditingController();
+    _stationAddressController = TextEditingController();
+    _emailController = TextEditingController();
+    _latitudeController = TextEditingController();
+    _longitudeController = TextEditingController();
     _fetchProfileData();
+  }
+
+  @override
+  void dispose() {
+    _fullNameController.dispose();
+    _businessNameController.dispose();
+    _stationAddressController.dispose();
+    _emailController.dispose();
+    _latitudeController.dispose();
+    _longitudeController.dispose();
+    super.dispose();
   }
 
   Future<void> _logout() async {
@@ -64,6 +102,17 @@ class _MerchantProfileScreenState extends State<MerchantProfileScreen> {
       if (mounted) {
         setState(() {
           _profileData = data;
+          _fullNameController.text =
+              (_profileData?['full_name'] as String?) ?? '';
+          _businessNameController.text =
+              (_profileData?['business_name'] as String?) ?? '';
+          _stationAddressController.text =
+              (_profileData?['station_address'] as String?) ?? '';
+          _emailController.text = supabase.auth.currentUser?.email ?? '';
+          _latitudeController.text =
+              (_profileData?['latitude'] as double?)?.toString() ?? '';
+          _longitudeController.text =
+              (_profileData?['longitude'] as double?)?.toString() ?? '';
           _isLoading = false;
         });
       }
@@ -77,6 +126,74 @@ class _MerchantProfileScreenState extends State<MerchantProfileScreen> {
             backgroundColor: Colors.redAccent,
           ),
         );
+      }
+    }
+  }
+
+  Future<void> _openLocationPicker() async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => LocationPickerScreen(
+          initialLatitude: double.tryParse(_latitudeController.text) ?? 14.0583,
+          initialLongitude:
+              double.tryParse(_longitudeController.text) ?? 121.0363,
+          initialStationName: _businessNameController.text,
+        ),
+      ),
+    );
+
+    if (result != null && result is Map<String, dynamic>) {
+      setState(() {
+        _latitudeController.text = result['latitude'].toString();
+        _longitudeController.text = result['longitude'].toString();
+        _businessNameController.text = result['station_name'];
+      });
+    }
+  }
+
+  Future<void> _saveProfile() async {
+    final userId = supabase.auth.currentUser?.id;
+    if (userId == null) {
+      return;
+    }
+
+    setState(() => _isSaving = true);
+
+    try {
+      final payload = buildProfileUpdatePayload(
+        fullName: _fullNameController.text,
+        businessName: _businessNameController.text,
+        stationAddress: _stationAddressController.text,
+      );
+
+      if (_latitudeController.text.isNotEmpty &&
+          _longitudeController.text.isNotEmpty) {
+        final lat = double.tryParse(_latitudeController.text);
+        final lng = double.tryParse(_longitudeController.text);
+        if (lat != null && lng != null) {
+          payload['latitude'] = lat;
+          payload['longitude'] = lng;
+        }
+      }
+
+      await supabase.from('user_profiles').update(payload).eq('id', userId);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Profile updated successfully')),
+        );
+      }
+    } catch (e) {
+      debugPrint('Failed to update profile: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to update profile: $e')));
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isSaving = false);
       }
     }
   }
@@ -111,7 +228,6 @@ class _MerchantProfileScreenState extends State<MerchantProfileScreen> {
   }
 
   Widget _buildProfileContent() {
-    // Dynamic Data Extraction from Supabase
     final String ownerName = _profileData?['full_name'] ?? "Unknown Owner";
     final String businessName =
         _profileData?['business_name'] ?? "Unnamed Station";
@@ -190,35 +306,40 @@ class _MerchantProfileScreenState extends State<MerchantProfileScreen> {
                     const SizedBox(height: 24),
                     const Divider(),
                     const SizedBox(height: 24),
-                    // KYC / Permit Status Engine
                     _buildKycBanner(kycStatus),
 
                     const SizedBox(height: 24),
-                    const Text(
-                      "Station Details",
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.grey,
+                    DefaultTabController(
+                      length: 3,
+                      initialIndex: _selectedTabIndex,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          TabBar(
+                            onTap: (index) =>
+                                setState(() => _selectedTabIndex = index),
+                            labelColor: Colors.blue.shade700,
+                            unselectedLabelColor: Colors.grey,
+                            indicatorColor: Colors.blue.shade700,
+                            tabs: const [
+                              Tab(text: 'Profile'),
+                              Tab(text: 'Station Info'),
+                              Tab(text: 'Location'),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                          SizedBox(
+                            height: 320,
+                            child: TabBarView(
+                              children: [
+                                _buildEditableProfileForm(),
+                                _buildEditableStationForm(),
+                                _buildLocationForm(),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
-                    const SizedBox(height: 12),
-
-                    // Detail Tiles
-                    _buildDetailTile(
-                      Icons.storefront,
-                      "Operating Address",
-                      address,
-                    ),
-                    _buildDetailTile(
-                      Icons.email_outlined,
-                      "Contact Email",
-                      email,
-                    ),
-                    _buildDetailTile(
-                      Icons.account_circle_outlined,
-                      "Account Type",
-                      "Business Owner (Merchant)",
                     ),
                   ],
                 ),
@@ -338,34 +459,198 @@ class _MerchantProfileScreenState extends State<MerchantProfileScreen> {
     );
   }
 
-  Widget _buildDetailTile(IconData icon, String title, String subtitle) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade200),
+  Widget _buildEditableProfileForm() {
+    return SingleChildScrollView(
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.grey.shade200),
+        ),
+        child: Column(
+          children: [
+            _buildInputField(
+              controller: _fullNameController,
+              label: 'Owner Name',
+              hint: 'Enter your full name',
+            ),
+            const SizedBox(height: 12),
+            _buildInputField(
+              controller: _businessNameController,
+              label: 'Station Name',
+              hint: 'Enter station name',
+            ),
+            const SizedBox(height: 12),
+            _buildInputField(
+              controller: _stationAddressController,
+              label: 'Station Address',
+              hint: 'Enter station address',
+              maxLines: 2,
+            ),
+            const SizedBox(height: 16),
+            Align(
+              alignment: Alignment.centerRight,
+              child: ElevatedButton.icon(
+                onPressed: _isSaving ? null : _saveProfile,
+                icon: _isSaving
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.save),
+                label: Text(_isSaving ? 'Saving...' : 'Save Changes'),
+              ),
+            ),
+          ],
+        ),
       ),
-      child: ListTile(
-        leading: Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: Colors.blue.shade50,
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Icon(icon, color: Colors.blue.shade600),
+    );
+  }
+
+  Widget _buildEditableStationForm() {
+    return SingleChildScrollView(
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.grey.shade200),
         ),
-        title: Text(
-          title,
-          style: const TextStyle(fontSize: 12, color: Colors.grey),
+        child: Column(
+          children: [
+            _buildInputField(
+              controller: _businessNameController,
+              label: 'Business Name',
+              hint: 'Your station name',
+            ),
+            const SizedBox(height: 12),
+            _buildInputField(
+              controller: _stationAddressController,
+              label: 'Station Address',
+              hint: 'Full address for customers',
+              maxLines: 3,
+            ),
+            const SizedBox(height: 12),
+            _buildInputField(
+              controller: _emailController,
+              label: 'Email',
+              hint: 'Your contact email',
+              readOnly: true,
+              backgroundColor: Colors.grey.shade100,
+            ),
+            const SizedBox(height: 16),
+            Align(
+              alignment: Alignment.centerRight,
+              child: ElevatedButton.icon(
+                onPressed: _isSaving ? null : _saveProfile,
+                icon: _isSaving
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.save),
+                label: Text(_isSaving ? 'Saving...' : 'Save Changes'),
+              ),
+            ),
+          ],
         ),
-        subtitle: Text(
-          subtitle,
-          style: const TextStyle(
-            fontWeight: FontWeight.bold,
-            color: Colors.black87,
-            fontSize: 14,
-          ),
+      ),
+    );
+  }
+
+  Widget _buildLocationForm() {
+    return SingleChildScrollView(
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.grey.shade200),
+        ),
+        child: Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.blue.shade50,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.blue.shade200),
+              ),
+              child: const Text(
+                'Add your station location so customers can find you on the map.',
+                style: TextStyle(fontSize: 12, color: Colors.blue),
+              ),
+            ),
+            const SizedBox(height: 16),
+            _buildInputField(
+              controller: _latitudeController,
+              label: 'Latitude',
+              hint: 'e.g., 14.0583',
+            ),
+            const SizedBox(height: 12),
+            _buildInputField(
+              controller: _longitudeController,
+              label: 'Longitude',
+              hint: 'e.g., 121.0363',
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: _openLocationPicker,
+                icon: const Icon(Icons.location_on),
+                label: const Text('Pick from Map'),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Align(
+              alignment: Alignment.centerRight,
+              child: ElevatedButton.icon(
+                onPressed: _isSaving ? null : _saveProfile,
+                icon: _isSaving
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.save),
+                label: Text(_isSaving ? 'Saving...' : 'Save Location'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInputField({
+    required TextEditingController controller,
+    required String label,
+    required String hint,
+    int maxLines = 1,
+    bool readOnly = false,
+    Color? backgroundColor,
+  }) {
+    return TextField(
+      controller: controller,
+      maxLines: maxLines,
+      readOnly: readOnly,
+      decoration: InputDecoration(
+        labelText: label,
+        hintText: hint,
+        filled: readOnly || backgroundColor != null,
+        fillColor: backgroundColor ?? Colors.transparent,
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide(color: Colors.grey.shade300),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide(color: Colors.blue.shade500, width: 2),
         ),
       ),
     );

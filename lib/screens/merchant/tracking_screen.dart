@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class TrackingScreen extends StatefulWidget {
   const TrackingScreen({super.key});
@@ -13,6 +15,16 @@ class _TrackingScreenState extends State<TrackingScreen> {
 
   // Center the map on General Trias
   final LatLng _center = const LatLng(14.3498, 120.8936);
+
+  void _updateDriverLocation(Position position) async {
+    await Supabase.instance.client
+        .from('orders') // Your rent/ledger table
+        .update({
+          'current_lat': position.latitude,
+          'current_longitude': position.longitude,
+        })
+        .eq('driver_id', 'current_driver_id'); // Match the specific delivery
+  }
 
   void _onMapCreated(GoogleMapController controller) {
     mapController = controller;

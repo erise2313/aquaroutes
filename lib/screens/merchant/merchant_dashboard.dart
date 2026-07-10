@@ -1,171 +1,255 @@
 import 'package:flutter/material.dart';
-import 'settings_screen.dart';
-import 'driver_management.dart';
-import 'order_detail_screen.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
-class MerchantDashboard extends StatelessWidget {
+Map<String, int> calculateOrderCounts(List<Map<String, dynamic>> orders) {
+  final pending = orders.where((o) => o['status'] == 'pending').length;
+  final active = orders.where((o) => o['status'] == 'active').length;
+  final done = orders
+      .where((o) => o['status'] == 'completed' || o['status'] == 'done')
+      .length;
+
+  return {'pending': pending, 'active': active, 'done': done};
+}
+
+class MerchantDashboard extends StatefulWidget {
   const MerchantDashboard({super.key});
 
   @override
+  State<MerchantDashboard> createState() => _MerchantDashboardState();
+}
+
+class _MerchantDashboardState extends State<MerchantDashboard> {
+  final supabase = Supabase.instance.client;
+  String _stationName = '';
+  String _selectedStatus = 'all';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadStationName();
+  }
+
+  Future<void> _loadStationName() async {
+    try {
+      final userId = supabase.auth.currentUser?.id;
+      if (userId == null) {
+        if (mounted) {
+          setState(() {});
+        }
+        return;
+      }
+
+      final profile = await supabase
+          .from('user_profiles')
+          .select('business_name')
+          .eq('id', userId)
+          .maybeSingle();
+
+      if (mounted) {
+        setState(() {
+          _stationName = (profile?['business_name'] as String?)?.trim() ?? '';
+        });
+      }
+    } catch (e) {
+      debugPrint('Failed to load station name: $e');
+      if (mounted) {
+        setState(() {
+          _stationName = '';
+        });
+      }
+    }
+  }
+
+  Stream<List<Map<String, dynamic>>> get _ordersStream {
+    if (_stationName.isEmpty) {
+      return const Stream.empty();
+    }
+
+    return supabase
+        .from('orders')
+        .stream(primaryKey: ['id'])
+        .eq('station_name', _stationName)
+        .order('created_at', ascending: false);
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.grey.shade50, // Clean, off-white background
-      appBar: AppBar(
-        title: const Text(
-          "Station Merchant",
-          style: TextStyle(fontWeight: FontWeight.w600, color: Colors.black87),
-        ),
-        backgroundColor: Colors.white,
-        elevation: 0, // Removes the drop shadow
-        iconTheme: const IconThemeData(color: Colors.black87),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.people_outline),
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => DriverManagement()),
-            ),
+    return StreamBuilder<List<Map<String, dynamic>>>(
+      stream: _ordersStream,
+      builder: (context, snapshot) {
+        final orders = snapshot.data ?? [];
+        final counts = calculateOrderCounts(orders);
+        final pending = counts['pending'] ?? 0;
+        final active = counts['active'] ?? 0;
+        final done = counts['done'] ?? 0;
+
+        final filteredOrders = _selectedStatus == 'all'
+            ? orders
+            : orders.where((order) {
+                final status =
+                    (order['status'] as String?)?.toLowerCase() ?? '';
+                if (_selectedStatus == 'done') {
+                  return status == 'completed' || status == 'done';
+                }
+                return status == _selectedStatus;
+              }).toList();
+
+        return Scaffold(
+          appBar: AppBar(
+            title: const Text('Merchant Dashboard'),
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.notifications_outlined),
+                onPressed: () {},
+              ),
+            ],
           ),
-          IconButton(
-            icon: const Icon(Icons.settings_outlined),
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const SettingsScreen()),
-            ),
-          ),
-        ],
-      ),
-      body: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Cyan/Blue Header Panel (Matches your Customer side design)
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, 40),
-              decoration: BoxDecoration(
-                color: Colors.blue.shade400,
-                borderRadius: const BorderRadius.only(
-                  bottomLeft: Radius.circular(30),
-                  bottomRight: Radius.circular(30),
-                ),
-              ),
-              child: const Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    "Overview",
-                    style: TextStyle(color: Colors.white70, fontSize: 16),
-                  ),
-                  SizedBox(height: 5),
-                  Text(
-                    "Today's Pipeline",
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            // Overlapping Flat Metrics Board
-            Transform.translate(
-              offset: const Offset(0, -20),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                child: Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: Colors.grey.shade200),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: [
-                      _buildFlatStat("Pending", "5", Colors.red.shade400),
-                      _buildFlatStat("Active", "8", Colors.orange.shade400),
-                      _buildFlatStat("Done", "111", Colors.green.shade400),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 20.0, vertical: 10.0),
-              child: Text(
-                "Recent Activity",
-                style: TextStyle(
-                  fontSize: 16,
-                  color: Colors.grey,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-
-            // Clean, Flat List View
-            ListView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: 3,
-              itemBuilder: (context, index) => Container(
-                margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(15),
-                  border: Border.all(color: Colors.grey.shade200),
-                ),
-                child: ListTile(
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 20,
-                    vertical: 5,
-                  ),
-                  leading: CircleAvatar(
-                    backgroundColor: Colors.blue.shade50,
-                    child: Icon(Icons.water_drop, color: Colors.blue.shade400),
-                  ),
-                  title: Text(
-                    "Order #00${index + 1}",
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  subtitle: const Text("Delivered at 10:30 AM"),
-                  trailing: const Text(
-                    "₱150.00",
-                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
-                  ),
-                  onTap: () => Navigator.push(
+          body: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Live order overview',
+                  style: Theme.of(
                     context,
-                    MaterialPageRoute(
-                      builder: (_) =>
-                          OrderDetailScreen(orderId: "00${index + 1}"),
-                    ),
-                  ),
+                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
                 ),
-              ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () =>
+                            setState(() => _selectedStatus = 'pending'),
+                        child: _buildStatCard(
+                          context,
+                          'Pending',
+                          pending.toString(),
+                          Colors.red.shade400,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () => setState(() => _selectedStatus = 'active'),
+                        child: _buildStatCard(
+                          context,
+                          'Active',
+                          active.toString(),
+                          Colors.orange.shade400,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () => setState(() => _selectedStatus = 'done'),
+                        child: _buildStatCard(
+                          context,
+                          'Done',
+                          done.toString(),
+                          Colors.green.shade400,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+                Row(
+                  children: [
+                    Text(
+                      _selectedStatus == 'all'
+                          ? 'Orders currently in the system'
+                          : 'Showing ${_selectedStatus.toUpperCase()} orders',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    const Spacer(),
+                    if (_selectedStatus != 'all')
+                      TextButton(
+                        onPressed: () =>
+                            setState(() => _selectedStatus = 'all'),
+                        child: const Text('Show all'),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Expanded(
+                  child: filteredOrders.isEmpty
+                      ? const Center(
+                          child: Text(
+                            'No orders yet for this station.\nCustomers will appear here when they place an order.',
+                            textAlign: TextAlign.center,
+                          ),
+                        )
+                      : ListView.builder(
+                          itemCount: filteredOrders.length,
+                          itemBuilder: (context, index) {
+                            final order = filteredOrders[index];
+                            final status =
+                                order['status']?.toString() ?? 'unknown';
+                            final id = order['id']?.toString() ?? 'unknown';
+                            final shortId = id.length > 6
+                                ? id.substring(0, 6).toUpperCase()
+                                : id.toUpperCase();
+
+                            return Card(
+                              child: ListTile(
+                                leading: const Icon(
+                                  Icons.water_drop_outlined,
+                                  color: Colors.blue,
+                                ),
+                                title: Text('Order #$shortId'),
+                                subtitle: Text(
+                                  'Status: $status • Jugs: ${order['jug_count'] ?? 0}',
+                                ),
+                                trailing: Chip(label: Text(status)),
+                              ),
+                            );
+                          },
+                        ),
+                ),
+              ],
             ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 
-  Widget _buildFlatStat(String title, String value, Color color) {
-    return Column(
-      children: [
-        Text(
-          value,
-          style: TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
-            color: color,
+  Widget _buildStatCard(
+    BuildContext context,
+    String label,
+    String value,
+    Color color,
+  ) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: color.withOpacity(0.4)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: color,
+              fontWeight: FontWeight.w600,
+            ),
           ),
-        ),
-        const SizedBox(height: 4),
-        Text(title, style: const TextStyle(fontSize: 12, color: Colors.grey)),
-      ],
+          const SizedBox(height: 8),
+          Text(
+            value,
+            style: Theme.of(
+              context,
+            ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+          ),
+        ],
+      ),
     );
   }
 }

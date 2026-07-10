@@ -19,7 +19,7 @@ dependencies:
   http: ^1.1.0
   
   # Maps & Geolocation
-  google_maps_flutter: ^2.5.0
+  google_maps_flutter: ^2.14.2
   geolocator: ^14.0.2
   
   # Utilities
