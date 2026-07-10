@@ -5,7 +5,7 @@ class TrackingScreen extends StatefulWidget {
   const TrackingScreen({super.key});
 
   @override
-  _TrackingScreenState createState() => _TrackingScreenState();
+  State<TrackingScreen> createState() => _TrackingScreenState();
 }
 
 class _TrackingScreenState extends State<TrackingScreen> {

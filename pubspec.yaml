@@ -25,6 +25,7 @@ dependencies:
   # Utilities
   flutter_dotenv: ^6.0.1 # For securing your Google/Supabase Keys
   intl: ^0.20.3          # For formatting dates/currencies
+  geocoding: ^4.0.0
 
 dev_dependencies:
   flutter_test:

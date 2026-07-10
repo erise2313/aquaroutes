@@ -1,14 +1,72 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart'; // 1. Added Supabase Import
 
-class PlaceOrderScreen extends StatelessWidget {
+class PlaceOrderScreen extends StatefulWidget {
   final String stationName;
   const PlaceOrderScreen({super.key, required this.stationName});
+
+  @override
+  State<PlaceOrderScreen> createState() => _PlaceOrderScreenState();
+}
+
+class _PlaceOrderScreenState extends State<PlaceOrderScreen> {
+  bool _isLoading = false;
+  final supabase = Supabase.instance.client;
+
+  // 2. The Core Database Transaction Logic
+  Future<void> _placeLiveOrder() async {
+    setState(() => _isLoading = true);
+
+    try {
+      // Get the currently logged-in user's UUID
+      final userId = supabase.auth.currentUser?.id;
+
+      if (userId == null) {
+        throw Exception("You must be logged in to place an order.");
+      }
+
+      // Push the data to the 'orders' table
+      await supabase.from('orders').insert({
+        'customer_id': userId,
+        'station_name': widget.stationName,
+        'status': 'pending',
+        'jug_count': 3, // Hardcoded to match your UI for now
+        'total_price': 150.00,
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Water Order Sent to Station! 💧"),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        // Route them back to the Home Dashboard
+        Navigator.pop(context);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Database Error: $e"),
+            backgroundColor: Colors.redAccent,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(stationName),
+        title: Text(widget.stationName), // Notice we use widget.stationName now
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.pop(context),
@@ -83,7 +141,7 @@ class PlaceOrderScreen extends StatelessWidget {
 
             const SizedBox(height: 20),
 
-            // Submit Button Action Wrapper
+            // 3. The Upgraded Submit Button
             ElevatedButton(
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.blue.shade400,
@@ -92,20 +150,25 @@ class PlaceOrderScreen extends StatelessWidget {
                   borderRadius: BorderRadius.circular(30),
                 ),
               ),
-              onPressed: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text("Order Sent Successfully!")),
-                );
-                Navigator.pop(context);
-              },
-              child: const Text(
-                "Place Order",
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-              ),
+              // Disable the button while it's loading to prevent double-ordering
+              onPressed: _isLoading ? null : _placeLiveOrder,
+              child: _isLoading
+                  ? const SizedBox(
+                      height: 24,
+                      width: 24,
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2.5,
+                      ),
+                    )
+                  : const Text(
+                      "Place Order",
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
             ),
           ],
         ),
