@@ -44,8 +44,8 @@ class RouteOptimizationService {
     }
 
     final now = DateTime.now().toUtc();
-    final globalStartTime = now.toIso8601String();
-    final globalEndTime = now.add(const Duration(hours: 12)).toIso8601String();
+    final globalStartTime = "${now.toIso8601String().split('.')[0]}Z";
+    final globalEndTime = "${now.add(const Duration(hours: 12)).toIso8601String().split('.')[0]}Z";
 
     final List<Map<String, dynamic>> vehicles = [
       {

@@ -53,7 +53,11 @@ class _TrackingScreenState extends State<TrackingScreen> {
         initialCameraPosition: CameraPosition(target: _center, zoom: 14.0),
         polylines: _polylines,
         markers: _markers,
-        onMapCreated: (c) => _mapController = c,
+        onMapCreated: (c) {
+          _mapController = c;
+          // This forces the Google Route API to trigger automatically!
+          _generateRealRoute(); 
+        },
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _isGeneratingRoute ? null : _generateRealRoute,

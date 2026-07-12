@@ -46,3 +46,6 @@ app.*.map.json
 
 # Supabase Edge Functions Secrets
 supabase/.envgit
+
+# Secret Environment Variables
+.env
