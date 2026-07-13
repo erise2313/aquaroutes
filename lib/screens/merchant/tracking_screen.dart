@@ -1,67 +1,78 @@
 import 'package:flutter/material.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:aquaroute/services/route_optimization.dart';
 
 class TrackingScreen extends StatefulWidget {
   const TrackingScreen({super.key});
-
   @override
   State<TrackingScreen> createState() => _TrackingScreenState();
 }
 
 class _TrackingScreenState extends State<TrackingScreen> {
-  late GoogleMapController mapController;
+  GoogleMapController? _mapController;
+  bool _isGeneratingRoute = false;
+  Set<Polyline> _polylines = {};
+  final Set<Marker> _markers = {};
+  final LatLng _center = const LatLng(14.3152, 120.9156);
+  final RouteOptimizationService _routeService = RouteOptimizationService();
 
-  // Center the map on General Trias
-  final LatLng _center = const LatLng(14.3498, 120.8936);
-
-  void _updateDriverLocation(Position position) async {
-    await Supabase.instance.client
-        .from('orders') // Your rent/ledger table
-        .update({
-          'current_lat': position.latitude,
-          'current_longitude': position.longitude,
-        })
-        .eq('driver_id', 'current_driver_id'); // Match the specific delivery
-  }
-
-  void _onMapCreated(GoogleMapController controller) {
-    mapController = controller;
+  Future<void> _generateRealRoute() async {
+    setState(() => _isGeneratingRoute = true);
+    try {
+      final String poly = await _routeService.calculateFleetRoute(
+        {"lat": 14.3152, "lng": 120.9156},
+        [
+          {"lat": 14.3200, "lng": 120.9200},
+        ],
+      );
+      if (poly.isNotEmpty) {
+        setState(() {
+          _polylines = {
+            Polyline(
+              polylineId: const PolylineId('route'),
+              color: Colors.blueAccent,
+              width: 8,
+              points: decodeEncodedPolyline(poly),
+            ),
+          };
+        });
+      }
+    } catch (e) {
+      debugPrint('Error: $e');
+    } finally {
+      setState(() => _isGeneratingRoute = false);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Live Fleet Tracking")),
-      body: Column(
-        children: [
-          // 1. Map View
-          Expanded(
-            child: GoogleMap(
-              onMapCreated: _onMapCreated,
-              initialCameraPosition: CameraPosition(
-                target: _center,
-                zoom: 14.0,
-              ),
-            ),
-          ),
-
-          // 2. Driver Telemetry Summary (Real-time data placeholder)
-          Container(
-            padding: const EdgeInsets.all(16),
-            child: const Column(
-              children: [
-                ListTile(
-                  leading: Icon(Icons.delivery_dining, color: Colors.blue),
-                  title: Text("Driver: Juan Dela Cruz"),
-                  subtitle: Text("Status: En-Route | Payload: 12/20 jugs"),
+      appBar: AppBar(title: const Text('Live Fleet Tracking')),
+      floatingActionButtonLocation: FloatingActionButtonLocation.startFloat,
+      body: GoogleMap(
+        initialCameraPosition: CameraPosition(target: _center, zoom: 14.0),
+        polylines: _polylines,
+        markers: _markers,
+        onMapCreated: (c) {
+          _mapController = c;
+          // This forces the Google Route API to trigger automatically!
+          _generateRealRoute(); 
+        },
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _isGeneratingRoute ? null : _generateRealRoute,
+        label: Text(_isGeneratingRoute ? 'Generating...' : 'Generate Route'),
+        icon: _isGeneratingRoute
+            ? const SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Colors.white,
                 ),
-                LinearProgressIndicator(value: 0.6), // Payload math visual
-              ],
-            ),
-          ),
-        ],
+              )
+            : const Icon(Icons.route),
+        backgroundColor: Colors.blueAccent,
       ),
     );
   }
