@@ -14,7 +14,7 @@ class CustomerNavigation extends StatefulWidget {
 class _CustomerNavigationState extends State<CustomerNavigation> {
   int _currentIndex = 0;
   final List<Widget> _pages = [
-    const CustomerHome(),
+    const CustomerHomeScreen(),
     const CustomerOrdersScreen(),
     const CustomerTrackingScreen(),
     const CustomerProfileScreen(),

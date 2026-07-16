@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'dart:math'; // Required for generating the invite code
 import '../merchant/merchant_navigation.dart';
 import '../customer/customer_navigation.dart';
+import '../driver/driver_dashboard.dart'; // Ensure this points to your new Driver file
 
 class RegistrationScreen extends StatefulWidget {
   const RegistrationScreen({super.key});
@@ -22,13 +24,46 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
   final _businessNameController = TextEditingController();
   final _stationAddressController = TextEditingController();
 
+  // Driver-Specific Controllers
+  final _inviteCodeController = TextEditingController();
+  final _plateNumberController = TextEditingController();
+  final _capacityController = TextEditingController();
+
   String _selectedRole = 'customer';
   bool _isLoading = false;
 
+  // Generates a random 6-character code for Merchants
+  String _generateInviteCode() {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    final rnd = Random();
+    return String.fromCharCodes(Iterable.generate(6, (_) => chars.codeUnitAt(rnd.nextInt(chars.length))));
+  }
+
   Future<void> _signUp() async {
     setState(() => _isLoading = true);
+    
+    String? assignedStationId;
+
     try {
-      // 1. Create the base Authentication Account First
+      // 1. SECURE DRIVER CHECK: Verify invite code BEFORE creating the Auth account
+      if (_selectedRole == 'driver') {
+        // Removed the .toUpperCase() so we pass the raw text
+        final code = _inviteCodeController.text.trim(); 
+        
+        final stationMatch = await supabase
+            .from('water_stations')
+            .select('id')
+            // Changed .eq to .ilike for case-insensitive matching
+            .ilike('invite_code', code) 
+            .maybeSingle();
+
+        if (stationMatch == null) {
+          throw Exception("Invalid Station Invite Code! Please ask your boss for the correct key.");
+        }
+        assignedStationId = stationMatch['id'];
+      }
+
+      // 2. Create the base Authentication Account
       final res = await supabase.auth.signUp(
         email: _emailController.text.trim(),
         password: _passwordController.text,
@@ -37,36 +72,42 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
       final user = res.user;
 
       if (user != null) {
-        // 2. Client-Side Provisioning: Explicitly push data into the table
+        // 3. Upsert into user_profiles with the new driver data
         await supabase.from('user_profiles').upsert({
-          'id': user.id, // Links directly to the Auth account
+          'id': user.id, 
           'role': _selectedRole,
           'full_name': _fullNameController.text.trim(),
-          // Only save these if they are a merchant, otherwise leave them null
-          'business_name': _selectedRole == 'merchant'
-              ? _businessNameController.text.trim()
-              : null,
-          'station_address': _selectedRole == 'merchant'
-              ? _stationAddressController.text.trim()
-              : null,
+          
+          // Merchant Data
+          'business_name': _selectedRole == 'merchant' ? _businessNameController.text.trim() : null,
+          'station_address': _selectedRole == 'merchant' ? _stationAddressController.text.trim() : null,
           'kyc_status': _selectedRole == 'merchant' ? 'pending_upload' : null,
+          
+          // Driver Data
+          'assigned_station_id': assignedStationId,
+          'vehicle_plate': _selectedRole == 'driver' ? _plateNumberController.text.trim().toUpperCase() : null,
+          'jug_capacity': _selectedRole == 'driver' ? int.tryParse(_capacityController.text.trim()) : null,
         });
+
+        // 4. MERCHANT ONLY: Automatically create their water station and generate their invite key
+        if (_selectedRole == 'merchant') {
+          final newCode = _generateInviteCode();
+          await supabase.from('water_stations').insert({
+            'owner_id': user.id,
+            'station_name': _businessNameController.text.trim(),
+            'invite_code': newCode, 
+          });
+        }
 
         if (!mounted) return;
 
-        // 3. Route to the correct dashboard
+        // 5. Route to the correct dashboard
         if (_selectedRole == 'merchant') {
-          Navigator.pushAndRemoveUntil(
-            context,
-            MaterialPageRoute(builder: (context) => const MerchantNavigation()),
-            (route) => false,
-          );
+          Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (context) => const MerchantNavigation()), (route) => false);
+        } else if (_selectedRole == 'driver') {
+          Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (context) => const DriverDashboardScreen()), (route) => false);
         } else {
-          Navigator.pushAndRemoveUntil(
-            context,
-            MaterialPageRoute(builder: (context) => const CustomerNavigation()),
-            (route) => false,
-          );
+          Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (context) => const CustomerNavigation()), (route) => false);
         }
       }
     } catch (e) {
@@ -117,10 +158,9 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
               _buildRoleDropdown(),
               const SizedBox(height: 24),
 
-              if (_selectedRole == 'merchant')
-                _buildMerchantFields()
-              else
-                _buildCustomerFields(),
+              if (_selectedRole == 'merchant') _buildMerchantFields()
+              else if (_selectedRole == 'driver') _buildDriverFields()
+              else _buildCustomerFields(),
 
               const SizedBox(height: 24),
 
@@ -194,14 +234,9 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
         ),
       ),
       items: const [
-        DropdownMenuItem(
-          value: 'customer',
-          child: Text("Customer (Buying Water)"),
-        ),
-        DropdownMenuItem(
-          value: 'merchant',
-          child: Text("Business Owner (Selling Water)"),
-        ),
+        DropdownMenuItem(value: 'customer', child: Text("Customer (Buying Water)")),
+        DropdownMenuItem(value: 'merchant', child: Text("Business Owner (Selling Water)")),
+        DropdownMenuItem(value: 'driver', child: Text("Driver (Delivery Personnel)")),
       ],
       onChanged: (String? newValue) {
         if (newValue != null) {
@@ -214,15 +249,12 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
   Widget _buildCustomerFields() {
     return Column(
       children: [
-        _buildTextField(
-          controller: _fullNameController,
-          label: "Full Name",
-          icon: Icons.person_outline,
-        ),
+        _buildTextField(controller: _fullNameController, label: "Full Name", icon: Icons.person_outline),
       ],
     );
   }
 
+  // PRESERVED YOUR ORIGINAL UI FOR MERCHANTS
   Widget _buildMerchantFields() {
     return Column(
       children: [
@@ -240,7 +272,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
         const SizedBox(height: 16),
         _buildTextField(
           controller: _stationAddressController,
-          label: "Station Address (Tanza, Cavite)",
+          label: "Station Address (San Francisco, General Trias)", // Kept your local placeholder!
           icon: Icons.store_mall_directory_outlined,
         ),
         const SizedBox(height: 16),
@@ -268,17 +300,57 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
     );
   }
 
+  // NEW DRIVER UI
+  Widget _buildDriverFields() {
+    return Column(
+      children: [
+        _buildTextField(controller: _fullNameController, label: "Driver Full Name", icon: Icons.person_outline),
+        const SizedBox(height: 16),
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Colors.blue.shade50, 
+            borderRadius: BorderRadius.circular(12), 
+            border: Border.all(color: Colors.blue.shade200)
+          ),
+          child: Column(
+            children: [
+              const Row(
+                children: [
+                  Icon(Icons.vpn_key, color: Colors.blue), 
+                  SizedBox(width: 8),
+                  Text("Station Link Key", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue)),
+                ],
+              ),
+              const SizedBox(height: 8),
+              _buildTextField(controller: _inviteCodeController, label: "Enter Merchant Invite Code", icon: Icons.numbers),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        Row(
+          children: [
+            Expanded(child: _buildTextField(controller: _plateNumberController, label: "Plate No.", icon: Icons.directions_car)),
+            const SizedBox(width: 12),
+            Expanded(child: _buildTextField(controller: _capacityController, label: "Max Jugs", icon: Icons.scale, isNumber: true)),
+          ],
+        ),
+      ],
+    );
+  }
+
   Widget _buildTextField({
     required TextEditingController controller,
     required String label,
     required IconData icon,
     bool isPassword = false,
     bool isEmail = false,
+    bool isNumber = false,
   }) {
     return TextField(
       controller: controller,
       obscureText: isPassword,
-      keyboardType: isEmail ? TextInputType.emailAddress : TextInputType.text,
+      keyboardType: isEmail ? TextInputType.emailAddress : (isNumber ? TextInputType.number : TextInputType.text),
       decoration: InputDecoration(
         labelText: label,
         prefixIcon: Icon(icon, color: Colors.grey.shade500),
