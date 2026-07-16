@@ -1,64 +1,127 @@
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart'; // 1. Added Supabase Import
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class PlaceOrderScreen extends StatefulWidget {
-  final String stationName;
-  const PlaceOrderScreen({super.key, required this.stationName});
+  const PlaceOrderScreen({super.key});
 
   @override
   State<PlaceOrderScreen> createState() => _PlaceOrderScreenState();
 }
 
 class _PlaceOrderScreenState extends State<PlaceOrderScreen> {
-  bool _isLoading = false;
   final supabase = Supabase.instance.client;
+  final TextEditingController _jugCountController = TextEditingController();
+  
+  final LatLng _initialCenter = const LatLng(14.3152, 120.9156);
+  
+  LatLng? _selectedLocation;
+  Set<Marker> _markers = {};
+  
+  bool _isLoading = false;
+  bool _isFetchingStations = true;
+  
+  List<Map<String, dynamic>> _availableStations = [];
+  String? _selectedStationId;
+  
+  // Dynamic Pricing Variables
+  double _currentPricePerJug = 0.0;
+  double _currentDeliveryFee = 0.0;
 
-  // 2. The Core Database Transaction Logic
-  Future<void> _placeLiveOrder() async {
+  @override
+  void initState() {
+    super.initState();
+    _fetchWaterStations();
+  }
+
+  Future<void> _fetchWaterStations() async {
+    try {
+      // Fetching the dynamic prices alongside the station name!
+      final response = await supabase
+          .from('water_stations')
+          .select('id, station_name, price_per_jug, delivery_fee');
+          
+      if (mounted) {
+        setState(() {
+          _availableStations = List<Map<String, dynamic>>.from(response);
+          if (_availableStations.isNotEmpty) {
+            _selectedStationId = _availableStations.first['id'].toString();
+            _updateDisplayedPrices(_selectedStationId!);
+          }
+          _isFetchingStations = false;
+        });
+      }
+    } catch (e) {
+      debugPrint("Error fetching stations: $e");
+      if (mounted) setState(() => _isFetchingStations = false);
+    }
+  }
+
+  // Updates the pricing UI when a new station is selected
+  void _updateDisplayedPrices(String stationId) {
+    final station = _availableStations.firstWhere((s) => s['id'].toString() == stationId);
+    setState(() {
+      _currentPricePerJug = double.tryParse(station['price_per_jug']?.toString() ?? '40.0') ?? 40.0;
+      _currentDeliveryFee = double.tryParse(station['delivery_fee']?.toString() ?? '20.0') ?? 20.0;
+    });
+  }
+
+  void _onMapTapped(LatLng location) {
+    setState(() {
+      _selectedLocation = location;
+      _markers = {
+        Marker(
+          markerId: const MarkerId('customer_home'),
+          position: location,
+          icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen),
+          infoWindow: const InfoWindow(title: 'My Delivery Address'),
+        )
+      };
+    });
+  }
+
+  Future<void> _submitOrder() async {
+    if (_selectedStationId == null || _selectedLocation == null || _jugCountController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please complete all fields and drop a pin!')));
+      return;
+    }
+
     setState(() => _isLoading = true);
 
     try {
-      // Get the currently logged-in user's UUID
-      final userId = supabase.auth.currentUser?.id;
+      final customerId = supabase.auth.currentUser!.id;
+      final int jugs = int.parse(_jugCountController.text);
 
-      if (userId == null) {
-        throw Exception("You must be logged in to place an order.");
-      }
+      // --- 🧮 DYNAMIC FINANCIAL ENGINE ---
+      final double calculatedSubtotal = jugs * _currentPricePerJug;
+      final double calculatedTotal = calculatedSubtotal + _currentDeliveryFee;
 
-      // Push the data to the 'orders' table
       await supabase.from('orders').insert({
-        'customer_id': userId,
-        'station_name': widget.stationName,
+        'station_id': _selectedStationId,
+        'customer_id': customerId,
+        'delivery_location': 'POINT(${_selectedLocation!.longitude} ${_selectedLocation!.latitude})', 
+        'jugs_ordered': jugs,
         'status': 'pending',
-        'jug_count': 3, // Hardcoded to match your UI for now
-        'total_price': 150.00,
+        'payment_method': 'cash', 
+        'subtotal': calculatedSubtotal,
+        'delivery_fee': _currentDeliveryFee,
+        'total_amount': calculatedTotal,
       });
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("Water Order Sent to Station! 💧"),
-            backgroundColor: Colors.green,
-            behavior: SnackBarBehavior.floating,
-          ),
+          const SnackBar(content: Text('Order Placed Successfully! 🎉')),
         );
-        // Route them back to the Home Dashboard
-        Navigator.pop(context);
+        setState(() {
+          _markers.clear();
+          _selectedLocation = null;
+          _jugCountController.clear();
+        });
       }
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text("Database Error: $e"),
-            backgroundColor: Colors.redAccent,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
     } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -66,138 +129,91 @@ class _PlaceOrderScreenState extends State<PlaceOrderScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.stationName), // Notice we use widget.stationName now
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.pop(context),
-        ),
+        title: const Text('Place Water Order', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        backgroundColor: Colors.blue.shade700,
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Upper Info Module Card
-            Expanded(
-              child: Card(
-                elevation: 2,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(15),
-                ),
-                child: const Padding(
-                  padding: EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+      body: _isFetchingStations 
+          ? const Center(child: CircularProgressIndicator())
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(
+                  flex: 2,
+                  child: Stack(
                     children: [
-                      Text(
-                        "Address",
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
+                      GoogleMap(
+                        initialCameraPosition: CameraPosition(target: _initialCenter, zoom: 14.0),
+                        markers: _markers,
+                        onTap: _onMapTapped,
+                      ),
+                      Positioned(
+                        top: 10, left: 10, right: 10,
+                        child: Container(
+                          padding: const EdgeInsets.all(8),
+                          color: Colors.white.withOpacity(0.9),
+                          child: const Text('📍 Tap the map to set your delivery address', textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.bold)),
                         ),
-                      ),
-                      Text(
-                        "Home - Block 4 Lot 2, General Trias, Cavite",
-                        style: TextStyle(color: Colors.grey),
-                      ),
-                      SizedBox(height: 24),
-                      Text(
-                        "Gallons stuff",
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
-                      ),
-                      Text(
-                        "• 3x 5-Gallon Slim Jug (Blue Key)",
-                        style: TextStyle(fontSize: 15),
                       ),
                     ],
                   ),
                 ),
-              ),
-            ),
-
-            const SizedBox(height: 15),
-
-            // Financial Breakdown Card Block
-            Card(
-              elevation: 2,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(15),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  children: [
-                    _buildPricingRow("Sub total", "₱120.00"),
-                    _buildPricingRow("Delivery fee", "₱30.00"),
-                    const Divider(height: 24),
-                    _buildPricingRow("Total", "₱150.00", isBold: true),
-                  ],
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 20),
-
-            // 3. The Upgraded Submit Button
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blue.shade400,
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(30),
-                ),
-              ),
-              // Disable the button while it's loading to prevent double-ordering
-              onPressed: _isLoading ? null : _placeLiveOrder,
-              child: _isLoading
-                  ? const SizedBox(
-                      height: 24,
-                      width: 24,
-                      child: CircularProgressIndicator(
-                        color: Colors.white,
-                        strokeWidth: 2.5,
-                      ),
-                    )
-                  : const Text(
-                      "Place Order",
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
+                
+                Expanded(
+                  flex: 2,
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        DropdownButtonFormField<String>(
+                          value: _selectedStationId,
+                          decoration: const InputDecoration(labelText: '1. Select Water Station', border: OutlineInputBorder(), prefixIcon: Icon(Icons.storefront)),
+                          items: _availableStations.map((station) {
+                            return DropdownMenuItem<String>(
+                              value: station['id'].toString(),
+                              child: Text(station['station_name'].toString()),
+                            );
+                          }).toList(),
+                          onChanged: (val) {
+                            if (val != null) {
+                              setState(() => _selectedStationId = val);
+                              _updateDisplayedPrices(val); // Update pricing when station changes
+                            }
+                          },
+                        ),
+                        
+                        // Show the dynamic pricing to the user
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 4.0),
+                          child: Text(
+                            'Rates: ₱${_currentPricePerJug.toStringAsFixed(2)}/jug | ₱${_currentDeliveryFee.toStringAsFixed(2)} delivery fee',
+                            style: TextStyle(color: Colors.grey.shade700, fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                        
+                        const SizedBox(height: 8),
+                        
+                        TextField(
+                          controller: _jugCountController,
+                          decoration: const InputDecoration(labelText: '2. Number of Jugs', border: OutlineInputBorder(), prefixIcon: Icon(Icons.water_drop)),
+                          keyboardType: TextInputType.number,
+                        ),
+                        
+                        const SizedBox(height: 24),
+                        
+                        ElevatedButton(
+                          onPressed: _isLoading ? null : _submitOrder,
+                          style: ElevatedButton.styleFrom(backgroundColor: Colors.blue.shade700, padding: const EdgeInsets.symmetric(vertical: 20)),
+                          child: _isLoading 
+                              ? const CircularProgressIndicator(color: Colors.white)
+                              : const Text('PLACE ORDER', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                        ),
+                      ],
                     ),
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPricingRow(String label, String cost, {bool isBold = false}) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            label,
-            style: TextStyle(
-              color: isBold ? Colors.black : Colors.grey,
-              fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
-            ),
-          ),
-          Text(
-            cost,
-            style: TextStyle(
-              fontSize: isBold ? 18 : 14,
-              fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
-            ),
-          ),
-        ],
-      ),
     );
   }
 }

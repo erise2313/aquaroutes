@@ -1,253 +1,221 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart'; // Required for Clipboard copy action
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:aquaroute/screens/merchant/sandbox_screen.dart'; 
+import 'package:aquaroute/screens/merchant/driver_management.dart'; // Import Fleet Management screen
 
-Map<String, int> calculateOrderCounts(List<Map<String, dynamic>> orders) {
-  final pending = orders.where((o) => o['status'] == 'pending').length;
-  final active = orders.where((o) => o['status'] == 'active').length;
-  final done = orders
-      .where((o) => o['status'] == 'completed' || o['status'] == 'done')
-      .length;
-
-  return {'pending': pending, 'active': active, 'done': done};
-}
-
-class MerchantDashboard extends StatefulWidget {
-  const MerchantDashboard({super.key});
+class MerchantDashboardScreen extends StatefulWidget {
+  const MerchantDashboardScreen({super.key});
 
   @override
-  State<MerchantDashboard> createState() => _MerchantDashboardState();
+  State<MerchantDashboardScreen> createState() => _MerchantDashboardScreenState();
 }
 
-class _MerchantDashboardState extends State<MerchantDashboard> {
+class _MerchantDashboardScreenState extends State<MerchantDashboardScreen> {
   final supabase = Supabase.instance.client;
-  String _stationName = '';
-  String _selectedStatus = 'all';
+  
+  int _pendingCount = 0;
+  int _activeCount = 0;
+  int _doneCount = 0;
+  String _inviteCode = "Loading...";
+  bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    _loadStationName();
+    _fetchDashboardData();
   }
 
-  Future<void> _loadStationName() async {
+  // Combined fetch function to retrieve both order stats and station invite code in one go
+  Future<void> _fetchDashboardData() async {
     try {
-      final userId = supabase.auth.currentUser?.id;
-      if (userId == null) {
-        if (mounted) {
-          setState(() {});
-        }
-        return;
-      }
+      final userId = supabase.auth.currentUser!.id;
 
-      final profile = await supabase
-          .from('user_profiles')
-          .select('business_name')
-          .eq('id', userId)
+      // 1. Get Merchant's Station ID and invite code
+      final stationData = await supabase
+          .from('water_stations') // Confirmed matching table name
+          .select('id, invite_code')
+          .eq('owner_id', userId)
           .maybeSingle();
 
-      if (mounted) {
-        setState(() {
-          _stationName = (profile?['business_name'] as String?)?.trim() ?? '';
-        });
+      if (stationData != null) {
+        final stationId = stationData['id'];
+        final String inviteCode = stationData['invite_code'] ?? 'NO CODE';
+
+        // 2. Fetch order statuses
+        final response = await supabase
+            .from('orders')
+            .select('status')
+            .eq('station_id', stationId);
+
+        int pending = 0, active = 0, done = 0;
+
+        for (var order in response) {
+          final status = order['status']?.toString().toLowerCase();
+          if (status == 'pending') {
+            pending++;
+          } else if (status == 'active') {
+            active++;
+          } else {
+            done++;
+          }
+        }
+
+        if (mounted) {
+          setState(() {
+            _pendingCount = pending;
+            _activeCount = active;
+            _doneCount = done;
+            _inviteCode = inviteCode;
+            _isLoading = false;
+          });
+        }
+      } else {
+        if (mounted) {
+          setState(() {
+            _inviteCode = "No Station Linked";
+            _isLoading = false;
+          });
+        }
       }
     } catch (e) {
-      debugPrint('Failed to load station name: $e');
-      if (mounted) {
-        setState(() {
-          _stationName = '';
-        });
-      }
+      debugPrint('Error fetching dashboard data: $e');
+      if (mounted) setState(() => _isLoading = false);
     }
-  }
-
-  Stream<List<Map<String, dynamic>>> get _ordersStream {
-    if (_stationName.isEmpty) {
-      return const Stream.empty();
-    }
-
-    return supabase
-        .from('orders')
-        .stream(primaryKey: ['id'])
-        .eq('station_name', _stationName)
-        .order('created_at', ascending: false);
   }
 
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder<List<Map<String, dynamic>>>(
-      stream: _ordersStream,
-      builder: (context, snapshot) {
-        final orders = snapshot.data ?? [];
-        final counts = calculateOrderCounts(orders);
-        final pending = counts['pending'] ?? 0;
-        final active = counts['active'] ?? 0;
-        final done = counts['done'] ?? 0;
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Merchant Dashboard', style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold)),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.bug_report, color: Colors.redAccent, size: 30),
+            tooltip: 'Open Dev Sandbox',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const SandboxScreen()),
+              ).then((_) => _fetchDashboardData()); // Refresh stats when returning
+            },
+          ),
+        ],
+      ),
+      body: _isLoading 
+          ? const Center(child: CircularProgressIndicator())
+          : RefreshIndicator(
+              onRefresh: _fetchDashboardData,
+              child: ListView(
+                padding: const EdgeInsets.all(16),
+                children: [
+                  // --- 1. STATION INVITE CODE CARD ---
+                  _buildInviteCodeCard(_inviteCode),
+                  const SizedBox(height: 16),
 
-        final filteredOrders = _selectedStatus == 'all'
-            ? orders
-            : orders.where((order) {
-                final status =
-                    (order['status'] as String?)?.toLowerCase() ?? '';
-                if (_selectedStatus == 'done') {
-                  return status == 'completed' || status == 'done';
-                }
-                return status == _selectedStatus;
-              }).toList();
+                  // --- 2. LIVE ORDER STATISTICS ---
+                  const Text('Live order overview', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87)),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(child: _buildStatCard('Pending', _pendingCount, Colors.red.shade100, Colors.red.shade700)),
+                      const SizedBox(width: 8),
+                      Expanded(child: _buildStatCard('Active', _activeCount, Colors.orange.shade100, Colors.orange.shade700)),
+                      const SizedBox(width: 8),
+                      Expanded(child: _buildStatCard('Done', _doneCount, Colors.green.shade100, Colors.green.shade700)),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
 
-        return Scaffold(
-          appBar: AppBar(
-            title: const Text('Merchant Dashboard'),
-            actions: [
-              IconButton(
-                icon: const Icon(Icons.notifications_outlined),
-                onPressed: () {},
+                  // --- 3. FLEET QUICK ACTION NAVIGATION ---
+                  const Text('Fleet management', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87)),
+                  const SizedBox(height: 12),
+                  Card(
+                    elevation: 1,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    child: ListTile(
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      leading: CircleAvatar(
+                        backgroundColor: Colors.blue.shade100,
+                        child: const Icon(Icons.local_shipping, color: Colors.blue),
+                      ),
+                      title: const Text('Track & Manage Drivers', style: TextStyle(fontWeight: FontWeight.bold)),
+                      subtitle: const Text('Configure vehicle capacities, plates, and monitor idle drivers'),
+                      trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const DriverManagementScreen()),
+                        ).then((_) => _fetchDashboardData());
+                      },
+                    ),
+                  ),
+                ],
               ),
-            ],
-          ),
-          body: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Live order overview',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Expanded(
-                      child: GestureDetector(
-                        onTap: () =>
-                            setState(() => _selectedStatus = 'pending'),
-                        child: _buildStatCard(
-                          context,
-                          'Pending',
-                          pending.toString(),
-                          Colors.red.shade400,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: GestureDetector(
-                        onTap: () => setState(() => _selectedStatus = 'active'),
-                        child: _buildStatCard(
-                          context,
-                          'Active',
-                          active.toString(),
-                          Colors.orange.shade400,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: GestureDetector(
-                        onTap: () => setState(() => _selectedStatus = 'done'),
-                        child: _buildStatCard(
-                          context,
-                          'Done',
-                          done.toString(),
-                          Colors.green.shade400,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 24),
-                Row(
-                  children: [
-                    Text(
-                      _selectedStatus == 'all'
-                          ? 'Orders currently in the system'
-                          : 'Showing ${_selectedStatus.toUpperCase()} orders',
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                    const Spacer(),
-                    if (_selectedStatus != 'all')
-                      TextButton(
-                        onPressed: () =>
-                            setState(() => _selectedStatus = 'all'),
-                        child: const Text('Show all'),
-                      ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Expanded(
-                  child: filteredOrders.isEmpty
-                      ? const Center(
-                          child: Text(
-                            'No orders yet for this station.\nCustomers will appear here when they place an order.',
-                            textAlign: TextAlign.center,
-                          ),
-                        )
-                      : ListView.builder(
-                          itemCount: filteredOrders.length,
-                          itemBuilder: (context, index) {
-                            final order = filteredOrders[index];
-                            final status =
-                                order['status']?.toString() ?? 'unknown';
-                            final id = order['id']?.toString() ?? 'unknown';
-                            final shortId = id.length > 6
-                                ? id.substring(0, 6).toUpperCase()
-                                : id.toUpperCase();
-
-                            return Card(
-                              child: ListTile(
-                                leading: const Icon(
-                                  Icons.water_drop_outlined,
-                                  color: Colors.blue,
-                                ),
-                                title: Text('Order #$shortId'),
-                                subtitle: Text(
-                                  'Status: $status • Jugs: ${order['jug_count'] ?? 0}',
-                                ),
-                                trailing: Chip(label: Text(status)),
-                              ),
-                            );
-                          },
-                        ),
-                ),
-              ],
             ),
-          ),
-        );
-      },
     );
   }
 
-  Widget _buildStatCard(
-    BuildContext context,
-    String label,
-    String value,
-    Color color,
-  ) {
+  // Beautiful Invite Code widget containing Copy to Clipboard functionality
+  Widget _buildInviteCodeCard(String code) {
+    return Card(
+      elevation: 2,
+      color: Colors.blue.shade50,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  "STATION INVITE CODE", 
+                  style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blueGrey, letterSpacing: 1.0, fontSize: 12)
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  code, 
+                  style: const TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: Colors.blue, letterSpacing: 1.5)
+                ),
+              ],
+            ),
+            IconButton(
+              icon: const Icon(Icons.copy, color: Colors.blue, size: 28),
+              tooltip: 'Copy Invite Code',
+              onPressed: () {
+                Clipboard.setData(ClipboardData(text: code));
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text("Copied invite code '$code' to clipboard!"),
+                    backgroundColor: Colors.blue.shade600,
+                    behavior: SnackBarBehavior.floating,
+                  )
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatCard(String title, int count, Color bgColor, Color textColor) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.15),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: color.withOpacity(0.4)),
+        color: bgColor,
+        borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            label,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: color,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
+          Text(title, style: TextStyle(color: textColor, fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
-          Text(
-            value,
-            style: Theme.of(
-              context,
-            ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
-          ),
+          Text('$count', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.black87)),
         ],
       ),
     );

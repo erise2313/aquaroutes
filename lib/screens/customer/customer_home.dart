@@ -1,166 +1,117 @@
 import 'package:flutter/material.dart';
-import 'place_order_screen.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:aquaroute/screens/customer/place_order_screen.dart'; // Ensure this matches your folder structure
 
-class CustomerHome extends StatelessWidget {
-  const CustomerHome({super.key});
+class CustomerHomeScreen extends StatefulWidget {
+  const CustomerHomeScreen({super.key});
+
+  @override
+  State<CustomerHomeScreen> createState() => _CustomerHomeScreenState();
+}
+
+class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
+  final supabase = Supabase.instance.client;
+  String _customerName = 'Customer';
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchCustomerData();
+  }
+
+  // Fetch the actual name from user_profiles table
+  Future<void> _fetchCustomerData() async {
+    try {
+      final userId = supabase.auth.currentUser!.id;
+      final response = await supabase
+          .from('user_profiles')
+          .select('full_name')
+          .eq('id', userId)
+          .maybeSingle();
+
+      if (response != null && mounted) {
+        setState(() {
+          _customerName = response['full_name'] ?? 'Customer';
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error fetching user: $e');
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey.shade100,
-      body: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Cyan Header Panel
-            Container(
-              padding: const EdgeInsets.fromLTRB(20, 60, 20, 30),
-              color: Colors.blue.shade400,
+      appBar: AppBar(
+        title: const Text('AquaRoutes', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+        backgroundColor: Colors.blue.shade700,
+        automaticallyImplyLeading: false, 
+      ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : Padding(
+              padding: const EdgeInsets.all(16.0),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                  Text(
+                    'Welcome back, $_customerName!',
+                    style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 30),
+                  
+                  // Main Action Card
+                  Card(
+                    elevation: 4,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    child: Padding(
+                      padding: const EdgeInsets.all(24.0),
+                      child: Column(
                         children: [
-                          Text(
-                            "Deliver to",
-                            style: TextStyle(
-                              color: Colors.white70,
-                              fontSize: 14,
-                            ),
+                          Icon(Icons.water_drop, size: 60, color: Colors.blue.shade600),
+                          const SizedBox(height: 16),
+                          const Text(
+                            'Need a water refill?',
+                            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
                           ),
-                          Text(
-                            "📍 Selected Address, Cavite",
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
+                          const SizedBox(height: 8),
+                          const Text(
+                            'Drop a pin on your exact location to order directly from your nearest station.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(color: Colors.grey),
+                          ),
+                          const SizedBox(height: 24),
+                          
+                          // Navigation Button to the Place Order Screen
+                          ElevatedButton(
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (context) => const PlaceOrderScreen()),
+                              );
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.blue.shade700,
+                              padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                            child: const Text(
+                              'PLACE NEW ORDER',
+                              style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
                             ),
                           ),
                         ],
-                      ),
-                      CircleAvatar(
-                        backgroundColor: Colors.white24,
-                        child: Icon(
-                          Icons.notifications_none,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 25),
-                  // Wireframe Search Input Block
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(30),
-                    ),
-                    child: const TextField(
-                      decoration: InputDecoration(
-                        icon: Icon(Icons.search, color: Colors.grey),
-                        hintText: "Search refilling stations...",
-                        border: InputBorder.none,
                       ),
                     ),
                   ),
                 ],
               ),
             ),
-
-            // Central Ordering Invitation Box
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Card(
-                elevation: 2,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(20.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        "Place Order",
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      const Text(
-                        "Need a fast clean water delivery? Select a nearby station below to begin configuration.",
-                        style: TextStyle(color: Colors.grey),
-                      ),
-                      const SizedBox(height: 15),
-                      ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.blue.shade400,
-                        ),
-                        onPressed: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const PlaceOrderScreen(
-                              stationName: "General Trias Main Water",
-                            ),
-                          ),
-                        ),
-                        child: const Text("Order Now"),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-
-            // Nearby Stations Section Heading
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-              child: Text(
-                "Nearby Stations",
-                style: TextStyle(
-                  fontSize: 16,
-                  color: Colors.grey,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-
-            // Station Selection List
-            ListView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: 3,
-              itemBuilder: (context, index) {
-                return Card(
-                  margin: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 6,
-                  ),
-                  child: ListTile(
-                    leading: const Icon(Icons.store, color: Colors.blue),
-                    title: Text("Refilling Station ${index + 1}"),
-                    subtitle: const Text("0.8 km away | open until 8 PM"),
-                    trailing: const Icon(Icons.chevron_right),
-                    onTap: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => PlaceOrderScreen(
-                          stationName: "Refilling Station ${index + 1}",
-                        ),
-                      ),
-                    ),
-                  ),
-                );
-              },
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

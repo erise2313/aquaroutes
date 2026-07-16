@@ -35,6 +35,7 @@ class RouteOptimizationService {
   final String endpoint =
       "https://routeoptimization.googleapis.com/v1/projects/aquaroute-501315:optimizeTours";
 
+  // Original Merchant API Call
   Future<String> calculateFleetRoute(
     Map<String, double> stationLocation,
     List<Map<String, double>> customerLocations,
@@ -112,6 +113,85 @@ class RouteOptimizationService {
       return encodedPolyline;
     } catch (e) {
       rethrow; // Re-throwing ensures your tracking_screen catches the message
+    } finally {
+      authClient.close();
+    }
+  }
+
+  // =====================================================================
+  // NEW DRIVER MANIFEST API CALL
+  // Returns both the polyline AND the sorted queue sequence
+  // =====================================================================
+  Future<Map<String, dynamic>> calculateDriverManifest(
+    Map<String, double> stationLocation,
+    List<Map<String, double>> customerLocations,
+  ) async {
+    if (customerLocations.isEmpty) return {'polyline': '', 'sequence': <int>[]};
+
+    final now = DateTime.now().toUtc();
+    final globalStartTime = "${now.toIso8601String().split('.')[0]}Z";
+    final globalEndTime = "${now.add(const Duration(hours: 12)).toIso8601String().split('.')[0]}Z";
+
+    final List<Map<String, dynamic>> vehicles = [
+      {
+        "startLocation": {"latitude": stationLocation['lat'], "longitude": stationLocation['lng']},
+        "endLocation": {"latitude": stationLocation['lat'], "longitude": stationLocation['lng']},
+        "costPerKilometer": 1.0,
+        "costPerHour": 1.0, 
+      },
+    ];
+
+    final List<Map<String, dynamic>> shipments = customerLocations.map((loc) {
+      return {
+        "deliveries": [{"arrivalLocation": {"latitude": loc['lat'], "longitude": loc['lng']}, "duration": "300s"}],
+      };
+    }).toList();
+
+    final Map<String, dynamic> requestBody = {
+      "populatePolylines": true,
+      "populateTransitionPolylines": true,
+      "considerRoadTraffic": true, // Maintained your traffic settings!
+      "model": {
+        "globalStartTime": globalStartTime,
+        "globalEndTime": globalEndTime,
+        "vehicles": vehicles,
+        "shipments": shipments,
+      },
+    };
+
+    final authClient = await clientViaServiceAccount(_credentials, _scopes);
+    try {
+      final response = await authClient.post(
+        Uri.parse(endpoint),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(requestBody),
+      );
+
+      if (response.statusCode != 200) return {'polyline': '', 'sequence': <int>[]};
+
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      final String polyline = _extractRoutePolyline(data) ?? '';
+
+      // Extrapolate the AI's optimized sequence from the 'visits' array
+      List<int> sequence = [];
+      try {
+        final routes = data['routes'] as List?;
+        if (routes != null && routes.isNotEmpty) {
+          final visits = routes[0]['visits'] as List?;
+          if (visits != null) {
+            for (var visit in visits) {
+              if (visit.containsKey('shipmentIndex')) {
+                sequence.add(visit['shipmentIndex'] as int);
+              }
+            }
+          }
+        }
+      } catch (e) {
+        // Safe fallback: keeps the original chronological order if parsing fails
+        sequence = List.generate(customerLocations.length, (i) => i);
+      }
+
+      return {'polyline': polyline, 'sequence': sequence};
     } finally {
       authClient.close();
     }
