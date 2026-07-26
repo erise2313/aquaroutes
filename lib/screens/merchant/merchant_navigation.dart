@@ -15,8 +15,8 @@ class _MerchantNavigationState extends State<MerchantNavigation> {
   int _currentIndex = 0;
 
   final List<Widget> _pages = const [
-    MerchantDashboard(),
-    OrdersScreen(),
+    MerchantDashboardScreen(),
+    MerchantOrdersScreen(),
     TrackingScreen(),
     MerchantProfileScreen(),
   ];
