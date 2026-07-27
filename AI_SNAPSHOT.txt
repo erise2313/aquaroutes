@@ -1,0 +1,1520 @@
+# AQUAROUTES — COMPLETE AI SNAPSHOT WITH FULL SOURCE CODE
+*Generated for another AI to have complete understanding of all code, connections, and data flow.*
+
+---
+
+## 1. PROJECT OVERVIEW
+
+**App Name:** AquaRoutes  
+**Description:** Fleet Tracking, Telemetry, and Route Optimization System — water delivery businesses  
+**Tech Stack:** Flutter (Dart) + Supabase (PostgreSQL, Auth, Realtime) + Google Maps + Google Route Optimization API  
+**State Management:** flutter_riverpod (declared but unused — all screens use direct Supabase calls)  
+**Project Root:** `c:/Users/ASUS/aquaroutes`  
+**Entry Point:** `lib/main.dart` → `MyApp` → `LoginScreen`  
+**Supabase URL:** `https://kdptnxvspqunjngaduok.supabase.co`  
+
+---
+
+## 2. COMPLETE SOURCE FILES
+
+### FILE: pubspec.yaml
+```yaml
+name: aquaroute
+description: "A Fleet Tracking, Telemetry, and Route Optimization System"
+publish_to: 'none'
+version: 1.0.0+1
+environment:
+  sdk: '>=3.9.0 <4.0.0'
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_riverpod: ^3.3.2
+  supabase_flutter: ^2.0.0
+  http: ^1.1.0
+  google_maps_flutter: ^2.14.2
+  geolocator: ^14.0.2
+  flutter_dotenv: ^6.0.1
+  intl: ^0.20.3
+  geocoding: ^4.0.0
+  flutter_polyline_points: ^3.1.0
+  googleapis_auth: ^2.0.0
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+flutter:
+  uses-material-design: true
+```
+
+---
+
+### FILE: lib/main.dart
+```dart
+import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'screens/auth/login_screen.dart'; 
+
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Supabase.initialize(
+    url: 'https://kdptnxvspqunjngaduok.supabase.co',
+    publishableKey:
+        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtkcHRueHZzcHF1bmpuZ2FkdW9rIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIyMTQyNzgsImV4cCI6MjA5Nzc5MDI3OH0.DCiZ07Bz-nqTl0k-lKb38U1QFq8CLGIywhbnbFGUygA',
+  );
+  runApp(const MyApp());
+}
+
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'AquaRoutes',
+      theme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blueAccent),
+        useMaterial3: true,
+      ),
+      home: const LoginScreen(),
+    );
+  }
+}
+```
+
+---
+
+### FILE: lib/models/admin_model.dart
+```dart
+class FleetTelemetry {
+  final String vehicleId;
+  final double lat;
+  final double lng;
+  final double velocity;
+  final int payload; // Number of jugs
+  FleetTelemetry({
+    required this.vehicleId,
+    required this.lat,
+    required this.lng,
+    required this.velocity,
+    required this.payload,
+  });
+  factory FleetTelemetry.fromJson(Map<String, dynamic> json) {
+    return FleetTelemetry(
+      vehicleId: json['vehicle_id'],
+      lat: json['lat'],
+      lng: json['lng'],
+      velocity: json['velocity'],
+      payload: json['payload'],
+    );
+  }
+}
+```
+
+---
+
+### FILE: lib/services/location_service.dart
+```dart
+import 'package:geolocator/geolocator.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+class LocationService {
+  final _supabase = Supabase.instance.client;
+
+  void startTracking(String driverId) {
+    const LocationSettings locationSettings = LocationSettings(
+      accuracy: LocationAccuracy.high, 
+      distanceFilter: 10,
+    );
+    Geolocator.getPositionStream(locationSettings: locationSettings).listen((
+      Position position,
+    ) async {
+      await _supabase.from('driver_states').upsert({
+        'driver_id': driverId,
+        'current_location': 'POINT(${position.longitude} ${position.latitude})',
+        'current_speed': position.speed,
+        'last_updated': DateTime.now().toIso8601String(),
+        'is_active': true,
+      });
+    });
+  }
+}
+```
+
+---
+
+### FILE: lib/services/route_optimization.dart
+```dart
+import 'dart:convert';
+import 'package:flutter_polyline_points/flutter_polyline_points.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:googleapis_auth/auth_io.dart';
+
+List<LatLng> decodeEncodedPolyline(String encodedString) {
+  if (encodedString.trim().isEmpty) return [];
+  final List<PointLatLng> result = PolylinePoints.decodePolyline(encodedString);
+  return result
+      .map((PointLatLng point) => LatLng(point.latitude, point.longitude))
+      .toList();
+}
+
+class RouteOptimizationService {
+  final _credentials = ServiceAccountCredentials.fromJson({
+    "type": "service_account",
+    "project_id": "aquaroute-501315",
+    "private_key_id": "45276c6eea52d1a9cb523540217312321a005ebb",
+    "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQDlpxoOFnRXaBR0\n1hLmDApvNse0Hj0Tp8KJiIsGgWWHYEmP/ruH8fDbVtPbGEAPIHw2DX1HnFZu6In/\n9Pe5FejBq365ca6L5UffhZ5WGmrxyihi7qtC28vtJ+vps+Jvotor6H54Bx+LcJhN\nCVFqF2qvvd1QgqqoQOuWllCWZtC+QhCD20B7KohHxe3bZcKbT9wpTCv6Lw5UX0jj\nU8dQTDGKTnXVqKfaSOq8shZWEPfxVAIXbQqTbR7Hcmp7Yzen/C2J68HVGjay43fn\n4Z5yvtM0bUAyzO7KgN7DRIVHhYdRd4mRqW3wnRgchg6q/ruDudGQw4NXNyjBv8yV\nPvNp2m4XAgMBAAECggEARUYfxOofFBKwQQImV0CAkUWr/fg1Ik2zj/shPMghkTGJ\nXydO+FYR+of5hhiNkkKRVVjCVqyhIfmBTzVc2Hb0bB9ILbZOGaMDCDjtJzn20pLR\nle46uQNGQ3aMYkXB4zzzpNUP+TLk4BIJzwslhOQlaXfTX6rawcA7kIQtMQE4rHr8\n1r9aBNcDSrXKN2b3tc0WO4A1yjDGRJmcjDKkXqKTRPAcNooAynrgEuSZMVfTtp8M\nPyGPpKIA7QCVaZmu4yhqacfWWTXAJUKFhZhXnSqsS0LyAKVqmyw9QexqSpUqDkKZ\nVSs9Pb3/v2QThu6i4lPkFpY/7yxK+W7QO5gULdrRwQKBgQD6aG/tVETahWhk6Ccn\nueo4juyfy8KUICEdm7aVSnRVry/HyzMcp3wk6Gd2oLLyCb+9lkyV3v4ktpH6cZ4z\nKJmxnQ22EJoZVlYt+hGF/hBD7patLM1POZHGhTQi2iE/2eEeXOjxUtxzmCYMRrLw\n087NvM0Z8FWQz7QZowCr4xmYtwKBgQDqyAI0CBpKh8ErfZu5UJ+dJYK3ABiIRoDY\nL1F1f9rQA21LcogzJegM4vRkPqvZZ3JAM+yH8gNlxHRoMDczVpbyxhsnPvaV71BM\nlQT6lmYZ0jIIn622ykAxOFTiiZO31oZ7rlCmJU4zcwmwR0lzQ96n2p0/SM80B7nc\nsL2GWHi1oQKBgBaS26Q1eI+Kf0K5eu4l4GuA1uwA3mWkD9gvdWI3+AzRYilMtCrd\nHl/lY45aJkeTgWmB5x2LoLWGj9pX678I5fIRCm9jR8EI+3PhmzrNEIJPO94Yr9l4\ngx+2WmDZ8S1kYtrt3UIECkORb7yjkvYK4hXB82tnMw9+6el1vFXCf0g5AoGAMAh7\naum9d0IO4zbvhRpZjWz/MTFz022ZLqF/qOpfee85jRYBh3VZ5EkKdvfbcL8ZQMle\nuvFogImQx0AWCwrMFx8wrvbSvBoZ85EJU7sxaFb4pYsFn0ABohBETZSYBCR/nw4q\nsdMwDJachNQQ0uQvyWeQhEIBIkPyYpRGMhYnnAECgYEA0VVgvU6+oaA4+TafOJZz\now+mlLNOrZ2NL27nLOqyI7zqQjaaYrEq/x0tVlyfohPrUDS2gVZ4bkEzvpkYeYUb\nk27CaHjRdHVcp6cVf/gCqTxaiOd7zJ2JQC+r/2C/ZEF6omp974Rqwtt6z+A9Qn/j\nZ9lA693qQhpLWgwXfPF5QnU=\n-----END PRIVATE KEY-----\n",
+    "client_email": "aquaroute-router@aquaroute-501315.iam.gserviceaccount.com",
+    "client_id": "110343435732566565547",
+    "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+    "token_uri": "https://oauth2.googleapis.com/token",
+    "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+    "client_x509_cert_url":
+        "https://www.googleapis.com/robot/v1/metadata/x509/aquaroute-router%40aquaroute-501315.iam.gserviceaccount.com",
+    "universe_domain": "googleapis.com",
+  });
+  final _scopes = ['https://www.googleapis.com/auth/cloud-platform'];
+  final String endpoint =
+      "https://routeoptimization.googleapis.com/v1/projects/aquaroute-501315:optimizeTours";
+
+  // Original Merchant API Call — returns encoded polyline
+  Future<String> calculateFleetRoute(
+    Map<String, double> stationLocation,
+    List<Map<String, double>> customerLocations,
+  ) async {
+    if (customerLocations.isEmpty) {
+      throw Exception('At least one customer location is required.');
+    }
+    final now = DateTime.now().toUtc();
+    final globalStartTime = "${now.toIso8601String().split('.')[0]}Z";
+    final globalEndTime = "${now.add(const Duration(hours: 12)).toIso8601String().split('.')[0]}Z";
+    final List<Map<String, dynamic>> vehicles = [
+      {
+        "startLocation": {"latitude": stationLocation['lat'], "longitude": stationLocation['lng']},
+        "endLocation": {"latitude": stationLocation['lat'], "longitude": stationLocation['lng']},
+        "costPerKilometer": 1.0,
+        "costPerHour": 1.0,
+      },
+    ];
+    final List<Map<String, dynamic>> shipments = customerLocations.map((loc) {
+      return {
+        "deliveries": [
+          {"arrivalLocation": {"latitude": loc['lat'], "longitude": loc['lng']}, "duration": "300s"},
+        ],
+      };
+    }).toList();
+    final Map<String, dynamic> requestBody = {
+      "populatePolylines": true,
+      "populateTransitionPolylines": true,
+      "considerRoadTraffic": true,
+      "model": {
+        "globalStartTime": globalStartTime,
+        "globalEndTime": globalEndTime,
+        "vehicles": vehicles,
+        "shipments": shipments,
+      },
+    };
+    final authClient = await clientViaServiceAccount(_credentials, _scopes);
+    try {
+      final response = await authClient.post(
+        Uri.parse(endpoint),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(requestBody),
+      );
+      if (response.statusCode != 200) {
+        throw Exception('Route optimization failed (${response.statusCode}): ${response.body}');
+      }
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      final encodedPolyline = _extractRoutePolyline(data);
+      if (encodedPolyline == null || encodedPolyline.isEmpty) {
+        throw Exception('Google returned a route without an encoded polyline.');
+      }
+      return encodedPolyline;
+    } catch (e) {
+      rethrow;
+    } finally {
+      authClient.close();
+    }
+  }
+
+  // Driver Manifest API Call — returns polyline + sorted sequence indices
+  Future<Map<String, dynamic>> calculateDriverManifest(
+    Map<String, double> stationLocation,
+    List<Map<String, double>> customerLocations,
+  ) async {
+    if (customerLocations.isEmpty) return {'polyline': '', 'sequence': <int>[]};
+    final now = DateTime.now().toUtc();
+    final globalStartTime = "${now.toIso8601String().split('.')[0]}Z";
+    final globalEndTime = "${now.add(const Duration(hours: 12)).toIso8601String().split('.')[0]}Z";
+    final List<Map<String, dynamic>> vehicles = [
+      {
+        "startLocation": {"latitude": stationLocation['lat'], "longitude": stationLocation['lng']},
+        "endLocation": {"latitude": stationLocation['lat'], "longitude": stationLocation['lng']},
+        "costPerKilometer": 1.0, "costPerHour": 1.0, 
+      },
+    ];
+    final List<Map<String, dynamic>> shipments = customerLocations.map((loc) {
+      return {
+        "deliveries": [{"arrivalLocation": {"latitude": loc['lat'], "longitude": loc['lng']}, "duration": "300s"}],
+      };
+    }).toList();
+    final Map<String, dynamic> requestBody = {
+      "populatePolylines": true, "populateTransitionPolylines": true, "considerRoadTraffic": true,
+      "model": {"globalStartTime": globalStartTime, "globalEndTime": globalEndTime, "vehicles": vehicles, "shipments": shipments},
+    };
+    final authClient = await clientViaServiceAccount(_credentials, _scopes);
+    try {
+      final response = await authClient.post(
+        Uri.parse(endpoint), headers: {'Content-Type': 'application/json'}, body: jsonEncode(requestBody),
+      );
+      if (response.statusCode != 200) return {'polyline': '', 'sequence': <int>[]};
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      final String polyline = _extractRoutePolyline(data) ?? '';
+      List<int> sequence = [];
+      try {
+        final routes = data['routes'] as List?;
+        if (routes != null && routes.isNotEmpty) {
+          final visits = routes[0]['visits'] as List?;
+          if (visits != null) {
+            for (var visit in visits) {
+              if (visit.containsKey('shipmentIndex')) {
+                sequence.add(visit['shipmentIndex'] as int);
+              }
+            }
+          }
+        }
+      } catch (e) {
+        sequence = List.generate(customerLocations.length, (i) => i);
+      }
+      return {'polyline': polyline, 'sequence': sequence};
+    } finally {
+      authClient.close();
+    }
+  }
+
+  String? _extractRoutePolyline(Map<String, dynamic> data) {
+    final routes = data['routes'];
+    if (routes is! List || routes.isEmpty) return null;
+    final route = routes.first;
+    if (route is! Map<String, dynamic>) return null;
+    final routePolyline = route['routePolyline'];
+    if (routePolyline is Map<String, dynamic>) {
+      final points = routePolyline['points'];
+      if (points is String && points.isNotEmpty) return points;
+    }
+    return null;
+  }
+}
+```
+
+---
+
+### FILE: lib/screens/auth/login_screen.dart
+```dart
+import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'registration_screen.dart';
+import '../customer/customer_navigation.dart';
+import '../merchant/merchant_navigation.dart';
+import '../driver/driver_dashboard.dart';
+
+class LoginScreen extends StatefulWidget {
+  const LoginScreen({super.key});
+  @override
+  State<LoginScreen> createState() => _LoginScreenState();
+}
+
+class _LoginScreenState extends State<LoginScreen> {
+  final supabase = Supabase.instance.client;
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  bool _isLoading = false;
+
+  Future<void> _login() async {
+    setState(() => _isLoading = true);
+    try {
+      final res = await supabase.auth.signInWithPassword(
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+      );
+      if (res.user != null && mounted) {
+        final userData = await supabase
+            .from('user_profiles')
+            .select('role')
+            .eq('id', res.user!.id)
+            .maybeSingle();
+        final String role = userData?['role'] ?? 'customer';
+        if (!mounted) return;
+        if (role == 'merchant') {
+          Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (context) => const MerchantNavigation()), (route) => false);
+        } else if (role == 'driver') {
+          Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (context) => const DriverDashboardScreen()), (route) => false);
+        } else {
+          Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (context) => const CustomerNavigation()), (route) => false);
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Login Failed: ${e.toString().split(':').last}"), backgroundColor: Colors.redAccent),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      body: Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            const CircleAvatar(radius: 50, backgroundColor: Colors.blue, child: Icon(Icons.water_drop, size: 50, color: Colors.white)),
+            const SizedBox(height: 32),
+            const Text("Welcome Back", textAlign: TextAlign.center, style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.black87)),
+            const SizedBox(height: 8),
+            const Text("Log in to AquaRoutes", textAlign: TextAlign.center, style: TextStyle(fontSize: 16, color: Colors.grey)),
+            const SizedBox(height: 48),
+            TextField(controller: _emailController, keyboardType: TextInputType.emailAddress, decoration: InputDecoration(labelText: "Email Address", prefixIcon: Icon(Icons.email_outlined, color: Colors.grey.shade500), filled: true, fillColor: Colors.grey.shade50, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade300)), enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade300)))),
+            const SizedBox(height: 16),
+            TextField(controller: _passwordController, obscureText: true, decoration: InputDecoration(labelText: "Password", prefixIcon: Icon(Icons.lock_outline, color: Colors.grey.shade500), filled: true, fillColor: Colors.grey.shade50, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade300)), enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade300)))),
+            const SizedBox(height: 32),
+            ElevatedButton(onPressed: _isLoading ? null : _login, style: ElevatedButton.styleFrom(backgroundColor: Colors.blue.shade600, padding: const EdgeInsets.symmetric(vertical: 16), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))), child: _isLoading ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)) : const Text("LOGIN", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16))),
+            const SizedBox(height: 24),
+            TextButton(onPressed: () { Navigator.push(context, MaterialPageRoute(builder: (context) => const RegistrationScreen())); }, child: RichText(text: TextSpan(text: "Don't have an account? ", style: const TextStyle(color: Colors.grey), children: [TextSpan(text: "Register here", style: TextStyle(color: Colors.blue.shade700, fontWeight: FontWeight.bold))]))),
+          ]),
+        ),
+      ),
+    );
+  }
+}
+```
+
+---
+
+### FILE: lib/screens/auth/registration_screen.dart
+```dart
+import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'dart:math';
+import '../merchant/merchant_navigation.dart';
+import '../customer/customer_navigation.dart';
+import '../driver/driver_dashboard.dart';
+
+class RegistrationScreen extends StatefulWidget {
+  const RegistrationScreen({super.key});
+  @override
+  State<RegistrationScreen> createState() => _RegistrationScreenState();
+}
+
+class _RegistrationScreenState extends State<RegistrationScreen> {
+  final supabase = Supabase.instance.client;
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _fullNameController = TextEditingController();
+  final _businessNameController = TextEditingController();
+  final _stationAddressController = TextEditingController();
+  final _inviteCodeController = TextEditingController();
+  final _plateNumberController = TextEditingController();
+  final _capacityController = TextEditingController();
+  String _selectedRole = 'customer';
+  bool _isLoading = false;
+
+  String _generateInviteCode() {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    final rnd = Random();
+    return String.fromCharCodes(Iterable.generate(6, (_) => chars.codeUnitAt(rnd.nextInt(chars.length))));
+  }
+
+  Future<void> _signUp() async {
+    setState(() => _isLoading = true);
+    String? assignedStationId;
+    try {
+      if (_selectedRole == 'driver') {
+        final code = _inviteCodeController.text.trim(); 
+        final stationMatch = await supabase.from('water_stations').select('id').ilike('invite_code', code).maybeSingle();
+        if (stationMatch == null) {
+          throw Exception("Invalid Station Invite Code! Please ask your boss for the correct key.");
+        }
+        assignedStationId = stationMatch['id'];
+      }
+      final res = await supabase.auth.signUp(email: _emailController.text.trim(), password: _passwordController.text);
+      final user = res.user;
+      if (user != null) {
+        await supabase.from('user_profiles').upsert({
+          'id': user.id, 'role': _selectedRole, 'full_name': _fullNameController.text.trim(),
+          'business_name': _selectedRole == 'merchant' ? _businessNameController.text.trim() : null,
+          'station_address': _selectedRole == 'merchant' ? _stationAddressController.text.trim() : null,
+          'kyc_status': _selectedRole == 'merchant' ? 'pending_upload' : null,
+          'assigned_station_id': assignedStationId,
+          'vehicle_plate': _selectedRole == 'driver' ? _plateNumberController.text.trim().toUpperCase() : null,
+          'jug_capacity': _selectedRole == 'driver' ? int.tryParse(_capacityController.text.trim()) : null,
+        });
+        if (_selectedRole == 'merchant') {
+          final newCode = _generateInviteCode();
+          await supabase.from('water_stations').insert({'owner_id': user.id, 'station_name': _businessNameController.text.trim(), 'invite_code': newCode});
+        }
+        if (!mounted) return;
+        if (_selectedRole == 'merchant') {
+          Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (context) => const MerchantNavigation()), (route) => false);
+        } else if (_selectedRole == 'driver') {
+          Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (context) => const DriverDashboardScreen()), (route) => false);
+        } else {
+          Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (context) => const CustomerNavigation()), (route) => false);
+        }
+      }
+    } catch (e) {
+      if (mounted) { ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Registration Error: $e"), backgroundColor: Colors.redAccent)); }
+    } finally { if (mounted) setState(() => _isLoading = false); }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(backgroundColor: Colors.white, elevation: 0, iconTheme: const IconThemeData(color: Colors.black87)),
+      body: Center(
+        child: SingleChildScrollView(padding: const EdgeInsets.all(24.0), child: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          const Text("Create an Account", style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.black87)),
+          const SizedBox(height: 8),
+          const Text("Join AquaRoutes and manage deliveries instantly.", style: TextStyle(fontSize: 16, color: Colors.grey)),
+          const SizedBox(height: 32),
+          _buildRoleDropdown(), const SizedBox(height: 24),
+          if (_selectedRole == 'merchant') _buildMerchantFields()
+          else if (_selectedRole == 'driver') _buildDriverFields()
+          else _buildCustomerFields(),
+          const SizedBox(height: 24),
+          _buildTextField(controller: _emailController, label: "Email Address", icon: Icons.email_outlined, isEmail: true),
+          const SizedBox(height: 16),
+          _buildTextField(controller: _passwordController, label: "Password", icon: Icons.lock_outline, isPassword: true),
+          const SizedBox(height: 32),
+          ElevatedButton(onPressed: _isLoading ? null : _signUp, style: ElevatedButton.styleFrom(backgroundColor: Colors.blue.shade600, padding: const EdgeInsets.symmetric(vertical: 16), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))), child: _isLoading ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)) : const Text("REGISTER", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16))),
+        ])),
+      ),
+    );
+  }
+
+  Widget _buildRoleDropdown() {
+    return DropdownButtonFormField<String>(
+      initialValue: _selectedRole,
+      decoration: InputDecoration(labelText: "Account Type", prefixIcon: const Icon(Icons.badge_outlined, color: Colors.grey), filled: true, fillColor: Colors.grey.shade50, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade300)), enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade300))),
+      items: const [
+        DropdownMenuItem(value: 'customer', child: Text("Customer (Buying Water)")),
+        DropdownMenuItem(value: 'merchant', child: Text("Business Owner (Selling Water)")),
+        DropdownMenuItem(value: 'driver', child: Text("Driver (Delivery Personnel)")),
+      ],
+      onChanged: (String? newValue) { if (newValue != null) setState(() => _selectedRole = newValue); },
+    );
+  }
+
+  Widget _buildCustomerFields() {
+    return Column(children: [_buildTextField(controller: _fullNameController, label: "Full Name", icon: Icons.person_outline)]);
+  }
+
+  Widget _buildMerchantFields() {
+    return Column(children: [
+      _buildTextField(controller: _businessNameController, label: "Water Station Name", icon: Icons.water_drop_outlined),
+      const SizedBox(height: 16),
+      _buildTextField(controller: _fullNameController, label: "Owner Full Name", icon: Icons.person_outline),
+      const SizedBox(height: 16),
+      _buildTextField(controller: _stationAddressController, label: "Station Address (San Francisco, General Trias)", icon: Icons.store_mall_directory_outlined),
+      const SizedBox(height: 16),
+      Container(padding: const EdgeInsets.all(16), decoration: BoxDecoration(color: Colors.amber.shade50, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.amber.shade300)), child: Row(children: [Icon(Icons.warning_amber_rounded, color: Colors.amber.shade700), const SizedBox(width: 12), const Expanded(child: Text("Business Permit / KYC upload will be required after successful registration.", style: TextStyle(fontSize: 12, color: Colors.black87)))])),
+    ]);
+  }
+
+  Widget _buildDriverFields() {
+    return Column(children: [
+      _buildTextField(controller: _fullNameController, label: "Driver Full Name", icon: Icons.person_outline),
+      const SizedBox(height: 16),
+      Container(padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: Colors.blue.shade50, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.blue.shade200)), child: Column(children: [const Row(children: [Icon(Icons.vpn_key, color: Colors.blue), SizedBox(width: 8), Text("Station Link Key", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue))]), const SizedBox(height: 8), _buildTextField(controller: _inviteCodeController, label: "Enter Merchant Invite Code", icon: Icons.numbers)])),
+      const SizedBox(height: 16),
+      Row(children: [Expanded(child: _buildTextField(controller: _plateNumberController, label: "Plate No.", icon: Icons.directions_car)), const SizedBox(width: 12), Expanded(child: _buildTextField(controller: _capacityController, label: "Max Jugs", icon: Icons.scale, isNumber: true))]),
+    ]);
+  }
+
+  Widget _buildTextField({required TextEditingController controller, required String label, required IconData icon, bool isPassword = false, bool isEmail = false, bool isNumber = false}) {
+    return TextField(controller: controller, obscureText: isPassword, keyboardType: isEmail ? TextInputType.emailAddress : (isNumber ? TextInputType.number : TextInputType.text), decoration: InputDecoration(labelText: label, prefixIcon: Icon(icon, color: Colors.grey.shade500), filled: true, fillColor: Colors.grey.shade50, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade300)), enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade300))));
+  }
+}
+```
+
+---
+
+### FILE: lib/screens/customer/customer_navigation.dart
+```dart
+import 'package:aquaroute/screens/customer/customer_profile_screen%20.dart';
+import 'package:flutter/material.dart';
+import 'customer_home.dart';
+import 'customer_orders_screen.dart';
+import 'customer_tracking_screen.dart';
+
+class CustomerNavigation extends StatefulWidget {
+  const CustomerNavigation({super.key});
+  @override
+  State<CustomerNavigation> createState() => _CustomerNavigationState();
+}
+
+class _CustomerNavigationState extends State<CustomerNavigation> {
+  int _currentIndex = 0;
+  final List<Widget> _pages = const [
+    CustomerHomeScreen(), CustomerOrdersScreen(), CustomerTrackingScreen(), CustomerProfileScreen(),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: _pages[_currentIndex],
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _currentIndex,
+        onTap: (index) => setState(() => _currentIndex = index),
+        type: BottomNavigationBarType.fixed,
+        items: const [
+          BottomNavigationBarItem(icon: Icon(Icons.home_outlined), activeIcon: Icon(Icons.home), label: 'Home'),
+          BottomNavigationBarItem(icon: Icon(Icons.access_time), label: 'Orders'),
+          BottomNavigationBarItem(icon: Icon(Icons.map_outlined), activeIcon: Icon(Icons.map), label: 'Tracking'),
+          BottomNavigationBarItem(icon: Icon(Icons.person_outline), activeIcon: Icon(Icons.person), label: 'Profile'),
+        ],
+      ),
+    );
+  }
+}
+```
+
+---
+
+### FILE: lib/screens/customer/customer_home.dart
+```dart
+import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:aquaroute/screens/customer/place_order_screen.dart';
+
+class CustomerHomeScreen extends StatefulWidget {
+  const CustomerHomeScreen({super.key});
+  @override
+  State<CustomerHomeScreen> createState() => _CustomerHomeScreenState();
+}
+
+class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
+  final supabase = Supabase.instance.client;
+  String _customerName = 'Customer';
+  bool _isLoading = true;
+
+  @override
+  void initState() { super.initState(); _fetchCustomerData(); }
+
+  Future<void> _fetchCustomerData() async {
+    try {
+      final userId = supabase.auth.currentUser!.id;
+      final response = await supabase.from('user_profiles').select('full_name').eq('id', userId).maybeSingle();
+      if (response != null && mounted) { setState(() { _customerName = response['full_name'] ?? 'Customer'; _isLoading = false; }); }
+    } catch (e) { debugPrint('Error fetching user: $e'); if (mounted) setState(() => _isLoading = false); }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('AquaRoutes', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)), backgroundColor: Colors.blue.shade700, automaticallyImplyLeading: false),
+      body: _isLoading ? const Center(child: CircularProgressIndicator()) : Padding(padding: const EdgeInsets.all(16.0), child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Text('Welcome back, $_customerName!', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 30),
+        Card(elevation: 4, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), child: Padding(padding: const EdgeInsets.all(24.0), child: Column(children: [
+          Icon(Icons.water_drop, size: 60, color: Colors.blue.shade600),
+          const SizedBox(height: 16),
+          const Text('Need a water refill?', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600)),
+          const SizedBox(height: 8),
+          const Text('Drop a pin on your exact location to order directly from your nearest station.', textAlign: TextAlign.center, style: TextStyle(color: Colors.grey)),
+          const SizedBox(height: 24),
+          ElevatedButton(onPressed: () { Navigator.push(context, MaterialPageRoute(builder: (context) => const PlaceOrderScreen())); }, style: ElevatedButton.styleFrom(backgroundColor: Colors.blue.shade700, padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 15), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))), child: const Text('PLACE NEW ORDER', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold))),
+        ]))),
+      ])),
+    );
+  }
+}
+```
+
+---
+
+### FILE: lib/screens/customer/place_order_screen.dart
+```dart
+import 'package:flutter/material.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+class PlaceOrderScreen extends StatefulWidget {
+  const PlaceOrderScreen({super.key});
+  @override
+  State<PlaceOrderScreen> createState() => _PlaceOrderScreenState();
+}
+
+class _PlaceOrderScreenState extends State<PlaceOrderScreen> {
+  final supabase = Supabase.instance.client;
+  final TextEditingController _jugCountController = TextEditingController();
+  final LatLng _initialCenter = const LatLng(14.3152, 120.9156);
+  LatLng? _selectedLocation;
+  Set<Marker> _markers = {};
+  bool _isLoading = false;
+  bool _isFetchingStations = true;
+  List<Map<String, dynamic>> _availableStations = [];
+  String? _selectedStationId;
+  double _currentPricePerJug = 0.0;
+  double _currentDeliveryFee = 0.0;
+
+  @override
+  void initState() { super.initState(); _fetchWaterStations(); }
+
+  Future<void> _fetchWaterStations() async {
+    try {
+      final response = await supabase.from('water_stations').select('id, station_name, price_per_jug, delivery_fee');
+      if (mounted) {
+        setState(() {
+          _availableStations = List<Map<String, dynamic>>.from(response);
+          if (_availableStations.isNotEmpty) { _selectedStationId = _availableStations.first['id'].toString(); _updateDisplayedPrices(_selectedStationId!); }
+          _isFetchingStations = false;
+        });
+      }
+    } catch (e) { debugPrint("Error fetching stations: $e"); if (mounted) setState(() => _isFetchingStations = false); }
+  }
+
+  void _updateDisplayedPrices(String stationId) {
+    final station = _availableStations.firstWhere((s) => s['id'].toString() == stationId);
+    setState(() { _currentPricePerJug = double.tryParse(station['price_per_jug']?.toString() ?? '40.0') ?? 40.0; _currentDeliveryFee = double.tryParse(station['delivery_fee']?.toString() ?? '20.0') ?? 20.0; });
+  }
+
+  void _onMapTapped(LatLng location) {
+    setState(() { _selectedLocation = location; _markers = { Marker(markerId: const MarkerId('customer_home'), position: location, icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen), infoWindow: const InfoWindow(title: 'My Delivery Address')) }; });
+  }
+
+  Future<void> _submitOrder() async {
+    if (_selectedStationId == null || _selectedLocation == null || _jugCountController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please complete all fields and drop a pin!'))); return;
+    }
+    setState(() => _isLoading = true);
+    try {
+      final customerId = supabase.auth.currentUser!.id;
+      final int jugs = int.parse(_jugCountController.text);
+      final double calculatedSubtotal = jugs * _currentPricePerJug;
+      final double calculatedTotal = calculatedSubtotal + _currentDeliveryFee;
+      await supabase.from('orders').insert({
+        'station_id': _selectedStationId, 'customer_id': customerId,
+        'delivery_location': 'POINT(${_selectedLocation!.longitude} ${_selectedLocation!.latitude})',
+        'jugs_ordered': jugs, 'status': 'pending', 'payment_method': 'cash',
+        'subtotal': calculatedSubtotal, 'delivery_fee': _currentDeliveryFee, 'total_amount': calculatedTotal,
+      });
+      if (mounted) { ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Order Placed Successfully! 🎉'))); setState(() { _markers.clear(); _selectedLocation = null; _jugCountController.clear(); }); }
+    } catch (e) { if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e'))); } finally { if (mounted) setState(() => _isLoading = false); }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Place Water Order', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)), backgroundColor: Colors.blue.shade700),
+      body: _isFetchingStations ? const Center(child: CircularProgressIndicator()) : Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Expanded(flex: 2, child: Stack(children: [GoogleMap(initialCameraPosition: CameraPosition(target: _initialCenter, zoom: 14.0), markers: _markers, onTap: _onMapTapped), Positioned(top: 10, left: 10, right: 10, child: Container(padding: const EdgeInsets.all(8), color: Colors.white.withOpacity(0.9), child: const Text('📍 Tap the map to set your delivery address', textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.bold))))])),
+        Expanded(flex: 2, child: SingleChildScrollView(padding: const EdgeInsets.all(16.0), child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          DropdownButtonFormField<String>(value: _selectedStationId, decoration: const InputDecoration(labelText: '1. Select Water Station', border: OutlineInputBorder(), prefixIcon: Icon(Icons.storefront)), items: _availableStations.map((station) => DropdownMenuItem<String>(value: station['id'].toString(), child: Text(station['station_name'].toString()))).toList(), onChanged: (val) { if (val != null) { setState(() => _selectedStationId = val); _updateDisplayedPrices(val); } }),
+          Padding(padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 4.0), child: Text('Rates: ₱${_currentPricePerJug.toStringAsFixed(2)}/jug | ₱${_currentDeliveryFee.toStringAsFixed(2)} delivery fee', style: TextStyle(color: Colors.grey.shade700, fontWeight: FontWeight.w600))),
+          const SizedBox(height: 8),
+          TextField(controller: _jugCountController, decoration: const InputDecoration(labelText: '2. Number of Jugs', border: OutlineInputBorder(), prefixIcon: Icon(Icons.water_drop)), keyboardType: TextInputType.number),
+          const SizedBox(height: 24),
+          ElevatedButton(onPressed: _isLoading ? null : _submitOrder, style: ElevatedButton.styleFrom(backgroundColor: Colors.blue.shade700, padding: const EdgeInsets.symmetric(vertical: 20)), child: _isLoading ? const CircularProgressIndicator(color: Colors.white) : const Text('PLACE ORDER', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold))),
+        ]))),
+      ]),
+    );
+  }
+}
+```
+
+---
+
+### FILE: lib/screens/customer/customer_orders_screen.dart
+```dart
+import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:intl/intl.dart';
+
+class CustomerOrdersScreen extends StatefulWidget {
+  const CustomerOrdersScreen({super.key});
+  @override
+  State<CustomerOrdersScreen> createState() => _CustomerOrdersScreenState();
+}
+
+class _CustomerOrdersScreenState extends State<CustomerOrdersScreen> {
+  final supabase = Supabase.instance.client;
+  bool _isLoading = true;
+  List<dynamic> _ongoingOrders = [];
+  List<dynamic> _pastOrders = [];
+
+  @override
+  void initState() { super.initState(); _fetchMyOrders(); }
+
+  Future<void> _fetchMyOrders() async {
+    try {
+      final userId = supabase.auth.currentUser!.id;
+      final response = await supabase.from('orders').select('id, status, total_amount, created_at, water_stations(station_name)').eq('customer_id', userId).order('created_at', ascending: false);
+      final ongoing = []; final past = [];
+      for (var order in response) {
+        final status = order['status']?.toString().toLowerCase() ?? '';
+        if (status == 'completed' || status == 'cancelled' || status == 'done') { past.add(order); } else { ongoing.add(order); }
+      }
+      if (mounted) { setState(() { _ongoingOrders = ongoing; _pastOrders = past; _isLoading = false; }); }
+    } catch (e) { debugPrint('Error fetching orders: $e'); if (mounted) { setState(() => _isLoading = false); ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error loading orders: $e'))); } }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return DefaultTabController(length: 2, child: Scaffold(
+      appBar: AppBar(title: const Text('My Orders', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black87)), backgroundColor: Colors.white, elevation: 0, bottom: const TabBar(labelColor: Colors.blue, unselectedLabelColor: Colors.grey, indicatorColor: Colors.blue, tabs: [Tab(text: 'Ongoing Orders'), Tab(text: 'Past Orders')])),
+      body: _isLoading ? const Center(child: CircularProgressIndicator()) : TabBarView(children: [_buildOrderList(_ongoingOrders, isOngoing: true), _buildOrderList(_pastOrders, isOngoing: false)]),
+    ));
+  }
+
+  Widget _buildOrderList(List<dynamic> orders, {required bool isOngoing}) {
+    if (orders.isEmpty) { return Center(child: Text(isOngoing ? 'No ongoing orders right now.' : 'No past orders yet.', style: const TextStyle(color: Colors.grey, fontSize: 16))); }
+    return RefreshIndicator(onRefresh: _fetchMyOrders, child: ListView.builder(padding: const EdgeInsets.all(16.0), itemCount: orders.length, itemBuilder: (context, index) {
+      final order = orders[index];
+      final shortId = order['id'].toString().substring(0, 8).toUpperCase();
+      final status = order['status'].toString().toUpperCase();
+      final stationData = order['water_stations'];
+      final stationName = stationData != null ? stationData['station_name'] : 'Unknown Station';
+      final total = order['total_amount'] != null ? '₱${order['total_amount']}' : 'TBD';
+      DateTime date = DateTime.parse(order['created_at']);
+      String formattedDate = DateFormat('MMM d, yyyy - h:mm a').format(date);
+      return Card(margin: const EdgeInsets.only(bottom: 16.0), elevation: 2, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)), child: Padding(padding: const EdgeInsets.all(16.0), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text('Order #$shortId', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)), Text(total, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.blue))]),
+        const SizedBox(height: 8),
+        Text('Status: $status', style: TextStyle(color: isOngoing ? Colors.orange.shade700 : Colors.green.shade700, fontWeight: FontWeight.w600)),
+        const SizedBox(height: 8),
+        Row(children: [const Icon(Icons.storefront, size: 16, color: Colors.grey), const SizedBox(width: 6), Expanded(child: Text(stationName, style: const TextStyle(color: Colors.grey, fontSize: 14), overflow: TextOverflow.ellipsis))]),
+        const SizedBox(height: 6),
+        Row(children: [const Icon(Icons.access_time, size: 16, color: Colors.grey), const SizedBox(width: 6), Text(formattedDate, style: const TextStyle(color: Colors.grey, fontSize: 12))]),
+      ])));
+    }));
+  }
+}
+```
+
+---
+
+### FILE: lib/screens/customer/customer_tracking_screen.dart
+```dart
+import 'package:flutter/material.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+
+class CustomerTrackingScreen extends StatelessWidget {
+  const CustomerTrackingScreen({super.key});
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(body: Column(children: [
+      const Expanded(flex: 5, child: GoogleMap(initialCameraPosition: CameraPosition(target: LatLng(14.3498, 120.8936), zoom: 15))),
+      Expanded(flex: 4, child: Container(color: Colors.grey.shade100, padding: const EdgeInsets.all(16.0), child: Column(children: [
+        Card(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)), child: const Padding(padding: EdgeInsets.all(20.0), child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text("Arrival time", style: TextStyle(color: Colors.grey)), Text("15 - 20 mins", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16))]))),
+        const SizedBox(height: 10),
+        Row(children: [_buildSmallCard("Jug count", "3"), const SizedBox(width: 10), _buildSmallCard("Total", "₱150"), const SizedBox(width: 10), _buildSmallCard("MOP", "Cash")]),
+      ]))),
+    ]));
+  }
+
+  Widget _buildSmallCard(String title, String value) {
+    return Expanded(child: Card(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)), child: Padding(padding: const EdgeInsets.symmetric(vertical: 20.0, horizontal: 8.0), child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [Text(title, style: const TextStyle(color: Colors.grey, fontSize: 12), textAlign: TextAlign.center), const SizedBox(height: 8), Text(value, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14), textAlign: TextAlign.center)]))));
+  }
+}
+```
+
+---
+
+### FILE: lib/screens/customer/customer_profile_screen .dart
+```dart
+import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:aquaroute/screens/auth/login_screen.dart';
+
+class CustomerProfileScreen extends StatefulWidget {
+  const CustomerProfileScreen({super.key});
+  @override
+  State<CustomerProfileScreen> createState() => _CustomerProfileScreenState();
+}
+
+class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
+  final supabase = Supabase.instance.client;
+  String _customerName = "Customer Account";
+  bool _isLoading = true;
+  bool _isLoggingOut = false;
+
+  @override
+  void initState() { super.initState(); _fetchCustomerName(); }
+
+  Future<void> _fetchCustomerName() async {
+    try {
+      final userId = supabase.auth.currentUser?.id; if (userId == null) return;
+      final data = await supabase.from('user_profiles').select('full_name').eq('id', userId).maybeSingle();
+      if (mounted && data != null) { setState(() { _customerName = data['full_name'] ?? "Customer Account"; _isLoading = false; }); }
+    } catch (e) { debugPrint("Error fetching name: $e"); } finally { if (mounted) setState(() => _isLoading = false); }
+  }
+
+  Future<void> _logout() async {
+    setState(() => _isLoggingOut = true);
+    try { await supabase.auth.signOut(); } finally { if (mounted) { Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (context) => const LoginScreen()), (route) => false); } }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final userEmail = supabase.auth.currentUser?.email ?? "No Email Found";
+    return Scaffold(backgroundColor: Colors.grey.shade50, appBar: AppBar(title: const Text("My Profile", style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold)), backgroundColor: Colors.white, elevation: 0),
+      body: _isLoading ? const Center(child: CircularProgressIndicator()) : SingleChildScrollView(padding: const EdgeInsets.all(24.0), child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Container(padding: const EdgeInsets.all(24), decoration: BoxDecoration(color: Colors.blue.shade600, borderRadius: BorderRadius.circular(20)), child: Row(children: [const CircleAvatar(radius: 30, backgroundColor: Colors.white, child: Icon(Icons.person, size: 35, color: Colors.blue)), const SizedBox(width: 16), Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(_customerName, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)), Text(userEmail, style: const TextStyle(color: Colors.white70, fontSize: 14))]))])),
+        const SizedBox(height: 32), const Text("Account Settings", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey)), const SizedBox(height: 16),
+        _buildSettingsTile(Icons.location_on_outlined, "Saved Addresses", "Manage delivery locations in Cavite", () {}),
+        _buildSettingsTile(Icons.credit_card_outlined, "Payment Methods", "Update cash or digital payment preferences", () {}),
+        _buildSettingsTile(Icons.notifications_none_outlined, "Notifications", "Delivery alerts and updates", () {}),
+        const SizedBox(height: 32), const Divider(), const SizedBox(height: 24),
+        OutlinedButton.icon(onPressed: _isLoggingOut ? null : _logout, style: OutlinedButton.styleFrom(foregroundColor: Colors.redAccent, side: const BorderSide(color: Colors.redAccent, width: 1.5), padding: const EdgeInsets.symmetric(vertical: 16), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))), icon: _isLoggingOut ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.redAccent, strokeWidth: 2)) : const Icon(Icons.logout), label: const Text("LOGOUT", style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.2))),
+      ])),
+    );
+  }
+
+  Widget _buildSettingsTile(IconData icon, String title, String subtitle, VoidCallback onTap) {
+    return Container(margin: const EdgeInsets.only(bottom: 12), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.grey.shade200)), child: ListTile(leading: Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: Colors.blue.shade50, borderRadius: BorderRadius.circular(8)), child: Icon(icon, color: Colors.blue.shade600)), title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)), subtitle: Text(subtitle, style: TextStyle(fontSize: 12, color: Colors.grey.shade600)), trailing: const Icon(Icons.chevron_right, color: Colors.grey), onTap: onTap));
+  }
+}
+```
+
+---
+
+### FILE: lib/screens/merchant/merchant_navigation.dart
+```dart
+import 'package:flutter/material.dart';
+import 'merchant_dashboard.dart';
+import 'orders_screen.dart';
+import 'tracking_screen.dart';
+import 'merchant_profile_screens.dart';
+
+class MerchantNavigation extends StatefulWidget {
+  const MerchantNavigation({super.key});
+  @override
+  State<MerchantNavigation> createState() => _MerchantNavigationState();
+}
+
+class _MerchantNavigationState extends State<MerchantNavigation> {
+  int _currentIndex = 0;
+  final List<Widget> _pages = const [MerchantDashboardScreen(), MerchantOrdersScreen(), TrackingScreen(), MerchantProfileScreen()];
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: IndexedStack(index: _currentIndex, children: _pages),
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _currentIndex, onTap: (index) => setState(() => _currentIndex = index), type: BottomNavigationBarType.fixed,
+        selectedItemColor: Colors.blue.shade700, unselectedItemColor: Colors.grey,
+        items: const [
+          BottomNavigationBarItem(icon: Icon(Icons.home_outlined), activeIcon: Icon(Icons.home), label: 'Home'),
+          BottomNavigationBarItem(icon: Icon(Icons.list_alt), label: 'Orders'),
+          BottomNavigationBarItem(icon: Icon(Icons.map_outlined), activeIcon: Icon(Icons.map), label: 'Track'),
+          BottomNavigationBarItem(icon: Icon(Icons.person_outline), activeIcon: Icon(Icons.person), label: 'Profile'),
+        ],
+      ),
+    );
+  }
+}
+```
+
+---
+
+### FILE: lib/screens/merchant/merchant_dashboard.dart
+```dart
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:aquaroute/screens/merchant/sandbox_screen.dart'; 
+import 'package:aquaroute/screens/merchant/driver_management.dart';
+
+class MerchantDashboardScreen extends StatefulWidget {
+  const MerchantDashboardScreen({super.key});
+  @override
+  State<MerchantDashboardScreen> createState() => _MerchantDashboardScreenState();
+}
+
+class _MerchantDashboardScreenState extends State<MerchantDashboardScreen> {
+  final supabase = Supabase.instance.client;
+  int _pendingCount = 0, _activeCount = 0, _doneCount = 0;
+  String _inviteCode = "Loading...";
+  bool _isLoading = true;
+
+  @override
+  void initState() { super.initState(); _fetchDashboardData(); }
+
+  Future<void> _fetchDashboardData() async {
+    try {
+      final userId = supabase.auth.currentUser!.id;
+      final stationData = await supabase.from('water_stations').select('id, invite_code').eq('owner_id', userId).maybeSingle();
+      if (stationData != null) {
+        final stationId = stationData['id']; final String inviteCode = stationData['invite_code'] ?? 'NO CODE';
+        final response = await supabase.from('orders').select('status').eq('station_id', stationId);
+        int pending = 0, active = 0, done = 0;
+        for (var order in response) { final status = order['status']?.toString().toLowerCase(); if (status == 'pending') pending++; else if (status == 'active') active++; else done++; }
+        if (mounted) { setState(() { _pendingCount = pending; _activeCount = active; _doneCount = done; _inviteCode = inviteCode; _isLoading = false; }); }
+      } else { if (mounted) setState(() { _inviteCode = "No Station Linked"; _isLoading = false; }); }
+    } catch (e) { debugPrint('Error fetching dashboard data: $e'); if (mounted) setState(() => _isLoading = false); }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Merchant Dashboard', style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold)), backgroundColor: Colors.white, elevation: 0,
+        actions: [IconButton(icon: const Icon(Icons.bug_report, color: Colors.redAccent, size: 30), tooltip: 'Open Dev Sandbox', onPressed: () { Navigator.push(context, MaterialPageRoute(builder: (context) => const SandboxScreen())).then((_) => _fetchDashboardData()); })],
+      ),
+      body: _isLoading ? const Center(child: CircularProgressIndicator()) : RefreshIndicator(onRefresh: _fetchDashboardData, child: ListView(padding: const EdgeInsets.all(16), children: [
+        _buildInviteCodeCard(_inviteCode), const SizedBox(height: 16),
+        const Text('Live order overview', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87)), const SizedBox(height: 16),
+        Row(children: [Expanded(child: _buildStatCard('Pending', _pendingCount, Colors.red.shade100, Colors.red.shade700)), const SizedBox(width: 8), Expanded(child: _buildStatCard('Active', _activeCount, Colors.orange.shade100, Colors.orange.shade700)), const SizedBox(width: 8), Expanded(child: _buildStatCard('Done', _doneCount, Colors.green.shade100, Colors.green.shade700))]),
+        const SizedBox(height: 24),
+        const Text('Fleet management', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87)), const SizedBox(height: 12),
+        Card(elevation: 1, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), child: ListTile(contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8), leading: CircleAvatar(backgroundColor: Colors.blue.shade100, child: const Icon(Icons.local_shipping, color: Colors.blue)), title: const Text('Track & Manage Drivers', style: TextStyle(fontWeight: FontWeight.bold)), subtitle: const Text('Configure vehicle capacities, plates, and monitor idle drivers'), trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey), onTap: () { Navigator.push(context, MaterialPageRoute(builder: (context) => const DriverManagementScreen())).then((_) => _fetchDashboardData()); })),
+      ])),
+    );
+  }
+
+  Widget _buildInviteCodeCard(String code) {
+    return Card(elevation: 2, color: Colors.blue.shade50, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), child: Padding(padding: const EdgeInsets.all(16.0), child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+      Column(crossAxisAlignment: CrossAxisAlignment.start, children: [const Text("STATION INVITE CODE", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blueGrey, letterSpacing: 1.0, fontSize: 12)), const SizedBox(height: 4), Text(code, style: const TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: Colors.blue, letterSpacing: 1.5))]),
+      IconButton(icon: const Icon(Icons.copy, color: Colors.blue, size: 28), tooltip: 'Copy Invite Code', onPressed: () { Clipboard.setData(ClipboardData(text: code)); ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Copied invite code '$code' to clipboard!"), backgroundColor: Colors.blue.shade600, behavior: SnackBarBehavior.floating)); }),
+    ])));
+  }
+
+  Widget _buildStatCard(String title, int count, Color bgColor, Color textColor) {
+    return Container(padding: const EdgeInsets.all(16), decoration: BoxDecoration(color: bgColor, borderRadius: BorderRadius.circular(12)), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(title, style: TextStyle(color: textColor, fontWeight: FontWeight.bold)), const SizedBox(height: 8), Text('$count', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.black87))]));
+  }
+}
+```
+
+---
+
+### FILE: lib/screens/merchant/orders_screen.dart
+```dart
+import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:intl/intl.dart';
+
+class MerchantOrdersScreen extends StatefulWidget {
+  const MerchantOrdersScreen({super.key});
+  @override
+  State<MerchantOrdersScreen> createState() => _MerchantOrdersScreenState();
+}
+
+class _MerchantOrdersScreenState extends State<MerchantOrdersScreen> {
+  final supabase = Supabase.instance.client;
+  bool _isLoading = true;
+  List<dynamic> _newOrders = [], _activeOrders = [], _doneOrders = [];
+
+  @override
+  void initState() { super.initState(); _fetchStationOrders(); }
+
+  Future<void> _fetchStationOrders() async {
+    try {
+      final userId = supabase.auth.currentUser!.id;
+      final stationData = await supabase.from('water_stations').select('id').eq('owner_id', userId).maybeSingle();
+      if (stationData != null) {
+        final response = await supabase.from('orders').select('id, status, jugs_ordered, total_amount, created_at').eq('station_id', stationData['id']).order('created_at', ascending: false);
+        final pending = [], active = [], done = [];
+        for (var order in response) { final status = order['status']?.toString().toLowerCase(); if (status == 'pending') pending.add(order); else if (status == 'active') active.add(order); else done.add(order); }
+        if (mounted) setState(() { _newOrders = pending; _activeOrders = active; _doneOrders = done; _isLoading = false; });
+      } else { if (mounted) setState(() => _isLoading = false); }
+    } catch (e) { debugPrint('Error: $e'); if (mounted) { setState(() => _isLoading = false); ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e'))); } }
+  }
+
+  Future<void> _updateStatus(String orderId, String newStatus) async {
+    await supabase.from('orders').update({'status': newStatus}).eq('id', orderId); _fetchStationOrders();
+  }
+
+  Future<void> _deleteOrder(String orderId) async {
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Deleting order...')));
+    try { await supabase.from('orders').delete().eq('id', orderId); _fetchStationOrders(); if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Order permanently deleted. 🗑️'))); }
+    catch (e) { if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error deleting: $e'))); }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return DefaultTabController(length: 3, child: Scaffold(
+      appBar: AppBar(title: const Text('Live Order Pipeline', style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold)), backgroundColor: Colors.white, elevation: 0, bottom: const TabBar(labelColor: Colors.blue, unselectedLabelColor: Colors.grey, indicatorColor: Colors.blue, tabs: [Tab(text: 'New'), Tab(text: 'Active'), Tab(text: 'Done')])),
+      body: _isLoading ? const Center(child: CircularProgressIndicator()) : TabBarView(children: [_buildOrderList(_newOrders, 'pending'), _buildOrderList(_activeOrders, 'active'), _buildOrderList(_doneOrders, 'done')]),
+    ));
+  }
+
+  Widget _buildOrderList(List<dynamic> orders, String listType) {
+    if (orders.isEmpty) return const Center(child: Text('No orders in this pipeline.', style: TextStyle(color: Colors.grey)));
+    return RefreshIndicator(onRefresh: _fetchStationOrders, child: ListView.builder(padding: const EdgeInsets.all(16), itemCount: orders.length, itemBuilder: (context, index) {
+      final order = orders[index]; final shortId = order['id'].toString().substring(0, 6).toUpperCase();
+      DateTime date = DateTime.parse(order['created_at']); String time = DateFormat('h:mm a').format(date);
+      return Card(elevation: 2, margin: const EdgeInsets.only(bottom: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), child: Padding(padding: const EdgeInsets.all(16.0), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Row(children: [CircleAvatar(backgroundColor: Colors.blue.shade100, child: const Icon(Icons.water_drop, color: Colors.blue)), const SizedBox(width: 12), Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('Order #$shortId', style: const TextStyle(fontWeight: FontWeight.bold)), Text('Created at $time', style: const TextStyle(color: Colors.grey, fontSize: 12))])]), IconButton(icon: const Icon(Icons.delete_outline, color: Colors.red), onPressed: () => _deleteOrder(order['id']), tooltip: 'Delete this test order')]),
+        const SizedBox(height: 12),
+        Text('Jugs: ${order['jugs_ordered']} | Total: ₱${order['total_amount']}', style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.black87)),
+        if (listType == 'pending') ...[const SizedBox(height: 12), Row(children: [Expanded(child: OutlinedButton(style: OutlinedButton.styleFrom(foregroundColor: Colors.grey), onPressed: () => _updateStatus(order['id'], 'cancelled'), child: const Text('REJECT'))), const SizedBox(width: 8), Expanded(child: ElevatedButton(style: ElevatedButton.styleFrom(backgroundColor: Colors.green), onPressed: () => _updateStatus(order['id'], 'active'), child: const Text('ACCEPT', style: TextStyle(color: Colors.white))))])],
+      ])));
+    }));
+  }
+}
+```
+
+---
+
+### FILE: lib/screens/merchant/tracking_screen.dart
+```dart
+import 'package:flutter/material.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:aquaroute/services/route_optimization.dart';
+
+class TrackingScreen extends StatefulWidget {
+  const TrackingScreen({super.key});
+  @override
+  State<TrackingScreen> createState() => _TrackingScreenState();
+}
+
+class _TrackingScreenState extends State<TrackingScreen> {
+  GoogleMapController? _mapController;
+  bool _isGeneratingRoute = false;
+  Set<Polyline> _polylines = {};
+  Set<Marker> _markers = {};
+  final LatLng _stationLocation = const LatLng(14.3152, 120.9156);
+  final RouteOptimizationService _routeService = RouteOptimizationService();
+  final supabase = Supabase.instance.client;
+
+  Future<void> _generateRealRoute() async {
+    setState(() => _isGeneratingRoute = true);
+    try {
+      final userId = supabase.auth.currentUser!.id;
+      final stationData = await supabase.from('water_stations').select('id').eq('owner_id', userId).maybeSingle();
+      if (stationData == null) { ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No station found for this account.'))); setState(() => _isGeneratingRoute = false); return; }
+      final stationId = stationData['id'];
+      final response = await supabase.rpc('get_active_orders', params: {'merchant_station_id': stationId});
+      final List<dynamic> orders = response as List<dynamic>;
+      if (orders.isEmpty) { ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No pending orders to route!'))); setState(() => _isGeneratingRoute = false); return; }
+      List<Map<String, double>> customerLocations = [];
+      Set<Marker> newMarkers = { Marker(markerId: const MarkerId('station'), position: _stationLocation, icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue), infoWindow: const InfoWindow(title: 'Water Station')) };
+      for (int i = 0; i < orders.length; i++) {
+        double lat = double.parse(orders[i]['lat'].toString()); double lng = double.parse(orders[i]['lng'].toString());
+        customerLocations.add({"lat": lat, "lng": lng});
+        newMarkers.add(Marker(markerId: MarkerId('customer_$i'), position: LatLng(lat, lng), infoWindow: InfoWindow(title: 'Order: ${orders[i]['jugs_ordered']} Jugs')));
+      }
+      final String poly = await _routeService.calculateFleetRoute({"lat": _stationLocation.latitude, "lng": _stationLocation.longitude}, customerLocations);
+      if (poly.isNotEmpty) { setState(() { _markers = newMarkers; _polylines = { Polyline(polylineId: const PolylineId('dynamic_route'), color: Colors.blueAccent, width: 8, points: decodeEncodedPolyline(poly)) }; }); }
+    } catch (e) { debugPrint('Error: $e'); if(mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Routing Error: $e'))); } finally { if(mounted) setState(() => _isGeneratingRoute = false); }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Live Fleet Tracking')),
+      floatingActionButtonLocation: FloatingActionButtonLocation.startFloat,
+      body: GoogleMap(initialCameraPosition: CameraPosition(target: _stationLocation, zoom: 14.0), polylines: _polylines, markers: _markers, onMapCreated: (c) { _mapController = c; _generateRealRoute(); }),
+      floatingActionButton: FloatingActionButton.extended(onPressed: _isGeneratingRoute ? null : _generateRealRoute, label: Text(_isGeneratingRoute ? 'Calculating Route...' : 'Refresh Route'), icon: _isGeneratingRoute ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Icon(Icons.route), backgroundColor: Colors.blueAccent),
+    );
+  }
+}
+```
+
+---
+
+### FILE: lib/screens/merchant/driver_management.dart
+```dart
+import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+class DriverManagementScreen extends StatefulWidget {
+  const DriverManagementScreen({super.key});
+  @override
+  State<DriverManagementScreen> createState() => _DriverManagementScreenState();
+}
+
+class _DriverManagementScreenState extends State<DriverManagementScreen> {
+  final _supabase = Supabase.instance.client;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text("Fleet Management")),
+      body: StreamBuilder(
+        stream: _supabase.from('user_profiles').stream(primaryKey: ['id']).eq('role', 'driver'), 
+        builder: (context, snapshot) {
+          if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+          final drivers = snapshot.data!;
+          return ListView.builder(itemCount: drivers.length, itemBuilder: (context, index) { final driver = drivers[index]; return _buildDriverCard(driver); });
+        },
+      ),
+    );
+  }
+
+  Widget _buildDriverCard(Map<String, dynamic> driver) {
+    final double speed = (driver['current_speed'] ?? 0.0).toDouble();
+    final bool isIdling = speed < 0.5;
+    return Card(margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8), child: ListTile(
+      leading: Icon(Icons.directions_car, color: isIdling ? Colors.orange : Colors.green),
+      title: Text(driver['full_name'] ?? 'Driver'),
+      subtitle: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text("Plate: ${driver['vehicle_plate'] ?? 'N/A'}"), Text("Capacity: ${driver['jug_capacity'] ?? 0} jugs")]),
+      trailing: isIdling ? const Icon(Icons.warning_amber, color: Colors.orange) : const Icon(Icons.check_circle, color: Colors.green),
+      onTap: () => _showEditDialog(driver),
+    ));
+  }
+
+  void _showEditDialog(Map<String, dynamic> driver) {
+    final plateController = TextEditingController(text: driver['vehicle_plate']);
+    final capController = TextEditingController(text: driver['jug_capacity']?.toString());
+    showDialog(context: context, builder: (context) => AlertDialog(
+      title: Text("Configure ${driver['full_name']}"),
+      content: Column(mainAxisSize: MainAxisSize.min, children: [TextField(controller: plateController, decoration: const InputDecoration(labelText: "Plate Number")), TextField(controller: capController, decoration: const InputDecoration(labelText: "Capacity (Jugs)"))]),
+      actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")), ElevatedButton(onPressed: () async { await _supabase.from('user_profiles').update({'vehicle_plate': plateController.text, 'jug_capacity': int.tryParse(capController.text)}).eq('id', driver['id']); if (mounted) Navigator.pop(context); }, child: const Text("Save"))],
+    ));
+  }
+}
+```
+
+---
+
+### FILE: lib/screens/merchant/sandbox_screen.dart
+```dart
+import 'package:flutter/material.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+class SandboxScreen extends StatefulWidget {
+  const SandboxScreen({super.key});
+  @override
+  State<SandboxScreen> createState() => _SandboxScreenState();
+}
+
+class _SandboxScreenState extends State<SandboxScreen> {
+  final supabase = Supabase.instance.client;
+  final TextEditingController _jugCountController = TextEditingController();
+  final LatLng _initialCenter = const LatLng(14.3152, 120.9156);
+  LatLng? _selectedLocation;
+  Set<Marker> _markers = {};
+  bool _isLoading = false;
+  String _selectedStatus = 'pending';
+  double _pricePerJug = 40.0;
+  double _deliveryFee = 20.0;
+
+  void _onMapTapped(LatLng location) { setState(() { _selectedLocation = location; _markers = { Marker(markerId: const MarkerId('sandbox_target'), position: location, icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed), infoWindow: const InfoWindow(title: 'Sandbox Target Injection')) }; }); }
+
+  Future<void> injectSandboxOrder() async {
+    if (_selectedLocation == null) { ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please tap the map to drop a pin first!'))); return; }
+    if (_jugCountController.text.isEmpty) { ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please enter a jug count!'))); return; }
+    setState(() => _isLoading = true);
+    try {
+      final userId = supabase.auth.currentUser!.id;
+      final stationData = await supabase.from('water_stations').select('id, price_per_jug, delivery_fee').eq('owner_id', userId).maybeSingle();
+      if (stationData == null) throw Exception("No water station found for this merchant!");
+      final stationId = stationData['id'];
+      _pricePerJug = double.tryParse(stationData['price_per_jug']?.toString() ?? '40.0') ?? 40.0;
+      _currentDeliveryFee = double.tryParse(stationData['delivery_fee']?.toString() ?? '20.0') ?? 20.0;
+      final customerData = await supabase.from('user_profiles').select('id').eq('role', 'customer').limit(1).maybeSingle();
+      if (customerData == null) throw Exception("No customers exist in the database!");
+      final customerId = customerData['id'];
+      final int jugs = int.parse(_jugCountController.text);
+      final double calculatedSubtotal = jugs * _pricePerJug;
+      final double calculatedTotal = calculatedSubtotal + _deliveryFee;
+      await supabase.from('orders').insert({'station_id': stationId, 'customer_id': customerId, 'delivery_location': 'POINT(${_selectedLocation!.longitude} ${_selectedLocation!.latitude})', 'jugs_ordered': jugs, 'status': _selectedStatus, 'payment_method': 'cash', 'subtotal': calculatedSubtotal, 'delivery_fee': _deliveryFee, 'total_amount': calculatedTotal});
+      if (mounted) { ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Sandbox Order injected as "$_selectedStatus"!'))); setState(() { _markers.clear(); _selectedLocation = null; _jugCountController.clear(); }); }
+    } catch (e) { if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e'))); } finally { if (mounted) setState(() => _isLoading = false); }
+  }
+
+  double get _currentDeliveryFee => _deliveryFee;
+  set _currentDeliveryFee(double val) => _deliveryFee = val;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('DEV SANDBOX', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)), backgroundColor: Colors.red.shade800),
+      body: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Expanded(flex: 2, child: GoogleMap(initialCameraPosition: CameraPosition(target: _initialCenter, zoom: 14.0), markers: _markers, onTap: _onMapTapped)),
+        Expanded(flex: 1, child: SingleChildScrollView(padding: const EdgeInsets.all(16.0), child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Text(_selectedLocation == null ? '1. Tap map to select location' : '1. Target Locked: ${_selectedLocation!.latitude.toStringAsFixed(4)}, ${_selectedLocation!.longitude.toStringAsFixed(4)}', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: _selectedLocation == null ? Colors.red : Colors.green)),
+          const SizedBox(height: 8),
+          Row(children: [Expanded(child: TextField(controller: _jugCountController, decoration: const InputDecoration(labelText: '2. Jug Count', border: OutlineInputBorder(), isDense: true), keyboardType: TextInputType.number)), const SizedBox(width: 12), Expanded(child: DropdownButtonFormField<String>(value: _selectedStatus, decoration: const InputDecoration(labelText: '3. Status', border: OutlineInputBorder(), isDense: true), items: const [DropdownMenuItem(value: 'pending', child: Text('Pending')), DropdownMenuItem(value: 'active', child: Text('Active'))], onChanged: (val) { if (val != null) setState(() => _selectedStatus = val); }))]),
+          const SizedBox(height: 12),
+          ElevatedButton(onPressed: _isLoading ? null : injectSandboxOrder, style: ElevatedButton.styleFrom(backgroundColor: Colors.red.shade600, padding: const EdgeInsets.symmetric(vertical: 16)), child: _isLoading ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)) : const Text('4. INJECT SANDBOX ORDER', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold))),
+        ]))),
+      ]),
+    );
+  }
+}
+```
+
+---
+
+### FILE: lib/screens/merchant/location_picker_screen.dart
+```dart
+import 'package:flutter/material.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:geolocator/geolocator.dart';
+
+class LocationPickerScreen extends StatefulWidget {
+  final double? initialLatitude, initialLongitude; final String? initialStationName;
+  const LocationPickerScreen({super.key, this.initialLatitude, this.initialLongitude, this.initialStationName});
+  @override State<LocationPickerScreen> createState() => _LocationPickerScreenState();
+}
+
+class _LocationPickerScreenState extends State<LocationPickerScreen> {
+  late GoogleMapController _mapController; late TextEditingController _stationNameController;
+  LatLng? _selectedLocation; Set<Marker> _markers = {}; bool _isLoadingLocation = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _stationNameController = TextEditingController(text: widget.initialStationName ?? '');
+    _selectedLocation = LatLng(widget.initialLatitude ?? 14.0583, widget.initialLongitude ?? 121.0363);
+    _addMarker(_selectedLocation!);
+  }
+
+  @override void dispose() { _stationNameController.dispose(); super.dispose(); }
+
+  void _addMarker(LatLng location) { setState(() { _selectedLocation = location; _markers = { Marker(markerId: const MarkerId('selected_location'), position: location, infoWindow: InfoWindow(title: 'Water Station', snippet: '${location.latitude.toStringAsFixed(4)}, ${location.longitude.toStringAsFixed(4)}')) }; }); }
+
+  Future<void> _getCurrentLocation() async {
+    setState(() => _isLoadingLocation = true);
+    try {
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.whileInUse || permission == LocationPermission.always) {
+        final Position position = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
+        final location = LatLng(position.latitude, position.longitude); _addMarker(location);
+        await _mapController.animateCamera(CameraUpdate.newCameraPosition(CameraPosition(target: location, zoom: 15)));
+      } else if (permission == LocationPermission.deniedForever) { if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Location permission is required. Please enable it in settings.'))); }
+    } catch (e) { if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error getting location: $e'))); } finally { setState(() => _isLoadingLocation = false); }
+  }
+
+  void _confirmLocation() {
+    if (_selectedLocation == null) { ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please select a location'))); return; }
+    if (_stationNameController.text.trim().isEmpty) { ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please enter your water station name'))); return; }
+    Navigator.pop(context, {'latitude': _selectedLocation!.latitude, 'longitude': _selectedLocation!.longitude, 'station_name': _stationNameController.text.trim()});
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Pick Station Location'), centerTitle: true, elevation: 0),
+      body: Stack(children: [
+        GoogleMap(initialCameraPosition: CameraPosition(target: _selectedLocation!, zoom: 15), onMapCreated: (controller) { _mapController = controller; }, onTap: _addMarker, markers: _markers, myLocationButtonEnabled: false, myLocationEnabled: false, zoomControlsEnabled: false),
+        Positioned(top: 16, left: 16, right: 16, child: Container(padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 8, offset: const Offset(0, 2))]), child: TextField(controller: _stationNameController, decoration: InputDecoration(hintText: 'Enter water station name', border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)), contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8))))),
+        Positioned(bottom: 100, right: 16, child: FloatingActionButton(onPressed: _isLoadingLocation ? null : _getCurrentLocation, backgroundColor: Colors.blue, child: _isLoadingLocation ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation(Colors.white))) : const Icon(Icons.my_location))),
+        Positioned(bottom: 0, left: 0, right: 0, child: Container(padding: const EdgeInsets.all(16), decoration: BoxDecoration(color: Colors.white, borderRadius: const BorderRadius.only(topLeft: Radius.circular(16), topRight: Radius.circular(16)), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 8, offset: const Offset(0, -2))]), child: Column(mainAxisSize: MainAxisSize.min, children: [
+          if (_selectedLocation != null) Container(padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: Colors.blue.shade50, borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.blue.shade200)), child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [const Text('Selected Location', style: TextStyle(fontSize: 12, color: Colors.blue, fontWeight: FontWeight.bold)), const SizedBox(height: 4), Text('${_selectedLocation!.latitude.toStringAsFixed(4)}, ${_selectedLocation!.longitude.toStringAsFixed(4)}', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500))]))])),
+          const SizedBox(height: 12),
+          SizedBox(width: double.infinity, child: ElevatedButton.icon(onPressed: _confirmLocation, icon: const Icon(Icons.check_circle), label: const Text('Confirm Location'), style: ElevatedButton.styleFrom(backgroundColor: Colors.green.shade600, padding: const EdgeInsets.symmetric(vertical: 12)))),
+        ]))),
+      ]),
+    );
+  }
+}
+```
+
+---
+
+### FILE: lib/screens/merchant/merchant_profile_screens.dart
+```dart
+import 'package:aquaroute/screens/auth/login_screen.dart';
+import 'package:aquaroute/screens/merchant/location_picker_screen.dart';
+import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'settings_screen.dart';
+
+bool _isLoggingOut = false;
+
+Map<String, dynamic> buildProfileUpdatePayload({required String fullName, required String businessName, required String stationAddress}) {
+  return {'full_name': fullName.trim(), 'business_name': businessName.trim(), 'station_address': stationAddress.trim()};
+}
+
+class MerchantProfileScreen extends StatefulWidget {
+  const MerchantProfileScreen({super.key});
+  @override State<MerchantProfileScreen> createState() => _MerchantProfileScreenState();
+}
+
+class _MerchantProfileScreenState extends State<MerchantProfileScreen> {
+  final supabase = Supabase.instance.client;
+  bool _isLoading = true, _isSaving = false;
+  Map<String, dynamic>? _profileData;
+  late final TextEditingController _fullNameController, _businessNameController, _stationAddressController, _emailController, _latitudeController, _longitudeController;
+  int _selectedTabIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _fullNameController = TextEditingController(); _businessNameController = TextEditingController();
+    _stationAddressController = TextEditingController(); _emailController = TextEditingController();
+    _latitudeController = TextEditingController(); _longitudeController = TextEditingController();
+    _fetchProfileData();
+  }
+
+  @override void dispose() { _fullNameController.dispose(); _businessNameController.dispose(); _stationAddressController.dispose(); _emailController.dispose(); _latitudeController.dispose(); _longitudeController.dispose(); super.dispose(); }
+
+  Future<void> _logout() async {
+    setState(() => _isLoggingOut = true);
+    try { await supabase.auth.signOut(); } catch (e) { debugPrint("Logout error: $e"); } finally { if (mounted) { setState(() => _isLoggingOut = false); Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (context) => const LoginScreen()), (route) => false); } }
+  }
+
+  Future<void> _fetchProfileData() async {
+    try {
+      final userId = supabase.auth.currentUser?.id; if (userId == null) throw Exception("User not authenticated");
+      final data = await supabase.from('user_profiles').select().eq('id', userId).maybeSingle();
+      if (mounted) { setState(() { _profileData = data; _fullNameController.text = (_profileData?['full_name'] as String?) ?? ''; _businessNameController.text = (_profileData?['business_name'] as String?) ?? ''; _stationAddressController.text = (_profileData?['station_address'] as String?) ?? ''; _emailController.text = supabase.auth.currentUser?.email ?? ''; _latitudeController.text = (_profileData?['latitude'] as double?)?.toString() ?? ''; _longitudeController.text = (_profileData?['longitude'] as double?)?.toString() ?? ''; _isLoading = false; }); }
+    } catch (e) { debugPrint("Error fetching profile: $e"); if (mounted) { setState(() => _isLoading = false); ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Failed to load profile data"), backgroundColor: Colors.redAccent)); } }
+  }
+
+  Future<void> _openLocationPicker() async {
+    final result = await Navigator.push(context, MaterialPageRoute(builder: (context) => LocationPickerScreen(initialLatitude: double.tryParse(_latitudeController.text) ?? 14.0583, initialLongitude: double.tryParse(_longitudeController.text) ?? 121.0363, initialStationName: _businessNameController.text)));
+    if (result != null && result is Map<String, dynamic>) { setState(() { _latitudeController.text = result['latitude'].toString(); _longitudeController.text = result['longitude'].toString(); _businessNameController.text = result['station_name']; }); }
+  }
+
+  Future<void> _saveProfile() async {
+    final userId = supabase.auth.currentUser?.id; if (userId == null) return;
+    setState(() => _isSaving = true);
+    try {
+      final payload = buildProfileUpdatePayload(fullName: _fullNameController.text, businessName: _businessNameController.text, stationAddress: _stationAddressController.text);
+      if (_latitudeController.text.isNotEmpty && _longitudeController.text.isNotEmpty) { final lat = double.tryParse(_latitudeController.text); final lng = double.tryParse(_longitudeController.text); if (lat != null && lng != null) { payload['latitude'] = lat; payload['longitude'] = lng; } }
+      await supabase.from('user_profiles').update(payload).eq('id', userId);
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Profile updated successfully')));
+    } catch (e) { debugPrint('Failed to update profile: $e'); if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to update profile: $e'))); } finally { if (mounted) setState(() => _isSaving = false); }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(backgroundColor: Colors.grey.shade50, appBar: AppBar(title: const Text("Station Profile", style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold)), backgroundColor: Colors.white, elevation: 0, actions: [IconButton(icon: const Icon(Icons.settings_outlined, color: Colors.black87), onPressed: () { Navigator.push(context, MaterialPageRoute(builder: (context) => const SettingsScreen())); })]),
+      body: _isLoading ? const Center(child: CircularProgressIndicator()) : _buildProfileContent(),
+    );
+  }
+
+  Widget _buildProfileContent() {
+    final String ownerName = _profileData?['full_name'] ?? "Unknown Owner";
+    final String businessName = _profileData?['business_name'] ?? "Unnamed Station";
+    final String address = _profileData?['station_address'] ?? "Address not provided";
+    final String kycStatus = _profileData?['kyc_status'] ?? "pending_upload";
+    final String email = supabase.auth.currentUser?.email ?? "";
+    return SafeArea(child: Padding(padding: const EdgeInsets.all(24.0), child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      Expanded(child: SingleChildScrollView(child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Container(padding: const EdgeInsets.all(24), decoration: BoxDecoration(color: Colors.blue.shade600, borderRadius: BorderRadius.circular(20), boxShadow: [BoxShadow(color: Colors.blue.withValues(alpha: 0.2), blurRadius: 10, offset: const Offset(0, 4))]), child: Row(children: [const CircleAvatar(radius: 30, backgroundColor: Colors.white, child: Icon(Icons.storefront, size: 35, color: Colors.blue)), const SizedBox(width: 16), Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(ownerName, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)), const SizedBox(height: 4), Text("$businessName\n$email", style: const TextStyle(color: Colors.white70, fontSize: 14, height: 1.4))]))])),
+        const SizedBox(height: 24), const Divider(), const SizedBox(height: 24), _buildKycBanner(kycStatus),
+        const SizedBox(height: 24),
+        DefaultTabController(length: 3, initialIndex: _selectedTabIndex, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          TabBar(onTap: (index) => setState(() => _selectedTabIndex = index), labelColor: Colors.blue.shade700, unselectedLabelColor: Colors.grey, indicatorColor: Colors.blue.shade700, tabs: const [Tab(text: 'Profile'), Tab(text: 'Station Info'), Tab(text: 'Location')]),
+          const SizedBox(height: 16),
+          SizedBox(height: 320, child: TabBarView(children: [_buildEditableProfileForm(), _buildEditableStationForm(), _buildLocationForm()])),
+        ])),
+      ]))),
+      const SizedBox(height: 16),
+      OutlinedButton.icon(onPressed: _isLoggingOut ? null : _logout, style: OutlinedButton.styleFrom(foregroundColor: Colors.redAccent, side: const BorderSide(color: Colors.redAccent, width: 1.5), padding: const EdgeInsets.symmetric(vertical: 16), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))), icon: _isLoggingOut ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.redAccent, strokeWidth: 2)) : const Icon(Icons.logout), label: const Text("SECURE LOGOUT", style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.2))),
+    ])));
+  }
+
+  Widget _buildKycBanner(String status) {
+    if (status == 'approved') {
+      return Container(padding: const EdgeInsets.all(16), decoration: BoxDecoration(color: Colors.green.shade50, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.green.shade200)), child: Row(children: [Icon(Icons.verified, color: Colors.green.shade600), const SizedBox(width: 12), const Expanded(child: Text("Business Permit Verified. Station is active.", style: TextStyle(fontWeight: FontWeight.bold)))]));
+    }
+    return Container(padding: const EdgeInsets.all(20), decoration: BoxDecoration(color: Colors.amber.shade50, borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.amber.shade300)), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Row(children: [Icon(Icons.warning_amber_rounded, color: Colors.amber.shade700, size: 28), const SizedBox(width: 12), const Text("Action Required", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold))]),
+      const SizedBox(height: 8), const Text("Your station is currently hidden from customers. Upload your Business Permit to activate your account.", style: TextStyle(color: Colors.black87)),
+      const SizedBox(height: 16), ElevatedButton.icon(onPressed: () { }, style: ElevatedButton.styleFrom(backgroundColor: Colors.amber.shade600, foregroundColor: Colors.white, elevation: 0, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))), icon: const Icon(Icons.upload_file), label: const Text("UPLOAD PERMIT", style: TextStyle(fontWeight: FontWeight.bold))),
+    ]));
+  }
+
+  Widget _buildEditableProfileForm() {
+    return SingleChildScrollView(child: Container(padding: const EdgeInsets.all(16), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.grey.shade200)), child: Column(children: [
+      _buildInputField(controller: _fullNameController, label: 'Owner Name', hint: 'Enter your full name'),
+      const SizedBox(height: 12), _buildInputField(controller: _businessNameController, label: 'Station Name', hint: 'Enter station name'),
+      const SizedBox(height: 12), _buildInputField(controller: _stationAddressController, label: 'Station Address', hint: 'Enter station address', maxLines: 2),
+      const SizedBox(height: 16), Align(alignment: Alignment.centerRight, child: ElevatedButton.icon(onPressed: _isSaving ? null : _saveProfile, icon: _isSaving ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.save), label: Text(_isSaving ? 'Saving...' : 'Save Changes'))),
+    ])));
+  }
+
+  Widget _buildEditableStationForm() {
+    return SingleChildScrollView(child: Container(padding: const EdgeInsets.all(16), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.grey.shade200)), child: Column(children: [
+      _buildInputField(controller: _businessNameController, label: 'Business Name', hint: 'Your station name'),
+      const SizedBox(height: 12), _buildInputField(controller: _stationAddressController, label: 'Station Address', hint: 'Full address for customers', maxLines: 3),
+      const SizedBox(height: 12), _buildInputField(controller: _emailController, label: 'Email', hint: 'Your contact email', readOnly: true, backgroundColor: Colors.grey.shade100),
+      const SizedBox(height: 16), Align(alignment: Alignment.centerRight, child: ElevatedButton.icon(onPressed: _isSaving ? null : _saveProfile, icon: _isSaving ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.save), label: Text(_isSaving ? 'Saving...' : 'Save Changes'))),
+    ])));
+  }
+
+  Widget _buildLocationForm() {
+    return SingleChildScrollView(child: Container(padding: const EdgeInsets.all(16), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.grey.shade200)), child: Column(children: [
+      Container(padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: Colors.blue.shade50, borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.blue.shade200)), child: const Text('Add your station location so customers can find you on the map.', style: TextStyle(fontSize: 12, color: Colors.blue))),
+      const SizedBox(height: 16), _buildInputField(controller: _latitudeController, label: 'Latitude', hint: 'e.g., 14.0583'),
+      const SizedBox(height: 12), _buildInputField(controller: _longitudeController, label: 'Longitude', hint: 'e.g., 121.0363'),
+      const SizedBox(height: 16), SizedBox(width: double.infinity, child: ElevatedButton.icon(onPressed: _openLocationPicker, icon: const Icon(Icons.location_on), label: const Text('Pick from Map'))),
+      const SizedBox(height: 12), Align(alignment: Alignment.centerRight, child: ElevatedButton.icon(onPressed: _isSaving ? null : _saveProfile, icon: _isSaving ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.save), label: Text(_isSaving ? 'Saving...' : 'Save Location'))),
+    ])));
+  }
+
+  Widget _buildInputField({required TextEditingController controller, required String label, required String hint, int maxLines = 1, bool readOnly = false, Color? backgroundColor}) {
+    return TextField(controller: controller, maxLines: maxLines, readOnly: readOnly, decoration: InputDecoration(labelText: label, hintText: hint, filled: readOnly || backgroundColor != null, fillColor: backgroundColor ?? Colors.transparent, border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)), enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.grey.shade300)), focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.blue.shade500, width: 2))));
+  }
+}
+```
+
+---
+
+### FILE: lib/screens/merchant/settings_screen.dart
+```dart
+import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:aquaroute/screens/auth/login_screen.dart';
+
+class SettingsScreen extends StatefulWidget {
+  const SettingsScreen({super.key});
+  @override State<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends State<SettingsScreen> {
+  final _jugWeightController = TextEditingController(text: "19");
+  final _velocityLimitController = TextEditingController(text: "20");
+  bool _isLoggingOut = false;
+
+  Future<void> _logout() async {
+    setState(() => _isLoggingOut = true);
+    try { await Supabase.instance.client.auth.signOut(); } catch (e) { debugPrint("Server logout failed (likely offline): $e"); } finally { if (mounted) { Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (context) => const LoginScreen()), (route) => false); } }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(backgroundColor: Colors.grey.shade50, appBar: AppBar(title: const Text("System Configuration", style: TextStyle(color: Colors.black87)), backgroundColor: Colors.white, elevation: 0, iconTheme: const IconThemeData(color: Colors.black87)),
+      body: SingleChildScrollView(padding: const EdgeInsets.all(24.0), child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        const Text("Dynamic Payload Math Engine", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)), const SizedBox(height: 24),
+        _buildFlatTextField(controller: _jugWeightController, label: "Weight per 5-Gallon Jug (kg)", icon: Icons.monitor_weight_outlined), const SizedBox(height: 16),
+        _buildFlatTextField(controller: _velocityLimitController, label: "Safety Velocity Limit (kph)", icon: Icons.speed), const SizedBox(height: 32),
+        ElevatedButton(onPressed: () { ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Settings Updated"), backgroundColor: Colors.green)); }, style: ElevatedButton.styleFrom(backgroundColor: Colors.blue.shade600, padding: const EdgeInsets.symmetric(vertical: 16), elevation: 0, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))), child: const Text("Save Configuration", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16))),
+        const SizedBox(height: 48), const Divider(), const SizedBox(height: 24),
+        OutlinedButton.icon(onPressed: _isLoggingOut ? null : _logout, style: OutlinedButton.styleFrom(foregroundColor: Colors.redAccent, side: const BorderSide(color: Colors.redAccent, width: 1.5), padding: const EdgeInsets.symmetric(vertical: 16), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))), icon: _isLoggingOut ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.redAccent, strokeWidth: 2)) : const Icon(Icons.logout), label: const Text("SECURE LOGOUT", style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.2))),
+      ])),
+    );
+  }
+
+  Widget _buildFlatTextField({required TextEditingController controller, required String label, required IconData icon}) {
+    return TextField(controller: controller, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: label, prefixIcon: Icon(icon, color: Colors.grey.shade500), filled: true, fillColor: Colors.white, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade300)), enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade300))));
+  }
+}
+```
+
+---
+
+### FILE: lib/screens/merchant/order_detail_screen.dart
+```dart
+import 'package:flutter/material.dart';
+
+class OrderDetailScreen extends StatelessWidget {
+  final String orderId;
+  const OrderDetailScreen({super.key, required this.orderId});
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text("Order #$orderId")),
+      body: Padding(padding: const EdgeInsets.all(16.0), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        _buildDetailRow("Customer", "Juan Dela Cruz"), _buildDetailRow("Address", "General Trias, Cavite"), _buildDetailRow("Status", "Delivered"),
+        const Divider(height: 30), _buildDetailRow("Total Amount", "₱150.00", isBold: true), _buildDetailRow("Jug Status", "3/3 Returned"),
+        const SizedBox(height: 30),
+        Row(children: [Expanded(child: ElevatedButton(style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent), onPressed: () {}, child: const Text("Mark as Unpaid"))), const SizedBox(width: 10), Expanded(child: ElevatedButton(style: ElevatedButton.styleFrom(backgroundColor: Colors.green), onPressed: () {}, child: const Text("Close Order")))]),
+      ])),
+    );
+  }
+
+  Widget _buildDetailRow(String label, String value, {bool isBold = false}) {
+    return Padding(padding: const EdgeInsets.symmetric(vertical: 8.0), child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text(label, style: const TextStyle(color: Colors
