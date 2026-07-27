@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../services/location_service.dart';
 import '../../services/route_optimization.dart';
 import '../auth/login_screen.dart';
+import 'driver_profile_screen.dart';
 
 class DriverDashboardScreen extends StatefulWidget {
   const DriverDashboardScreen({super.key});
@@ -23,15 +25,16 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
   
   // UI Data
   String _customerName = "Loading...";
+  String _customerPhone = ""; 
+  String _stationPhone = ""; 
+  String _stationName = "Water Station";
   double _totalAmount = 0.0;
   LatLng? _destination;
   GoogleMapController? _mapController;
   
-  // Map Data
   Set<Marker> _allDropoffMarkers = {}; 
   Set<Polyline> _polylines = {}; 
 
-  // Default Station Coordinates (Origin)
   final LatLng _stationLocation = const LatLng(14.3152, 120.9156);
 
   @override
@@ -72,7 +75,7 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
     try {
       final userId = supabase.auth.currentUser!.id;
 
-      // 1. DATA ISOLATION: Find boss
+      // 1. Fetch driver profile & assigned station ID
       final profile = await supabase
           .from('user_profiles')
           .select('assigned_station_id')
@@ -84,7 +87,25 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
       }
       final myBossStationId = profile['assigned_station_id'];
 
-      // 2. Fetch the map coordinates from the database
+      // 2. Fetch station owner details (Safely handling List vs Map join response)
+      final stationData = await supabase
+          .from('water_stations')
+          .select('station_name, owner_id, user_profiles(phone_number)')
+          .eq('id', myBossStationId)
+          .maybeSingle();
+
+      if (stationData != null) {
+        _stationName = stationData['station_name'] ?? 'Water Station';
+        
+        // 🛡️ SAFE EXTRACTOR: Handles if Supabase returns user_profiles as a List or a Map
+        final rawProfile = stationData['user_profiles'];
+        if (rawProfile is List && rawProfile.isNotEmpty) {
+          _stationPhone = rawProfile.first['phone_number']?.toString() ?? '';
+        } else if (rawProfile is Map) {
+          _stationPhone = rawProfile['phone_number']?.toString() ?? '';
+        }
+      }
+
       final response = await supabase.rpc(
         'get_active_orders',
         params: {'merchant_station_id': myBossStationId},
@@ -103,7 +124,6 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
 
         Set<Polyline> newPolylines = {};
         
-        // 3. CALL GOOGLE FOR THE OPTIMIZED SEQUENCE
         try {
           final result = await _routeService.calculateDriverManifest(
             {"lat": _stationLocation.latitude, "lng": _stationLocation.longitude},
@@ -111,7 +131,7 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
           );
           
           final String poly = result['polyline'];
-          final List<int> sequence = result['sequence'];
+          final rawSequence = result['sequence'];
 
           if (poly.isNotEmpty) {
             newPolylines = {
@@ -124,16 +144,23 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
             };
           }
 
-          // 4. THE FIX: REORDER THE MANIFEST BASED ON GOOGLE'S AI!
-          if (sequence.isNotEmpty && sequence.length == activeOrders.length) {
-            // Re-sort the database orders to physically match Google's route
-            activeOrders = sequence.map((index) => activeOrders[index]).toList();
+          if (rawSequence != null && rawSequence is List && rawSequence.isNotEmpty) {
+            try {
+              List<int> sequence = rawSequence.map((idx) => int.parse(idx.toString())).toList();
+              if (sequence.length == activeOrders.length) {
+                bool validBounds = sequence.every((idx) => idx >= 0 && idx < activeOrders.length);
+                if (validBounds) {
+                  activeOrders = sequence.map((index) => activeOrders[index]).toList();
+                }
+              }
+            } catch (err) {
+              debugPrint("Sequence reordering skipped safely: $err");
+            }
           }
         } catch (e) {
           debugPrint('Routing API Error: $e');
         }
 
-        // 5. NOW BUILD MARKERS FROM THE AI-SORTED LIST
         Set<Marker> markers = {
           Marker(
             markerId: const MarkerId('station'), 
@@ -152,7 +179,6 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
             Marker(
               markerId: MarkerId('order_${o['id']}'),
               position: LatLng(lat, lng),
-              // Index 0 is GUARANTEED to be the fastest first stop now
               icon: BitmapDescriptor.defaultMarkerWithHue(i == 0 ? BitmapDescriptor.hueRed : BitmapDescriptor.hueOrange),
               infoWindow: InfoWindow(title: i == 0 ? 'Current Dropoff' : 'Next in Queue', snippet: '${o['jugs_ordered']} Jugs'),
             ),
@@ -161,13 +187,26 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
 
         final currentOrder = activeOrders.first;
         
-        // 6. SECURITY CHECK & DETAILS FETCH
         final orderDetails = await supabase
             .from('orders')
-            .select('total_amount, user_profiles(full_name)')
+            .select('total_amount, user_profiles(full_name, phone_number)')
             .eq('id', currentOrder['id'])
             .eq('station_id', myBossStationId) 
             .maybeSingle();
+
+        // 🛡️ SAFE EXTRACTOR for customer profile join
+        String custName = 'Water Customer';
+        String custPhone = '';
+        if (orderDetails != null) {
+          final rawCustProfile = orderDetails['user_profiles'];
+          if (rawCustProfile is List && rawCustProfile.isNotEmpty) {
+            custName = rawCustProfile.first['full_name']?.toString() ?? 'Water Customer';
+            custPhone = rawCustProfile.first['phone_number']?.toString() ?? '';
+          } else if (rawCustProfile is Map) {
+            custName = rawCustProfile['full_name']?.toString() ?? 'Water Customer';
+            custPhone = rawCustProfile['phone_number']?.toString() ?? '';
+          }
+        }
 
         if (mounted) {
           setState(() {
@@ -179,7 +218,8 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
               double.parse(currentOrder['lng'].toString()),
             );
             _totalAmount = double.parse((orderDetails?['total_amount'] ?? 0).toString());
-            _customerName = orderDetails?['user_profiles']?['full_name'] ?? 'Water Customer';
+            _customerName = custName;
+            _customerPhone = custPhone;
             _isLoading = false;
           });
         }
@@ -202,21 +242,102 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
     }
   }
 
-  Future<void> _completeDelivery() async {
+  Future<void> _makePhoneCall(String phoneNumber, String targetName) async {
+    if (phoneNumber.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('No phone number available for $targetName.')),
+      );
+      return;
+    }
+    final Uri launchUri = Uri(scheme: 'tel', path: phoneNumber);
+    if (await canLaunchUrl(launchUri)) {
+      await launchUrl(launchUri);
+    } else {
+      debugPrint('Could not launch phone dialer for $phoneNumber');
+    }
+  }
+
+  void _showCompletionDialog() {
     if (_currentActiveOrder == null) return;
 
+    final TextEditingController emptyJugsController = TextEditingController(text: '1');
+    bool paymentCollected = true;
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Complete Delivery & Return'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Log the returned empty jugs and confirm cash collection before finalizing.',
+                style: TextStyle(fontSize: 13, color: Colors.grey),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: emptyJugsController,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'Empty Jugs Collected',
+                  border: OutlineInputBorder(),
+                  isDense: true,
+                ),
+              ),
+              const SizedBox(height: 16),
+              CheckboxListTile(
+                title: const Text('Cash Payment Collected'),
+                value: paymentCollected,
+                onChanged: (val) {
+                  setDialogState(() {
+                    paymentCollected = val ?? true;
+                  });
+                },
+                contentPadding: EdgeInsets.zero,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+              onPressed: () {
+                final int emptyJugs = int.tryParse(emptyJugsController.text) ?? 0;
+                Navigator.pop(context);
+                _finalizeDelivery(emptyJugs, paymentCollected);
+              },
+              child: const Text('Confirm & Close', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _finalizeDelivery(int emptyJugsCollected, bool paymentCollected) async {
     setState(() => _isLoading = true);
     try {
       await supabase
           .from('orders')
-          .update({'status': 'done'})
+          .update({
+            'status': 'done',
+            'empty_jugs_returned': emptyJugsCollected,
+            'payment_collected': paymentCollected,
+          })
           .eq('id', _currentActiveOrder!['id']);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Delivery Completed! 🎉'), backgroundColor: Colors.green)
+          const SnackBar(
+            content: Text('Delivery Completed! 🎉'), 
+            backgroundColor: Colors.green,
+          ),
         );
-        // Instantly refreshes and calculates the route to the NEXT closest house!
         _fetchActiveDelivery(); 
       }
     } catch (e) {
@@ -234,6 +355,16 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
         title: const Text('Driver Dashboard', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
         backgroundColor: Colors.blueGrey.shade900,
         actions: [
+          IconButton(
+            icon: const Icon(Icons.person, color: Colors.white),
+            tooltip: 'Driver Profile',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const DriverProfileScreen()),
+              );
+            },
+          ),
           IconButton(icon: const Icon(Icons.refresh, color: Colors.white), onPressed: _fetchActiveDelivery, tooltip: 'Refresh Queue'),
           IconButton(icon: const Icon(Icons.logout, color: Colors.redAccent), onPressed: _signOut, tooltip: 'Sign Out'),
         ],
@@ -249,7 +380,6 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
                       child: _destination == null
                           ? const Center(child: Text('Map loading...'))
                           : GoogleMap(
-                              // Safely centers on the Red Pin without crashing the controller
                               initialCameraPosition: CameraPosition(target: _destination!, zoom: 15.0),
                               markers: _allDropoffMarkers,
                               polylines: _polylines,
@@ -304,7 +434,16 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
                 children: [
                   Text('Order #$shortId', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87)),
                   const SizedBox(height: 4),
-                  Text('Deliver to: $_customerName', style: const TextStyle(fontSize: 14, color: Colors.grey, fontWeight: FontWeight.bold)),
+                  Row(
+                    children: [
+                      Text('Deliver to: $_customerName', style: const TextStyle(fontSize: 14, color: Colors.grey, fontWeight: FontWeight.bold)),
+                      const SizedBox(width: 8),
+                      InkWell(
+                        onTap: () => _makePhoneCall(_customerPhone, 'Customer'),
+                        child: const Icon(Icons.phone, size: 18, color: Colors.green),
+                      ),
+                    ],
+                  ),
                 ],
               ),
               Container(
@@ -314,18 +453,37 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
               ),
             ],
           ),
-          const Divider(height: 32, thickness: 1),
-          _buildDetailRow(Icons.water_drop, 'Payload:', '${_currentActiveOrder!['jugs_ordered']} Jugs'),
+          const Divider(height: 24, thickness: 1),
+          Row(
+            children: [
+              Icon(Icons.store, color: Colors.blue.shade700, size: 18),
+              const SizedBox(width: 8),
+              Text('Station: $_stationName', style: const TextStyle(fontSize: 13, color: Colors.blueGrey)),
+              const Spacer(),
+              TextButton.icon(
+                onPressed: () => _makePhoneCall(_stationPhone, 'Water Station'),
+                icon: const Icon(Icons.phone, size: 16, color: Colors.green),
+                label: const Text('Call Station', style: TextStyle(fontSize: 12, color: Colors.green)),
+                style: TextButton.styleFrom(
+                  padding: EdgeInsets.zero,
+                  minimumSize: const Size(50, 30),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+              ),
+            ],
+          ),
           const SizedBox(height: 12),
+          _buildDetailRow(Icons.water_drop, 'Payload:', '${_currentActiveOrder!['jugs_ordered']} Jugs'),
+          const SizedBox(height: 8),
           _buildDetailRow(Icons.payments, 'Collect:', '₱${_totalAmount.toStringAsFixed(2)}'),
           const Spacer(),
           ElevatedButton.icon(
-            onPressed: _completeDelivery,
+            onPressed: _showCompletionDialog,
             icon: const Icon(Icons.check_circle, size: 28, color: Colors.white),
             label: const Text('COMPLETE DELIVERY', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.green.shade600,
-              padding: const EdgeInsets.symmetric(vertical: 20),
+              padding: const EdgeInsets.symmetric(vertical: 16),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             ),
           ),

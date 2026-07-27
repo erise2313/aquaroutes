@@ -2,7 +2,6 @@ import 'package:aquaroute/screens/auth/login_screen.dart';
 import 'package:aquaroute/screens/merchant/location_picker_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-// Adjust this import to point to your actual settings/logout screen if needed
 import 'settings_screen.dart';
 
 bool _isLoggingOut = false;
@@ -11,11 +10,13 @@ Map<String, dynamic> buildProfileUpdatePayload({
   required String fullName,
   required String businessName,
   required String stationAddress,
+  required String phoneNumber,
 }) {
   return {
     'full_name': fullName.trim(),
     'business_name': businessName.trim(),
     'station_address': stationAddress.trim(),
+    'phone_number': phoneNumber.trim(),
   };
 }
 
@@ -32,23 +33,20 @@ class _MerchantProfileScreenState extends State<MerchantProfileScreen> {
   bool _isLoading = true;
   bool _isSaving = false;
   Map<String, dynamic>? _profileData;
-  late final TextEditingController _fullNameController;
-  late final TextEditingController _businessNameController;
-  late final TextEditingController _stationAddressController;
-  late final TextEditingController _emailController;
-  late final TextEditingController _latitudeController;
-  late final TextEditingController _longitudeController;
+
+  final TextEditingController _fullNameController = TextEditingController();
+  final TextEditingController _businessNameController = TextEditingController();
+  final TextEditingController _stationAddressController = TextEditingController();
+  final TextEditingController _phoneController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _latitudeController = TextEditingController();
+  final TextEditingController _longitudeController = TextEditingController();
+  
   int _selectedTabIndex = 0;
 
   @override
   void initState() {
     super.initState();
-    _fullNameController = TextEditingController();
-    _businessNameController = TextEditingController();
-    _stationAddressController = TextEditingController();
-    _emailController = TextEditingController();
-    _latitudeController = TextEditingController();
-    _longitudeController = TextEditingController();
     _fetchProfileData();
   }
 
@@ -57,6 +55,7 @@ class _MerchantProfileScreenState extends State<MerchantProfileScreen> {
     _fullNameController.dispose();
     _businessNameController.dispose();
     _stationAddressController.dispose();
+    _phoneController.dispose();
     _emailController.dispose();
     _latitudeController.dispose();
     _longitudeController.dispose();
@@ -64,30 +63,24 @@ class _MerchantProfileScreenState extends State<MerchantProfileScreen> {
   }
 
   Future<void> _logout() async {
-    // 1. Immediately set the loading state so the button knows to spin
     setState(() => _isLoggingOut = true);
 
     try {
-      // 2. Perform the sign-out
       await supabase.auth.signOut();
     } catch (e) {
       debugPrint("Logout error: $e");
     } finally {
-      // 3. ALWAYS reset the state, even if the logout failed
       if (mounted) {
         setState(() => _isLoggingOut = false);
-
-        // 4. Force the navigation to reset the entire stack
         Navigator.pushAndRemoveUntil(
           context,
           MaterialPageRoute(builder: (context) => const LoginScreen()),
-          (route) => false, // This kills the back-button trail
+          (route) => false,
         );
       }
     }
   }
 
-  // 1. Secure Database Read
   Future<void> _fetchProfileData() async {
     try {
       final userId = supabase.auth.currentUser?.id;
@@ -97,22 +90,18 @@ class _MerchantProfileScreenState extends State<MerchantProfileScreen> {
           .from('user_profiles')
           .select()
           .eq('id', userId)
-          .maybeSingle(); // Failsafe query
+          .maybeSingle();
 
       if (mounted) {
         setState(() {
           _profileData = data;
-          _fullNameController.text =
-              (_profileData?['full_name'] as String?) ?? '';
-          _businessNameController.text =
-              (_profileData?['business_name'] as String?) ?? '';
-          _stationAddressController.text =
-              (_profileData?['station_address'] as String?) ?? '';
+          _fullNameController.text = (_profileData?['full_name'] as String?) ?? '';
+          _businessNameController.text = (_profileData?['business_name'] as String?) ?? '';
+          _stationAddressController.text = (_profileData?['station_address'] as String?) ?? '';
+          _phoneController.text = (_profileData?['phone_number'] as String?) ?? '';
           _emailController.text = supabase.auth.currentUser?.email ?? '';
-          _latitudeController.text =
-              (_profileData?['latitude'] as double?)?.toString() ?? '';
-          _longitudeController.text =
-              (_profileData?['longitude'] as double?)?.toString() ?? '';
+          _latitudeController.text = (_profileData?['latitude'] as double?)?.toString() ?? '';
+          _longitudeController.text = (_profileData?['longitude'] as double?)?.toString() ?? '';
           _isLoading = false;
         });
       }
@@ -136,8 +125,7 @@ class _MerchantProfileScreenState extends State<MerchantProfileScreen> {
       MaterialPageRoute(
         builder: (context) => LocationPickerScreen(
           initialLatitude: double.tryParse(_latitudeController.text) ?? 14.0583,
-          initialLongitude:
-              double.tryParse(_longitudeController.text) ?? 121.0363,
+          initialLongitude: double.tryParse(_longitudeController.text) ?? 121.0363,
           initialStationName: _businessNameController.text,
         ),
       ),
@@ -154,9 +142,7 @@ class _MerchantProfileScreenState extends State<MerchantProfileScreen> {
 
   Future<void> _saveProfile() async {
     final userId = supabase.auth.currentUser?.id;
-    if (userId == null) {
-      return;
-    }
+    if (userId == null) return;
 
     setState(() => _isSaving = true);
 
@@ -165,31 +151,45 @@ class _MerchantProfileScreenState extends State<MerchantProfileScreen> {
         fullName: _fullNameController.text,
         businessName: _businessNameController.text,
         stationAddress: _stationAddressController.text,
+        phoneNumber: _phoneController.text,
       );
+
+      double? lat;
+      double? lng;
 
       if (_latitudeController.text.isNotEmpty &&
           _longitudeController.text.isNotEmpty) {
-        final lat = double.tryParse(_latitudeController.text);
-        final lng = double.tryParse(_longitudeController.text);
+        lat = double.tryParse(_latitudeController.text);
+        lng = double.tryParse(_longitudeController.text);
         if (lat != null && lng != null) {
           payload['latitude'] = lat;
           payload['longitude'] = lng;
         }
       }
 
+      // 1. Update user_profiles including phone_number
       await supabase.from('user_profiles').update(payload).eq('id', userId);
+
+      // 2. Also update water_stations using owner_id
+      if (lat != null && lng != null) {
+        await supabase.from('water_stations').update({
+          'station_name': _businessNameController.text.trim(),
+          'latitude': lat,
+          'longitude': lng,
+        }).eq('owner_id', userId);
+      }
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Profile updated successfully')),
+          const SnackBar(content: Text('Profile and station location updated successfully!')),
         );
       }
     } catch (e) {
       debugPrint('Failed to update profile: $e');
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Failed to update profile: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to update profile: $e')),
+        );
       }
     } finally {
       if (mounted) {
@@ -229,12 +229,9 @@ class _MerchantProfileScreenState extends State<MerchantProfileScreen> {
 
   Widget _buildProfileContent() {
     final String ownerName = _profileData?['full_name'] ?? "Unknown Owner";
-    final String businessName =
-        _profileData?['business_name'] ?? "Unnamed Station";
-    final String address =
-        _profileData?['station_address'] ?? "Address not provided";
-    final String kycStatus = _profileData?['kyc_status'] ?? "pending_upload";
+    final String businessName = _profileData?['business_name'] ?? "Unnamed Station";
     final String email = supabase.auth.currentUser?.email ?? "";
+    final String kycStatus = _profileData?['kyc_status'] ?? "pending_upload";
 
     return SafeArea(
       child: Padding(
@@ -247,7 +244,6 @@ class _MerchantProfileScreenState extends State<MerchantProfileScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // 🚨 UPGRADED HEADER CARD (Matches Customer Layout) 🚨
                     Container(
                       padding: const EdgeInsets.all(24),
                       decoration: BoxDecoration(
@@ -277,7 +273,6 @@ class _MerchantProfileScreenState extends State<MerchantProfileScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                // Big Text: Merchant's Full Name
                                 Text(
                                   ownerName,
                                   style: const TextStyle(
@@ -287,7 +282,6 @@ class _MerchantProfileScreenState extends State<MerchantProfileScreen> {
                                   ),
                                 ),
                                 const SizedBox(height: 4),
-                                // Small Text: Water Station Name & Email
                                 Text(
                                   "$businessName\n$email",
                                   style: const TextStyle(
@@ -302,12 +296,10 @@ class _MerchantProfileScreenState extends State<MerchantProfileScreen> {
                         ],
                       ),
                     ),
-
                     const SizedBox(height: 24),
                     const Divider(),
                     const SizedBox(height: 24),
                     _buildKycBanner(kycStatus),
-
                     const SizedBox(height: 24),
                     DefaultTabController(
                       length: 3,
@@ -316,8 +308,7 @@ class _MerchantProfileScreenState extends State<MerchantProfileScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           TabBar(
-                            onTap: (index) =>
-                                setState(() => _selectedTabIndex = index),
+                            onTap: (index) => setState(() => _selectedTabIndex = index),
                             labelColor: Colors.blue.shade700,
                             unselectedLabelColor: Colors.grey,
                             indicatorColor: Colors.blue.shade700,
@@ -329,7 +320,7 @@ class _MerchantProfileScreenState extends State<MerchantProfileScreen> {
                           ),
                           const SizedBox(height: 16),
                           SizedBox(
-                            height: 320,
+                            height: 380,
                             child: TabBarView(
                               children: [
                                 _buildEditableProfileForm(),
@@ -380,7 +371,6 @@ class _MerchantProfileScreenState extends State<MerchantProfileScreen> {
     );
   }
 
-  // Dynamic UI for the Flowchart Requirement
   Widget _buildKycBanner(String status) {
     if (status == 'approved') {
       return Container(
@@ -405,7 +395,6 @@ class _MerchantProfileScreenState extends State<MerchantProfileScreen> {
       );
     }
 
-    // Default state: Pending Upload
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -437,9 +426,7 @@ class _MerchantProfileScreenState extends State<MerchantProfileScreen> {
           ),
           const SizedBox(height: 16),
           ElevatedButton.icon(
-            onPressed: () {
-              // TODO: Implement file picker / camera logic for permit upload
-            },
+            onPressed: () {},
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.amber.shade600,
               foregroundColor: Colors.white,
@@ -474,6 +461,13 @@ class _MerchantProfileScreenState extends State<MerchantProfileScreen> {
               controller: _fullNameController,
               label: 'Owner Name',
               hint: 'Enter your full name',
+            ),
+            const SizedBox(height: 12),
+            _buildInputField(
+              controller: _phoneController,
+              label: 'Phone Number',
+              hint: 'Enter contact phone number',
+              keyboardType: TextInputType.phone,
             ),
             const SizedBox(height: 12),
             _buildInputField(
@@ -633,11 +627,13 @@ class _MerchantProfileScreenState extends State<MerchantProfileScreen> {
     int maxLines = 1,
     bool readOnly = false,
     Color? backgroundColor,
+    TextInputType keyboardType = TextInputType.text,
   }) {
     return TextField(
       controller: controller,
       maxLines: maxLines,
       readOnly: readOnly,
+      keyboardType: keyboardType,
       decoration: InputDecoration(
         labelText: label,
         hintText: hint,

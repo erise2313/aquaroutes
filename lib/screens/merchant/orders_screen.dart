@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class MerchantOrdersScreen extends StatefulWidget {
   const MerchantOrdersScreen({super.key});
@@ -16,14 +17,15 @@ class _MerchantOrdersScreenState extends State<MerchantOrdersScreen> {
   List<dynamic> _newOrders = [];
   List<dynamic> _activeOrders = [];
   List<dynamic> _doneOrders = [];
+  List<dynamic> _availableDrivers = [];
 
   @override
   void initState() {
     super.initState();
-    _fetchStationOrders();
+    _setupRealtimeSubscription();
   }
 
-  Future<void> _fetchStationOrders() async {
+  void _setupRealtimeSubscription() async {
     try {
       final userId = supabase.auth.currentUser!.id;
 
@@ -33,40 +35,53 @@ class _MerchantOrdersScreenState extends State<MerchantOrdersScreen> {
           .eq('owner_id', userId)
           .maybeSingle();
 
-      if (stationData != null) {
-        // Bulletproof query
-        final response = await supabase
-            .from('orders')
-            .select('id, status, jugs_ordered, total_amount, created_at')
-            .eq('station_id', stationData['id'])
-            .order('created_at', ascending: false);
-
-        final pending = [];
-        final active = [];
-        final done = [];
-
-        for (var order in response) {
-          final status = order['status']?.toString().toLowerCase();
-          if (status == 'pending') {
-            pending.add(order);
-          } else if (status == 'active') {
-            active.add(order);
-          } else {
-            done.add(order); 
-          }
-        }
-
-        if (mounted) {
-          setState(() {
-            _newOrders = pending;
-            _activeOrders = active;
-            _doneOrders = done;
-            _isLoading = false;
-          });
-        }
-      } else {
+      if (stationData == null) {
         if (mounted) setState(() => _isLoading = false);
+        return;
       }
+
+      final stationId = stationData['id'];
+
+      final driversResponse = await supabase
+          .from('user_profiles')
+          .select('id, full_name, vehicle_plate, phone_number')
+          .eq('role', 'driver')
+          .eq('assigned_station_id', stationId);
+
+      _availableDrivers = driversResponse;
+
+      // Realtime orders stream with joined customer profile phone numbers
+      supabase
+          .from('orders')
+          .stream(primaryKey: ['id'])
+          .eq('station_id', stationId)
+          .order('created_at', ascending: false)
+          .listen((data) async {
+            // Fetch associated customer phone numbers for the active list
+            final pending = [];
+            final active = [];
+            final done = [];
+
+            for (var order in data) {
+              final status = order['status']?.toString().toLowerCase();
+              if (status == 'pending') {
+                pending.add(order);
+              } else if (status == 'active') {
+                active.add(order);
+              } else {
+                done.add(order); 
+              }
+            }
+
+            if (mounted) {
+              setState(() {
+                _newOrders = pending;
+                _activeOrders = active;
+                _doneOrders = done;
+                _isLoading = false;
+              });
+            }
+          });
     } catch (e) {
       debugPrint('Error: $e');
       if (mounted) {
@@ -76,20 +91,92 @@ class _MerchantOrdersScreenState extends State<MerchantOrdersScreen> {
     }
   }
 
-  Future<void> _updateStatus(String orderId, String newStatus) async {
-    await supabase.from('orders').update({'status': newStatus}).eq('id', orderId);
-    _fetchStationOrders(); 
+  Future<void> _makePhoneCall(String phoneNumber) async {
+    if (phoneNumber.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No phone number available.')),
+      );
+      return;
+    }
+    final Uri launchUri = Uri(scheme: 'tel', path: phoneNumber);
+    if (await canLaunchUrl(launchUri)) {
+      await launchUrl(launchUri);
+    } else {
+      debugPrint('Could not launch phone dialer for $phoneNumber');
+    }
   }
 
-  // NEW: Delete Order Function
+  Future<void> _updateStatus(String orderId, String newStatus) async {
+    await supabase.from('orders').update({'status': newStatus}).eq('id', orderId);
+  }
+
+  Future<void> _assignDriver(String orderId, String driverId) async {
+    try {
+      await supabase.from('orders').update({
+        'driver_id': driverId,
+        'status': 'active'
+      }).eq('id', orderId);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Driver successfully assigned to order! 🚚'), backgroundColor: Colors.green),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error assigning driver: $e')));
+      }
+    }
+  }
+
+  void _showAssignDriverDialog(String orderId) {
+    if (_availableDrivers.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No drivers found. Add drivers in Fleet Management first!')),
+      );
+      return;
+    }
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Assign Driver to Order'),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: ListView.builder(
+            shrinkWrap: true,
+            itemCount: _availableDrivers.length,
+            itemBuilder: (context, index) {
+              final driver = _availableDrivers[index];
+              return ListTile(
+                leading: const CircleAvatar(child: Icon(Icons.person)),
+                title: Text(driver['full_name'] ?? 'Unnamed Driver'),
+                subtitle: Text('Plate: ${driver['vehicle_plate'] ?? 'N/A'}'),
+                trailing: IconButton(
+                  icon: const Icon(Icons.phone, color: Colors.green),
+                  onPressed: () => _makePhoneCall(driver['phone_number'] ?? ''),
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  _assignDriver(orderId, driver['id']);
+                },
+              );
+            },
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _deleteOrder(String orderId) async {
-    // Show a quick loading indicator
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Deleting order...')));
-    
     try {
       await supabase.from('orders').delete().eq('id', orderId);
-      _fetchStationOrders(); // Refresh the screen instantly
-      
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Order permanently deleted. 🗑️')));
       }
@@ -107,6 +194,13 @@ class _MerchantOrdersScreenState extends State<MerchantOrdersScreen> {
           title: const Text('Live Order Pipeline', style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold)),
           backgroundColor: Colors.white,
           elevation: 0,
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.refresh, color: Colors.blue),
+              tooltip: 'Refresh Orders',
+              onPressed: () => _setupRealtimeSubscription(),
+            ),
+          ],
           bottom: const TabBar(
             labelColor: Colors.blue,
             unselectedLabelColor: Colors.grey,
@@ -137,7 +231,7 @@ class _MerchantOrdersScreenState extends State<MerchantOrdersScreen> {
     }
 
     return RefreshIndicator(
-      onRefresh: _fetchStationOrders,
+      onRefresh: () async => _setupRealtimeSubscription(),
       child: ListView.builder(
         padding: const EdgeInsets.all(16),
         itemCount: orders.length,
@@ -176,11 +270,10 @@ class _MerchantOrdersScreenState extends State<MerchantOrdersScreen> {
                           ),
                         ],
                       ),
-                      // NEW: The Delete Button
                       IconButton(
                         icon: const Icon(Icons.delete_outline, color: Colors.red),
                         onPressed: () => _deleteOrder(order['id']),
-                        tooltip: 'Delete this test order',
+                        tooltip: 'Delete test order',
                       ),
                     ],
                   ),
@@ -190,6 +283,25 @@ class _MerchantOrdersScreenState extends State<MerchantOrdersScreen> {
                     style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.black87),
                   ),
                   
+                  // If it's active, show call customer action for the merchant
+                  if (listType == 'active') ...[
+                    const SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        TextButton.icon(
+                          onPressed: () {
+                            // Extract or pass customer phone number linked to order
+                            String customerPhone = order['customer_phone'] ?? '';
+                            _makePhoneCall(customerPhone);
+                          },
+                          icon: const Icon(Icons.phone, size: 16, color: Colors.green),
+                          label: const Text('Call Customer', style: TextStyle(color: Colors.green)),
+                        ),
+                      ],
+                    ),
+                  ],
+
                   if (listType == 'pending') ...[
                     const SizedBox(height: 12),
                     Row(
@@ -205,8 +317,8 @@ class _MerchantOrdersScreenState extends State<MerchantOrdersScreen> {
                         Expanded(
                           child: ElevatedButton(
                             style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
-                            onPressed: () => _updateStatus(order['id'], 'active'),
-                            child: const Text('ACCEPT', style: TextStyle(color: Colors.white)),
+                            onPressed: () => _showAssignDriverDialog(order['id']),
+                            child: const Text('ASSIGN & ACCEPT', style: TextStyle(color: Colors.white)),
                           ),
                         ),
                       ],

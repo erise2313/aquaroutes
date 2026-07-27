@@ -112,15 +112,14 @@ class RouteOptimizationService {
 
       return encodedPolyline;
     } catch (e) {
-      rethrow; // Re-throwing ensures your tracking_screen catches the message
+      rethrow; 
     } finally {
       authClient.close();
     }
   }
 
   // =====================================================================
-  // NEW DRIVER MANIFEST API CALL
-  // Returns both the polyline AND the sorted queue sequence
+  // DRIVER MANIFEST API CALL (Crash-Proof Index Parsing)
   // =====================================================================
   Future<Map<String, dynamic>> calculateDriverManifest(
     Map<String, double> stationLocation,
@@ -150,7 +149,7 @@ class RouteOptimizationService {
     final Map<String, dynamic> requestBody = {
       "populatePolylines": true,
       "populateTransitionPolylines": true,
-      "considerRoadTraffic": true, // Maintained your traffic settings!
+      "considerRoadTraffic": true,
       "model": {
         "globalStartTime": globalStartTime,
         "globalEndTime": globalEndTime,
@@ -172,7 +171,7 @@ class RouteOptimizationService {
       final data = jsonDecode(response.body) as Map<String, dynamic>;
       final String polyline = _extractRoutePolyline(data) ?? '';
 
-      // Extrapolate the AI's optimized sequence from the 'visits' array
+      // 🛡️ CRASH-PROOF: Safely parse shipmentIndex as an integer regardless of type representation
       List<int> sequence = [];
       try {
         final routes = data['routes'] as List?;
@@ -181,7 +180,8 @@ class RouteOptimizationService {
           if (visits != null) {
             for (var visit in visits) {
               if (visit.containsKey('shipmentIndex')) {
-                sequence.add(visit['shipmentIndex'] as int);
+                final indexVal = int.tryParse(visit['shipmentIndex'].toString()) ?? 0;
+                sequence.add(indexVal);
               }
             }
           }
