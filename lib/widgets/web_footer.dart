@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../constants/web_theme.dart';
 import '../providers/web_locale_provider.dart';
 import '../screens/web/about_screen.dart';
 import '../screens/web/contact_screen.dart';
@@ -13,6 +15,8 @@ import '../screens/web/resources_screen.dart';
 import '../screens/web/stations_directory_screen.dart';
 import '../screens/web/verify_accreditation_screen.dart';
 import '../web_strings.dart';
+import 'web_page_route.dart';
+import 'web_seal.dart';
 
 /// Shared footer for every public website page. Office address/hours are a
 /// clearly-labeled placeholder -- no real WASA office details exist yet, so
@@ -28,8 +32,8 @@ class WebFooter extends ConsumerWidget {
 
     return Container(
       width: double.infinity,
-      color: const Color(0xFF0D1B2A),
-      padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 24),
+      color: WebTheme.deepTeal,
+      padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 24),
       child: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 1100),
@@ -44,10 +48,16 @@ class WebFooter extends ConsumerWidget {
                     width: 260,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
-                      children: const [
-                        Text('GENTRI WASA', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
-                        SizedBox(height: 8),
-                        Text(
+                      children: [
+                        Row(
+                          children: [
+                            const WebSeal(size: 28),
+                            const SizedBox(width: 10),
+                            Text('GENTRI WASA', style: GoogleFonts.fraunces(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 18)),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        const Text(
                           'Water Station Association of General Trias, Cavite.',
                           style: TextStyle(color: Colors.white70, fontSize: 13),
                         ),
@@ -59,7 +69,7 @@ class WebFooter extends ConsumerWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(t('footer_quick_links'), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                        Text(t('footer_quick_links'), style: WebTheme.eyebrow.copyWith(fontSize: 11)),
                         const SizedBox(height: 12),
                         _FooterLink(label: t('nav_about'), onTap: () => _push(context, const AboutScreen())),
                         _FooterLink(label: t('nav_stations'), onTap: () => _push(context, const StationsDirectoryScreen())),
@@ -73,7 +83,7 @@ class WebFooter extends ConsumerWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(t('footer_resources'), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                        Text(t('footer_resources'), style: WebTheme.eyebrow.copyWith(fontSize: 11)),
                         const SizedBox(height: 12),
                         _FooterLink(label: t('faq_title'), onTap: () => _push(context, const FaqScreen())),
                         _FooterLink(label: t('verify_title'), onTap: () => _push(context, const VerifyAccreditationScreen())),
@@ -88,7 +98,7 @@ class WebFooter extends ConsumerWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(t('footer_office'), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                        Text(t('footer_office'), style: WebTheme.eyebrow.copyWith(fontSize: 11)),
                         const SizedBox(height: 12),
                         const Text('[Placeholder] Association Office Address, General Trias, Cavite', style: TextStyle(color: Colors.white70, fontSize: 13)),
                         const SizedBox(height: 4),
@@ -115,7 +125,7 @@ class WebFooter extends ConsumerWidget {
   }
 
   void _push(BuildContext context, Widget screen) {
-    Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => screen));
+    Navigator.pushReplacement(context, webPageRoute(screen));
   }
 }
 

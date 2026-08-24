@@ -41,21 +41,43 @@ declare
     'admin@gentriwasa.test', 'owner1@gentriwasa.test', 'owner2@gentriwasa.test',
     'driver1@gentriwasa.test', 'driver2@gentriwasa.test', 'customer1@gentriwasa.test'
   ];
+  v_old_profile_ids uuid[];
+  v_old_station_ids uuid[];
 begin
 
   -- -------------------------------------------------------------------
-  -- 0. Idempotency: if this script was already run before, these 6 test
-  -- accounts still exist in auth.users (reset_and_rebuild.sql
-  -- deliberately never touches auth.users, only app-level tables) --
-  -- re-running this script would otherwise collide on the unique email
-  -- constraint. Clean up any prior run's rows first, in FK-safe order
-  -- (workers/water_stations reference profiles without cascade, so they
-  -- must go before the profile/auth.users row that cascades the rest).
+  -- 0. Idempotency: if this script was already run before (or these
+  -- accounts picked up other activity in the meantime -- floor prices,
+  -- bulletin posts, orders, jug ledger entries, etc., all reference
+  -- profiles/stations with no cascade), re-running would collide on the
+  -- unique email constraint and/or fail on a foreign key. Clean up every
+  -- table that references these profiles or their stations first, in
+  -- FK-safe order, before removing the profiles/stations/auth users
+  -- themselves.
   -- -------------------------------------------------------------------
-  delete from workers where profile_id in (select id from auth.users where email = any(test_emails));
-  delete from water_stations where owner_profile_id in (select id from auth.users where email = any(test_emails));
-  delete from memberships where profile_id in (select id from auth.users where email = any(test_emails));
-  delete from auth.users where email = any(test_emails);
+  select array_agg(id) into v_old_profile_ids from auth.users where email = any(test_emails);
+  select array_agg(id) into v_old_station_ids from water_stations where owner_profile_id = any(v_old_profile_ids);
+
+  if v_old_profile_ids is not null then
+    delete from bulletin_reactions where profile_id = any(v_old_profile_ids);
+    delete from bulletin_comments where profile_id = any(v_old_profile_ids);
+    delete from reviews where profile_id = any(v_old_profile_ids) or station_id = any(v_old_station_ids);
+    delete from jug_settlements where proposed_by = any(v_old_profile_ids) or confirmed_by = any(v_old_profile_ids)
+      or holder_station_id = any(v_old_station_ids) or owner_station_id = any(v_old_station_ids);
+    delete from jug_ledger_entries where recorded_by = any(v_old_profile_ids)
+      or holder_station_id = any(v_old_station_ids) or owner_station_id = any(v_old_station_ids);
+    delete from orders where customer_profile_id = any(v_old_profile_ids) or station_id = any(v_old_station_ids);
+    delete from bulletins where posted_by = any(v_old_profile_ids);
+    delete from floor_prices where set_by = any(v_old_profile_ids);
+    delete from resources where uploaded_by = any(v_old_profile_ids);
+    delete from events where created_by = any(v_old_profile_ids);
+    delete from worker_incidents where reported_by_profile_id = any(v_old_profile_ids) or resolved_by = any(v_old_profile_ids);
+    delete from worker_station_history where ended_by_profile_id = any(v_old_profile_ids) or station_id = any(v_old_station_ids);
+    delete from memberships where profile_id = any(v_old_profile_ids);
+    delete from workers where profile_id = any(v_old_profile_ids) or station_id = any(v_old_station_ids);
+    delete from water_stations where owner_profile_id = any(v_old_profile_ids);
+    delete from auth.users where id = any(v_old_profile_ids);
+  end if;
 
   -- -------------------------------------------------------------------
   -- 1. Auth users (email/password, pre-confirmed -- no email sent).

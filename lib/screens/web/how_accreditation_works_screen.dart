@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../constants/app_colors.dart';
+import '../../constants/web_theme.dart';
 import '../../providers/web_locale_provider.dart';
 import '../../web_strings.dart';
 import '../../widgets/back_to_top_button.dart';
@@ -9,6 +9,8 @@ import '../../widgets/fade_slide_in.dart';
 import '../../widgets/hover_scale.dart';
 import '../../widgets/web_footer.dart';
 import '../../widgets/web_nav_bar.dart';
+import '../../widgets/web_page_header.dart';
+import '../../widgets/web_page_route.dart';
 import '../auth/registration_screen.dart';
 
 /// Mirrors the real permit_type enum (supabase/migrations/0004_permits.sql)
@@ -53,6 +55,7 @@ class _HowAccreditationWorksScreenState extends ConsumerState<HowAccreditationWo
     ];
 
     return Scaffold(
+      backgroundColor: WebTheme.paper,
       appBar: const WebNavBar(currentPage: WebPage.howItWorks),
       body: Stack(
         children: [
@@ -60,6 +63,7 @@ class _HowAccreditationWorksScreenState extends ConsumerState<HowAccreditationWo
             controller: _scrollController,
             child: Column(
               children: [
+                FadeSlideIn(child: WebPageHeader(eyebrow: 'THE PROCESS', title: t('how_it_works_title'), subtitle: t('how_it_works_intro'))),
                 Center(
                   child: ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 900),
@@ -68,47 +72,31 @@ class _HowAccreditationWorksScreenState extends ConsumerState<HowAccreditationWo
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          FadeSlideIn(
-                            child: Text(t('how_it_works_title'), style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
-                          ),
-                          const SizedBox(height: 16),
-                          FadeSlideIn(
-                            delay: const Duration(milliseconds: 80),
-                            child: Text(t('how_it_works_intro'), style: const TextStyle(fontSize: 16, height: 1.5)),
-                          ),
-                          const SizedBox(height: 32),
-                          for (var i = 0; i < steps.length; i++)
-                            FadeSlideIn(
-                              delay: Duration(milliseconds: 140 + i * 60),
-                              child: _stepTile(i + 1, steps[i].$1, steps[i].$2),
+                          for (var i = 0; i < steps.length; i++) _stepTile(i + 1, steps[i].$1, steps[i].$2),
+                          const SizedBox(height: 24),
+                          Text('Required Documents', style: WebTheme.display(fontSize: 22)),
+                          const SizedBox(height: 12),
+                          ..._requiredPermits.map(
+                            (p) => Container(
+                              margin: const EdgeInsets.only(bottom: 8),
+                              decoration: BoxDecoration(color: WebTheme.foam, borderRadius: BorderRadius.circular(10)),
+                              child: ListTile(
+                                leading: const Icon(Icons.description_outlined, color: WebTheme.harborBlue),
+                                title: Text(p.$1, style: const TextStyle(color: WebTheme.inkNavy, fontWeight: FontWeight.w600)),
+                                subtitle: Text(p.$2),
+                              ),
                             ),
+                          ),
                           const SizedBox(height: 32),
-                          FadeSlideIn(
-                            delay: Duration(milliseconds: 140 + steps.length * 60),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text('Required Documents', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                                const SizedBox(height: 12),
-                                ..._requiredPermits.map(
-                                  (p) => Card(
-                                    margin: const EdgeInsets.only(bottom: 8),
-                                    child: ListTile(
-                                      leading: const Icon(Icons.description_outlined, color: AppColors.primary),
-                                      title: Text(p.$1),
-                                      subtitle: Text(p.$2),
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(height: 32),
-                                HoverScale(
-                                  child: ElevatedButton(
-                                    onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const RegistrationScreen())),
-                                    style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14)),
-                                    child: Text(t('for_owners_cta'), style: const TextStyle(color: Colors.white)),
-                                  ),
-                                ),
-                              ],
+                          HoverScale(
+                            child: ElevatedButton(
+                              onPressed: () => Navigator.push(context, webPageRoute(const RegistrationScreen())),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: WebTheme.harborBlue,
+                                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                              ),
+                              child: Text(t('for_owners_cta'), style: const TextStyle(color: Colors.white)),
                             ),
                           ),
                         ],
@@ -128,13 +116,13 @@ class _HowAccreditationWorksScreenState extends ConsumerState<HowAccreditationWo
 
   Widget _stepTile(int number, String title, String description) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 20),
+      padding: const EdgeInsets.only(bottom: 22),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           CircleAvatar(
             radius: 16,
-            backgroundColor: AppColors.primary,
+            backgroundColor: WebTheme.harborBlue,
             child: Text('$number', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
           ),
           const SizedBox(width: 16),
@@ -142,7 +130,7 @@ class _HowAccreditationWorksScreenState extends ConsumerState<HowAccreditationWo
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: WebTheme.inkNavy)),
                 const SizedBox(height: 4),
                 Text(description, style: const TextStyle(color: Colors.grey, height: 1.4)),
               ],

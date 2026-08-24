@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import '../../constants/app_colors.dart';
+import '../../constants/web_theme.dart';
 import '../../models/resource.dart';
 import '../../providers/web_locale_provider.dart';
 import '../../services/resource_service.dart';
@@ -16,6 +16,7 @@ import '../../widgets/hover_scale.dart';
 import '../../widgets/skeleton_loader.dart';
 import '../../widgets/web_footer.dart';
 import '../../widgets/web_nav_bar.dart';
+import '../../widgets/web_page_header.dart';
 
 /// Public downloadable resources -- reuses ResourceService.fetchResources(),
 /// the same query backing resources_admin_screen.dart's upload/manage view.
@@ -67,6 +68,7 @@ class _ResourcesScreenState extends ConsumerState<ResourcesScreen> {
     String t(String key) => WebStrings.t(locale, key);
 
     return Scaffold(
+      backgroundColor: WebTheme.paper,
       appBar: const WebNavBar(currentPage: WebPage.resources),
       body: Stack(
         children: [
@@ -74,6 +76,7 @@ class _ResourcesScreenState extends ConsumerState<ResourcesScreen> {
             controller: _scrollController,
             child: Column(
               children: [
+                FadeSlideIn(child: WebPageHeader(eyebrow: 'DOWNLOADS', title: t('resources_title'), subtitle: t('resources_intro'))),
                 Center(
                   child: ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 800),
@@ -82,15 +85,6 @@ class _ResourcesScreenState extends ConsumerState<ResourcesScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          FadeSlideIn(
-                            child: Text(t('resources_title'), style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
-                          ),
-                          const SizedBox(height: 12),
-                          FadeSlideIn(
-                            delay: const Duration(milliseconds: 80),
-                            child: Text(t('resources_intro'), style: const TextStyle(fontSize: 16, height: 1.5)),
-                          ),
-                          const SizedBox(height: 24),
                           if (_isLoading)
                             const SkeletonList(count: 3, cardHeight: 72)
                           else if (_error != null)
@@ -98,8 +92,7 @@ class _ResourcesScreenState extends ConsumerState<ResourcesScreen> {
                           else if (_resources.isEmpty)
                             const Text('No resources available yet.', style: TextStyle(color: Colors.grey))
                           else
-                            for (var i = 0; i < _resources.length; i++)
-                              FadeSlideIn(delay: Duration(milliseconds: 140 + i * 50), child: _buildResourceCard(_resources[i])),
+                            for (final resource in _resources) _buildResourceCard(resource),
                         ],
                       ),
                     ),
@@ -118,13 +111,14 @@ class _ResourcesScreenState extends ConsumerState<ResourcesScreen> {
   Widget _buildResourceCard(Resource resource) {
     return HoverScale(
       scale: 1.01,
-      child: Card(
+      child: Container(
         margin: const EdgeInsets.only(bottom: 10),
+        decoration: BoxDecoration(color: WebTheme.foam, borderRadius: BorderRadius.circular(10)),
         child: ListTile(
           leading: const Icon(Icons.picture_as_pdf_outlined, color: Colors.red, size: 32),
-          title: Text(resource.title, style: const TextStyle(fontWeight: FontWeight.bold)),
+          title: Text(resource.title, style: const TextStyle(fontWeight: FontWeight.bold, color: WebTheme.inkNavy)),
           subtitle: Text('${resource.category} · Added ${DateFormat('MMM d, yyyy').format(resource.createdAt)}'),
-          trailing: const Icon(Icons.download, color: AppColors.primary),
+          trailing: const Icon(Icons.download, color: WebTheme.harborBlue),
           onTap: () => launchUrl(Uri.parse(resource.fileUrl)),
         ),
       ),

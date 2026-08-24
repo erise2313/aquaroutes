@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 
-import '../../constants/app_colors.dart';
+import '../../constants/web_theme.dart';
 import '../../models/bulletin.dart';
 import '../../models/station.dart';
 import '../../providers/web_locale_provider.dart';
@@ -12,13 +13,18 @@ import '../../services/supabase_service.dart';
 import '../../utils/formatters.dart';
 import '../../web_strings.dart';
 import '../../widgets/back_to_top_button.dart';
+import '../../widgets/count_up_text.dart';
 import '../../widgets/error_state.dart';
 import '../../widgets/fade_slide_in.dart';
 import '../../widgets/hover_scale.dart';
+import '../../widgets/scroll_reveal.dart';
 import '../../widgets/skeleton_loader.dart';
 import '../../widgets/star_rating.dart';
+import '../../widgets/wave_divider.dart';
 import '../../widgets/web_footer.dart';
 import '../../widgets/web_nav_bar.dart';
+import '../../widgets/web_page_route.dart';
+import '../../widgets/web_seal.dart';
 import '../auth/login_screen.dart';
 import '../auth/registration_screen.dart';
 import 'news_screen.dart';
@@ -44,6 +50,7 @@ class _OrgHomeScreenState extends ConsumerState<OrgHomeScreen> {
   List<PublicStation> _stations = [];
   List<Bulletin> _bulletins = [];
   final _scrollController = ScrollController();
+  bool _statsRevealed = false;
 
   @override
   void initState() {
@@ -91,6 +98,7 @@ class _OrgHomeScreenState extends ConsumerState<OrgHomeScreen> {
     final barangaysServed = _stations.map((s) => s.barangayName).whereType<String>().toSet().length;
 
     return Scaffold(
+      backgroundColor: WebTheme.paper,
       appBar: const WebNavBar(currentPage: WebPage.home),
       body: Stack(
         children: [
@@ -104,7 +112,7 @@ class _OrgHomeScreenState extends ConsumerState<OrgHomeScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: const [
-                            SkeletonBlock(height: 180, borderRadius: 16),
+                            SkeletonBlock(height: 220, borderRadius: 16),
                             SizedBox(height: 32),
                             SkeletonList(count: 3, cardHeight: 88),
                           ],
@@ -116,37 +124,41 @@ class _OrgHomeScreenState extends ConsumerState<OrgHomeScreen> {
               : _error != null
               ? ErrorState(message: _error!, onRetry: _load)
               : RefreshIndicator(
-              onRefresh: _load,
-              child: SingleChildScrollView(
-                controller: _scrollController,
-                physics: const AlwaysScrollableScrollPhysics(),
-                child: Column(
-                  children: [
-                    Center(
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 1100),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              FadeSlideIn(child: _buildHero(t)),
-                              const SizedBox(height: 32),
-                              FadeSlideIn(delay: const Duration(milliseconds: 100), child: _buildStatsStrip(t, accreditedCount, barangaysServed)),
-                              const SizedBox(height: 48),
-                              FadeSlideIn(delay: const Duration(milliseconds: 180), child: _buildStationsTeaser(t)),
-                              const SizedBox(height: 48),
-                              FadeSlideIn(delay: const Duration(milliseconds: 260), child: _buildNewsTeaser(t)),
-                            ],
+                  onRefresh: _load,
+                  child: SingleChildScrollView(
+                    controller: _scrollController,
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    child: Column(
+                      children: [
+                        FadeSlideIn(child: _buildHero(t)),
+                        const WaveDivider(topColor: WebTheme.deepTeal, bottomColor: WebTheme.paper),
+                        Center(
+                          child: ConstrainedBox(
+                            constraints: const BoxConstraints(maxWidth: 1100),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 24),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  ScrollReveal(
+                                    onVisible: () => setState(() => _statsRevealed = true),
+                                    child: _buildStatsStrip(t, accreditedCount, barangaysServed),
+                                  ),
+                                  const SizedBox(height: 56),
+                                  ScrollReveal(child: _buildStationsTeaser(t)),
+                                  const SizedBox(height: 56),
+                                  ScrollReveal(child: _buildNewsTeaser(t)),
+                                  const SizedBox(height: 40),
+                                ],
+                              ),
+                            ),
                           ),
                         ),
-                      ),
+                        const WebFooter(),
+                      ],
                     ),
-                    const WebFooter(),
-                  ],
+                  ),
                 ),
-              ),
-            ),
           BackToTopButton(controller: _scrollController),
         ],
       ),
@@ -155,39 +167,68 @@ class _OrgHomeScreenState extends ConsumerState<OrgHomeScreen> {
 
   Widget _buildHero(String Function(String) t) {
     return Container(
-      padding: const EdgeInsets.all(32),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(colors: [AppColors.primary, AppColors.accent]),
-        borderRadius: BorderRadius.circular(16),
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 64),
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [WebTheme.deepTeal, WebTheme.harborBlue]),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(t('hero_title'), style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 8),
-          Text(t('hero_subtitle'), style: const TextStyle(color: Colors.white, fontSize: 16)),
-          const SizedBox(height: 20),
-          Wrap(
-            spacing: 12,
-            runSpacing: 12,
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 1100),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              HoverScale(
-                child: ElevatedButton(
-                  onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const RegistrationScreen())),
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.white, foregroundColor: AppColors.primary),
-                  child: Text(t('hero_register_cta')),
-                ),
+              Row(
+                children: [
+                  const WebSeal(size: 22),
+                  const SizedBox(width: 8),
+                  Text('WATER STATION ASSOCIATION · GENERAL TRIAS', style: WebTheme.eyebrow.copyWith(fontSize: 11)),
+                ],
               ),
-              HoverScale(
-                child: OutlinedButton(
-                  onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const LoginScreen())),
-                  style: OutlinedButton.styleFrom(foregroundColor: Colors.white, side: const BorderSide(color: Colors.white)),
-                  child: Text(t('hero_admin_login_cta')),
-                ),
+              const SizedBox(height: 20),
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 640),
+                child: Text(t('hero_title'), style: WebTheme.heroDisplay()),
+              ),
+              const SizedBox(height: 16),
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 560),
+                child: Text(t('hero_subtitle'), style: const TextStyle(color: Colors.white70, fontSize: 16, height: 1.6)),
+              ),
+              const SizedBox(height: 28),
+              Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                children: [
+                  HoverScale(
+                    child: ElevatedButton(
+                      onPressed: () => Navigator.push(context, webPageRoute(const RegistrationScreen())),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: WebTheme.sealGold,
+                        foregroundColor: WebTheme.inkNavy,
+                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                      ),
+                      child: Text(t('hero_register_cta'), style: const TextStyle(fontWeight: FontWeight.w700)),
+                    ),
+                  ),
+                  HoverScale(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.push(context, webPageRoute(const LoginScreen())),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.white,
+                        side: const BorderSide(color: Colors.white54),
+                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                      ),
+                      child: Text(t('hero_admin_login_cta')),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -197,23 +238,30 @@ class _OrgHomeScreenState extends ConsumerState<OrgHomeScreen> {
       spacing: 16,
       runSpacing: 16,
       children: [
-        _statCard('$accreditedCount', t('stats_accredited_stations')),
-        _statCard('$barangaysServed', t('stats_barangays_served')),
+        _statCard(accreditedCount, t('stats_accredited_stations')),
+        _statCard(barangaysServed, t('stats_barangays_served')),
       ],
     );
   }
 
-  Widget _statCard(String value, String label) {
+  Widget _statCard(int value, String label) {
     return Container(
-      width: 220,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(color: AppColors.primary.withValues(alpha: 0.06), borderRadius: BorderRadius.circular(12)),
+      width: 240,
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(color: WebTheme.foam, borderRadius: BorderRadius.circular(10), border: Border.all(color: WebTheme.harborBlue.withValues(alpha: 0.08))),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(value, style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: AppColors.primary)),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              CountUpText(value: value, start: _statsRevealed, style: GoogleFonts.fraunces(fontSize: 36, fontWeight: FontWeight.w600, color: WebTheme.inkNavy)),
+              const SizedBox(width: 8),
+              Padding(padding: const EdgeInsets.only(bottom: 6), child: WebSeal(size: 18, outlined: true)),
+            ],
+          ),
           const SizedBox(height: 4),
-          Text(label, style: const TextStyle(color: Colors.black87)),
+          Text(label, style: const TextStyle(color: WebTheme.inkNavy, fontSize: 13)),
         ],
       ),
     );
@@ -225,14 +273,15 @@ class _OrgHomeScreenState extends ConsumerState<OrgHomeScreen> {
       children: [
         Row(
           children: [
-            Expanded(child: Text(t('home_stations_section_title'), style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold))),
+            Expanded(child: Text(t('home_stations_section_title'), style: WebTheme.display(fontSize: 24))),
             TextButton(
-              onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const StationsDirectoryScreen())),
+              onPressed: () => Navigator.push(context, webPageRoute(const StationsDirectoryScreen())),
+              style: TextButton.styleFrom(foregroundColor: WebTheme.harborBlue),
               child: Text(t('home_view_all')),
             ),
           ],
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 16),
         if (_stations.isEmpty)
           const Text('No verified stations yet.', style: TextStyle(color: Colors.grey))
         else
@@ -249,22 +298,22 @@ class _OrgHomeScreenState extends ConsumerState<OrgHomeScreen> {
     return _HoverCard(
       width: 320,
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(18),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
-                Expanded(child: Text(station.stationName, style: const TextStyle(fontWeight: FontWeight.bold), maxLines: 1, overflow: TextOverflow.ellipsis)),
-                if (station.isColorumVerified) const Icon(Icons.verified, color: Colors.green, size: 18),
+                Expanded(child: Text(station.stationName, style: const TextStyle(fontWeight: FontWeight.bold, color: WebTheme.inkNavy), maxLines: 1, overflow: TextOverflow.ellipsis)),
+                if (station.isColorumVerified) const WebSeal(size: 20),
               ],
             ),
             const SizedBox(height: 6),
             Text(station.stationAddress, style: const TextStyle(color: Colors.grey, fontSize: 12), maxLines: 2, overflow: TextOverflow.ellipsis),
             const SizedBox(height: 6),
             StarRatingDisplay(rating: station.avgRating, reviewCount: station.reviewCount, size: 13),
-            const SizedBox(height: 8),
-            Text('${formatPeso(station.pricePerJug)} / jug', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12)),
+            const SizedBox(height: 10),
+            Text('${formatPeso(station.pricePerJug)} / jug', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12, color: WebTheme.harborBlue)),
           ],
         ),
       ),
@@ -277,26 +326,41 @@ class _OrgHomeScreenState extends ConsumerState<OrgHomeScreen> {
       children: [
         Row(
           children: [
-            Expanded(child: Text(t('home_news_section_title'), style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold))),
+            Expanded(child: Text(t('home_news_section_title'), style: WebTheme.display(fontSize: 24))),
             TextButton(
-              onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const NewsScreen())),
+              onPressed: () => Navigator.push(context, webPageRoute(const NewsScreen())),
+              style: TextButton.styleFrom(foregroundColor: WebTheme.harborBlue),
               child: Text(t('home_view_all')),
             ),
           ],
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 16),
         if (_bulletins.isEmpty)
           const Text('No announcements yet.', style: TextStyle(color: Colors.grey))
         else
           ..._bulletins.map(
             (b) => HoverScale(
               scale: 1.01,
-              child: Card(
+              child: Container(
                 margin: const EdgeInsets.only(bottom: 12),
-                child: ListTile(
-                  title: Text(b.title, style: const TextStyle(fontWeight: FontWeight.bold)),
-                  subtitle: Text(b.body, maxLines: 2, overflow: TextOverflow.ellipsis),
-                  trailing: Text(DateFormat('MMM d, yyyy').format(b.createdAt), style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(color: WebTheme.foam, borderRadius: BorderRadius.circular(10)),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(b.title, style: const TextStyle(fontWeight: FontWeight.bold, color: WebTheme.inkNavy)),
+                          const SizedBox(height: 4),
+                          Text(b.body, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.black54)),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Text(DateFormat('MMM d').format(b.createdAt), style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                  ],
                 ),
               ),
             ),
@@ -329,7 +393,14 @@ class _HoverCardState extends State<_HoverCard> {
         duration: const Duration(milliseconds: 150),
         child: SizedBox(
           width: widget.width,
-          child: Card(elevation: _hovering ? 4 : 1, child: widget.child),
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(10),
+              boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: _hovering ? 0.10 : 0.05), blurRadius: _hovering ? 16 : 8, offset: const Offset(0, 4))],
+            ),
+            child: widget.child,
+          ),
         ),
       ),
     );

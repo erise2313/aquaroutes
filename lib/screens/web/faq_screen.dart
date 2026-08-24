@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../constants/app_colors.dart';
+import '../../constants/web_theme.dart';
 import '../../providers/web_locale_provider.dart';
 import '../../web_strings.dart';
 import '../../widgets/back_to_top_button.dart';
 import '../../widgets/fade_slide_in.dart';
 import '../../widgets/web_footer.dart';
 import '../../widgets/web_nav_bar.dart';
+import '../../widgets/web_page_header.dart';
 
 /// Content-only accordion FAQ, modeled on the real CCWRSPO (UP Manila)
 /// water refilling station operator FAQ structure -- questions an actual
@@ -70,6 +71,7 @@ class _FaqScreenState extends ConsumerState<FaqScreen> {
     String t(String key) => WebStrings.t(locale, key);
 
     return Scaffold(
+      backgroundColor: WebTheme.paper,
       appBar: const WebNavBar(currentPage: WebPage.faq),
       body: Stack(
         children: [
@@ -77,6 +79,7 @@ class _FaqScreenState extends ConsumerState<FaqScreen> {
             controller: _scrollController,
             child: Column(
               children: [
+                FadeSlideIn(child: WebPageHeader(eyebrow: 'QUESTIONS ANSWERED', title: t('faq_title'), subtitle: t('faq_intro'))),
                 Center(
                   child: ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 800),
@@ -85,17 +88,7 @@ class _FaqScreenState extends ConsumerState<FaqScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          FadeSlideIn(
-                            child: Text(t('faq_title'), style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
-                          ),
-                          const SizedBox(height: 12),
-                          FadeSlideIn(
-                            delay: const Duration(milliseconds: 80),
-                            child: Text(t('faq_intro'), style: const TextStyle(fontSize: 16, height: 1.5)),
-                          ),
-                          const SizedBox(height: 24),
-                          for (var i = 0; i < _faqs.length; i++)
-                            FadeSlideIn(delay: Duration(milliseconds: 140 + i * 40), child: _buildFaqTile(_faqs[i].$1, _faqs[i].$2)),
+                          for (final faq in _faqs) _buildFaqTile(faq.$1, faq.$2),
                         ],
                       ),
                     ),
@@ -112,12 +105,13 @@ class _FaqScreenState extends ConsumerState<FaqScreen> {
   }
 
   Widget _buildFaqTile(String question, String answer) {
-    return Card(
+    return Container(
       margin: const EdgeInsets.only(bottom: 10),
+      decoration: BoxDecoration(color: WebTheme.foam, borderRadius: BorderRadius.circular(10)),
       child: ExpansionTile(
-        title: Text(question, style: const TextStyle(fontWeight: FontWeight.w600)),
-        iconColor: AppColors.primary,
-        collapsedIconColor: AppColors.primary,
+        title: Text(question, style: const TextStyle(fontWeight: FontWeight.w600, color: WebTheme.inkNavy)),
+        iconColor: WebTheme.harborBlue,
+        collapsedIconColor: WebTheme.harborBlue,
         childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
         expandedCrossAxisAlignment: CrossAxisAlignment.start,
         children: [Text(answer, style: const TextStyle(height: 1.4, color: Colors.black87))],

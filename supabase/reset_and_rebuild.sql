@@ -1023,6 +1023,16 @@ create view bulletin_reaction_counts as
 
 grant select on bulletin_reaction_counts to anon, authenticated;
 
+create table bulletin_comments (
+  id uuid primary key default gen_random_uuid(),
+  bulletin_id uuid not null references bulletins(id) on delete cascade,
+  profile_id uuid not null references profiles(id) on delete cascade,
+  body text not null,
+  created_at timestamptz not null default now()
+);
+
+create index bulletin_comments_bulletin_idx on bulletin_comments (bulletin_id);
+
 insert into storage.buckets (id, name, public)
   values ('bulletin-images', 'bulletin-images', true)
   on conflict (id) do nothing;
@@ -1175,6 +1185,7 @@ alter table bulletin_reactions enable row level security;
 alter table reviews enable row level security;
 alter table resources enable row level security;
 alter table events enable row level security;
+alter table bulletin_comments enable row level security;
 
 create policy profiles_self_read on profiles for select
   using (id = auth.uid());
@@ -1371,6 +1382,13 @@ create policy bulletin_reactions_self_insert on bulletin_reactions for insert
   with check (profile_id = auth.uid());
 create policy bulletin_reactions_self_delete on bulletin_reactions for delete
   using (profile_id = auth.uid());
+
+create policy bulletin_comments_public_read on bulletin_comments for select
+  using (true);
+create policy bulletin_comments_self_insert on bulletin_comments for insert
+  with check (profile_id = auth.uid());
+create policy bulletin_comments_self_or_admin_delete on bulletin_comments for delete
+  using (profile_id = auth.uid() or auth_has_role('wasa_admin'));
 
 create policy permit_docs_owner_all on storage.objects for all
   using (

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
-import '../../constants/app_colors.dart';
+import '../../constants/web_theme.dart';
 import '../../models/event.dart';
 import '../../providers/web_locale_provider.dart';
 import '../../services/event_service.dart';
@@ -15,6 +15,7 @@ import '../../widgets/hover_scale.dart';
 import '../../widgets/skeleton_loader.dart';
 import '../../widgets/web_footer.dart';
 import '../../widgets/web_nav_bar.dart';
+import '../../widgets/web_page_header.dart';
 
 /// Sorted-by-event_date list of association events -- a list rather than a
 /// calendar-grid widget, which keeps scope realistic while still reading as
@@ -69,6 +70,7 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
     final past = _events.where((e) => e.isPast).toList();
 
     return Scaffold(
+      backgroundColor: WebTheme.paper,
       appBar: const WebNavBar(currentPage: WebPage.events),
       body: Stack(
         children: [
@@ -76,6 +78,7 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
             controller: _scrollController,
             child: Column(
               children: [
+                FadeSlideIn(child: WebPageHeader(eyebrow: "WHAT'S COMING UP", title: t('events_title'), subtitle: t('events_intro'))),
                 Center(
                   child: ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 800),
@@ -84,15 +87,6 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          FadeSlideIn(
-                            child: Text(t('events_title'), style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
-                          ),
-                          const SizedBox(height: 12),
-                          FadeSlideIn(
-                            delay: const Duration(milliseconds: 80),
-                            child: Text(t('events_intro'), style: const TextStyle(fontSize: 16, height: 1.5)),
-                          ),
-                          const SizedBox(height: 24),
                           if (_isLoading)
                             const SkeletonList(count: 3, cardHeight: 88)
                           else if (_error != null)
@@ -126,9 +120,9 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
   Widget _buildEventCard(AssociationEvent event, {bool isPast = false}) {
     return HoverScale(
       scale: isPast ? 1.0 : 1.01,
-      child: Card(
+      child: Container(
         margin: const EdgeInsets.only(bottom: 10),
-        color: isPast ? Colors.grey.shade100 : null,
+        decoration: BoxDecoration(color: isPast ? Colors.grey.shade100 : WebTheme.foam, borderRadius: BorderRadius.circular(10)),
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Row(
@@ -137,11 +131,11 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
               Container(
                 width: 56,
                 padding: const EdgeInsets.symmetric(vertical: 8),
-                decoration: BoxDecoration(color: isPast ? Colors.grey.shade300 : AppColors.primary.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
+                decoration: BoxDecoration(color: isPast ? Colors.grey.shade300 : WebTheme.harborBlue.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
                 child: Column(
                   children: [
-                    Text(DateFormat('MMM').format(event.eventDate).toUpperCase(), style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: isPast ? Colors.grey.shade700 : AppColors.primary)),
-                    Text('${event.eventDate.day}', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: isPast ? Colors.grey.shade700 : AppColors.primary)),
+                    Text(DateFormat('MMM').format(event.eventDate).toUpperCase(), style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: isPast ? Colors.grey.shade700 : WebTheme.harborBlue)),
+                    Text('${event.eventDate.day}', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: isPast ? Colors.grey.shade700 : WebTheme.harborBlue)),
                   ],
                 ),
               ),
@@ -150,7 +144,7 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(event.title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                    Text(event.title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: WebTheme.inkNavy)),
                     const SizedBox(height: 4),
                     Text(DateFormat('MMM d, yyyy · h:mm a').format(event.eventDate), style: const TextStyle(color: Colors.grey, fontSize: 12)),
                     if (event.location != null) Text(event.location!, style: const TextStyle(color: Colors.grey, fontSize: 12)),

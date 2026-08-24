@@ -34,6 +34,10 @@ dependencies:
   flutter_map: ^7.0.0
   latlong2: ^0.9.1
 
+  # Website display typeface (Fraunces) -- web-only, mobile app screens
+  # keep using the default Material font.
+  google_fonts: ^6.2.1
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
