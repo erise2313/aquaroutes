@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_fonts/google_fonts.dart';
 
-import '../constants/app_colors.dart';
+import '../constants/web_theme.dart';
 import '../providers/web_locale_provider.dart';
 import '../screens/auth/login_screen.dart';
 import '../screens/auth/registration_screen.dart';
@@ -14,6 +15,7 @@ import '../screens/web/org_home_screen.dart';
 import '../screens/web/stations_directory_screen.dart';
 import '../web_strings.dart';
 import 'wasa_shield_logo.dart';
+import 'web_page_route.dart';
 
 /// Which top-level website page is currently showing -- drives the active
 /// nav-link highlight and which page pushReplacement navigates to.
@@ -53,7 +55,7 @@ class WebNavBar extends ConsumerWidget implements PreferredSizeWidget {
 
   void _go(BuildContext context, WebPage page, Widget screen) {
     if (page == currentPage) return;
-    Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => screen));
+    Navigator.pushReplacement(context, webPageRoute(screen));
   }
 
   @override
@@ -72,7 +74,10 @@ class WebNavBar extends ConsumerWidget implements PreferredSizeWidget {
     ];
 
     return Container(
-      color: Colors.white,
+      decoration: const BoxDecoration(
+        color: WebTheme.paper,
+        border: Border(bottom: BorderSide(color: Color(0xFFE3DFD3), width: 1)),
+      ),
       child: SafeArea(
         bottom: false,
         child: Padding(
@@ -86,10 +91,10 @@ class WebNavBar extends ConsumerWidget implements PreferredSizeWidget {
                     onTap: () => _go(context, WebPage.home, const OrgHomeScreen()),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
-                      children: const [
-                        WasaShieldLogo(size: 28),
-                        SizedBox(width: 8),
-                        Text('GenTri: WASA', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black87)),
+                      children: [
+                        const WasaShieldLogo(size: 28),
+                        const SizedBox(width: 8),
+                        Text('GENTRI WASA', style: GoogleFonts.fraunces(fontWeight: FontWeight.w600, fontSize: 17, color: WebTheme.inkNavy)),
                       ],
                     ),
                   ),
@@ -114,7 +119,7 @@ class WebNavBar extends ConsumerWidget implements PreferredSizeWidget {
                       child: Align(
                         alignment: Alignment.centerLeft,
                         child: PopupMenuButton<int>(
-                          icon: const Icon(Icons.menu, color: Colors.black87),
+                          icon: const Icon(Icons.menu, color: WebTheme.inkNavy),
                           onSelected: (i) => _go(context, links[i].$1, links[i].$3),
                           itemBuilder: (context) => [
                             for (var i = 0; i < links.length; i++) PopupMenuItem(value: i, child: Text(links[i].$2)),
@@ -140,7 +145,7 @@ class WebNavBar extends ConsumerWidget implements PreferredSizeWidget {
                   if (isWide)
                     ElevatedButton(
                       onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const RegistrationScreen())),
-                      style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+                      style: ElevatedButton.styleFrom(backgroundColor: WebTheme.harborBlue, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4))),
                       child: Text(t('nav_register'), style: const TextStyle(color: Colors.white)),
                     ),
                 ],
@@ -169,7 +174,7 @@ class _NavLinkState extends State<_NavLink> {
 
   @override
   Widget build(BuildContext context) {
-    final color = widget.isActive ? AppColors.primary : (_hovering ? AppColors.primary.withValues(alpha: 0.7) : Colors.black87);
+    final color = widget.isActive ? WebTheme.harborBlue : (_hovering ? WebTheme.harborBlue.withValues(alpha: 0.7) : WebTheme.inkNavy);
     return MouseRegion(
       onEnter: (_) => setState(() => _hovering = true),
       onExit: (_) => setState(() => _hovering = false),
@@ -191,7 +196,7 @@ class _NavLinkState extends State<_NavLink> {
                 duration: const Duration(milliseconds: 150),
                 height: 2,
                 width: widget.isActive ? 18 : 0,
-                decoration: BoxDecoration(color: AppColors.primary, borderRadius: BorderRadius.circular(1)),
+                decoration: BoxDecoration(color: WebTheme.sealGold, borderRadius: BorderRadius.circular(1)),
               ),
             ],
           ),

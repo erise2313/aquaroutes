@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../constants/app_colors.dart';
+import '../../constants/web_theme.dart';
 import '../../providers/web_locale_provider.dart';
 import '../../web_strings.dart';
 import '../../widgets/back_to_top_button.dart';
 import '../../widgets/fade_slide_in.dart';
 import '../../widgets/web_footer.dart';
 import '../../widgets/web_nav_bar.dart';
+import '../../widgets/web_page_header.dart';
+import '../../widgets/web_seal.dart';
 
 /// Static coverage-area list -- mirrors the barangays seeded for the
 /// association (supabase/reset_and_rebuild.sql / 0010_seed_gentri_wasa.sql).
@@ -44,6 +46,7 @@ class _AboutScreenState extends ConsumerState<AboutScreen> {
     String t(String key) => WebStrings.t(locale, key);
 
     return Scaffold(
+      backgroundColor: WebTheme.paper,
       appBar: const WebNavBar(currentPage: WebPage.about),
       body: Stack(
         children: [
@@ -51,6 +54,7 @@ class _AboutScreenState extends ConsumerState<AboutScreen> {
             controller: _scrollController,
             child: Column(
               children: [
+                FadeSlideIn(child: WebPageHeader(eyebrow: 'ABOUT THE ASSOCIATION', title: t('about_title'), subtitle: t('about_intro'))),
                 Center(
                   child: ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 900),
@@ -59,48 +63,27 @@ class _AboutScreenState extends ConsumerState<AboutScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          FadeSlideIn(
-                            child: Text(t('about_title'), style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
-                          ),
+                          Text('What WASA Does', style: WebTheme.display(fontSize: 22)),
                           const SizedBox(height: 16),
-                          FadeSlideIn(
-                            delay: const Duration(milliseconds: 80),
-                            child: Text(t('about_intro'), style: const TextStyle(fontSize: 16, height: 1.5)),
-                          ),
-                          const SizedBox(height: 32),
-                          FadeSlideIn(
-                            delay: const Duration(milliseconds: 140),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text('What WASA Does', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                                const SizedBox(height: 12),
-                                _bulletPoint('Reviews and accredits refilling stations before they can display the WASA verification seal.'),
-                                _bulletPoint('Maintains a shared worker security registry, so a driver flagged for an incident at one station can\'t simply move to another unnoticed.'),
-                                _bulletPoint('Sets and enforces minimum floor prices to prevent predatory undercutting between member stations.'),
-                                _bulletPoint('Coordinates the inter-station jug clearinghouse, so reusable 5-gallon containers get settled fairly between stations.'),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 32),
-                          FadeSlideIn(
-                            delay: const Duration(milliseconds: 200),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text('Coverage Area', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                                const SizedBox(height: 4),
-                                const Text('GENTRI WASA covers all barangays of General Trias, Cavite:', style: TextStyle(color: Colors.grey)),
-                                const SizedBox(height: 12),
-                                Wrap(
-                                  spacing: 8,
-                                  runSpacing: 8,
-                                  children: _barangays
-                                      .map((b) => Chip(label: Text(b, style: const TextStyle(fontSize: 12)), backgroundColor: AppColors.primary.withValues(alpha: 0.08)))
-                                      .toList(),
-                                ),
-                              ],
-                            ),
+                          _bulletPoint('Reviews and accredits refilling stations before they can display the WASA verification seal.'),
+                          _bulletPoint('Maintains a shared worker security registry, so a driver flagged for an incident at one station can\'t simply move to another unnoticed.'),
+                          _bulletPoint('Sets and enforces minimum floor prices to prevent predatory undercutting between member stations.'),
+                          _bulletPoint('Coordinates the inter-station jug clearinghouse, so reusable 5-gallon containers get settled fairly between stations.'),
+                          const SizedBox(height: 40),
+                          Text('Coverage Area', style: WebTheme.display(fontSize: 22)),
+                          const SizedBox(height: 4),
+                          const Text('GENTRI WASA covers all barangays of General Trias, Cavite:', style: TextStyle(color: Colors.grey)),
+                          const SizedBox(height: 16),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: _barangays
+                                .map((b) => Chip(
+                                      label: Text(b, style: const TextStyle(fontSize: 12, color: WebTheme.inkNavy)),
+                                      backgroundColor: WebTheme.foam,
+                                      side: BorderSide.none,
+                                    ))
+                                .toList(),
                           ),
                         ],
                       ),
@@ -119,12 +102,12 @@ class _AboutScreenState extends ConsumerState<AboutScreen> {
 
   Widget _bulletPoint(String text) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.only(bottom: 14),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Padding(padding: EdgeInsets.only(top: 6, right: 10), child: Icon(Icons.circle, size: 6, color: AppColors.primary)),
-          Expanded(child: Text(text, style: const TextStyle(fontSize: 15, height: 1.4))),
+          const Padding(padding: EdgeInsets.only(top: 2, right: 12), child: WebSeal(size: 18, outlined: true)),
+          Expanded(child: Text(text, style: const TextStyle(fontSize: 15, height: 1.5, color: WebTheme.inkNavy))),
         ],
       ),
     );

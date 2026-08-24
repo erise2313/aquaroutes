@@ -2,8 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'dart:math'; // Required for generating the invite/worker code
 
+import '../../constants/web_theme.dart';
 import '../../widgets/auth_text_field.dart';
+import '../../widgets/fade_slide_in.dart';
+import '../../widgets/hover_scale.dart';
 import '../../widgets/wasa_shield_logo.dart';
+import '../../widgets/web_page_route.dart';
 import 'login_screen.dart';
 
 /// Self-registration for the three roles that can sign themselves up:
@@ -195,125 +199,132 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: WebTheme.paper,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: WebTheme.paper,
         elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.black87),
+        iconTheme: const IconThemeData(color: WebTheme.inkNavy),
       ),
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24.0),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const WasaShieldLogo(size: 64),
-                const SizedBox(height: 20),
-                const Text(
-                  "Create an Account",
-                  style: TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  "Join GenTri: WASA and manage deliveries instantly.",
-                  style: TextStyle(fontSize: 16, color: Colors.grey),
-                ),
-                const SizedBox(height: 32),
-
-                _buildRoleDropdown(),
-                const SizedBox(height: 24),
-
-                if (_selectedRole == 'driver')
-                  _buildDriverFields()
-                else if (_selectedRole == 'public_consumer')
-                  _buildCustomerFields()
-                else
-                  _buildStationOwnerFields(),
-
-                const SizedBox(height: 24),
-
-                AuthTextField(
-                  controller: _emailController,
-                  label: "Email Address",
-                  icon: Icons.email_outlined,
-                  keyboardType: TextInputType.emailAddress,
-                  textInputAction: TextInputAction.next,
-                  validator: _validateEmail,
-                ),
-                const SizedBox(height: 16),
-                AuthTextField(
-                  controller: _passwordController,
-                  label: "Password",
-                  icon: Icons.lock_outline,
-                  isPassword: true,
-                  textInputAction: TextInputAction.next,
-                  validator: _validatePassword,
-                ),
-                const SizedBox(height: 16),
-                AuthTextField(
-                  controller: _confirmPasswordController,
-                  label: "Confirm Password",
-                  icon: Icons.lock_outline,
-                  isPassword: true,
-                  textInputAction: TextInputAction.done,
-                  validator: _validateConfirmPassword,
-                  onSubmitted: (_) => _signUp(),
-                ),
-
-                const SizedBox(height: 32),
-
-                ElevatedButton(
-                  onPressed: _isLoading ? null : _signUp,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue.shade600,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+          child: FadeSlideIn(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 460),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const Center(child: WasaShieldLogo(size: 56)),
+                    const SizedBox(height: 20),
+                    Text('JOIN THE ASSOCIATION', textAlign: TextAlign.center, style: WebTheme.eyebrow.copyWith(fontSize: 11)),
+                    const SizedBox(height: 8),
+                    Text(
+                      "Create an Account",
+                      textAlign: TextAlign.center,
+                      style: WebTheme.display(fontSize: 26),
                     ),
-                  ),
-                  child: _isLoading
-                      ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(
-                            color: Colors.white,
-                            strokeWidth: 2,
-                          ),
-                        )
-                      : const Text(
-                          "REGISTER",
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
+                    const SizedBox(height: 8),
+                    const Text(
+                      "Join GenTri: WASA and manage deliveries instantly.",
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontSize: 15, color: Colors.grey),
+                    ),
+                    const SizedBox(height: 32),
+
+                    _buildRoleDropdown(),
+                    const SizedBox(height: 24),
+
+                    if (_selectedRole == 'driver')
+                      _buildDriverFields()
+                    else if (_selectedRole == 'public_consumer')
+                      _buildCustomerFields()
+                    else
+                      _buildStationOwnerFields(),
+
+                    const SizedBox(height: 24),
+
+                    AuthTextField(
+                      controller: _emailController,
+                      label: "Email Address",
+                      icon: Icons.email_outlined,
+                      keyboardType: TextInputType.emailAddress,
+                      textInputAction: TextInputAction.next,
+                      validator: _validateEmail,
+                    ),
+                    const SizedBox(height: 16),
+                    AuthTextField(
+                      controller: _passwordController,
+                      label: "Password",
+                      icon: Icons.lock_outline,
+                      isPassword: true,
+                      textInputAction: TextInputAction.next,
+                      validator: _validatePassword,
+                    ),
+                    const SizedBox(height: 16),
+                    AuthTextField(
+                      controller: _confirmPasswordController,
+                      label: "Confirm Password",
+                      icon: Icons.lock_outline,
+                      isPassword: true,
+                      textInputAction: TextInputAction.done,
+                      validator: _validateConfirmPassword,
+                      onSubmitted: (_) => _signUp(),
+                    ),
+
+                    const SizedBox(height: 32),
+
+                    HoverScale(
+                      child: ElevatedButton(
+                        onPressed: _isLoading ? null : _signUp,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: WebTheme.harborBlue,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
                           ),
                         ),
-                ),
-
-                const SizedBox(height: 20),
-
-                TextButton(
-                  onPressed: () {
-                    Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const LoginScreen()));
-                  },
-                  child: RichText(
-                    text: TextSpan(
-                      text: "Already have an account? ",
-                      style: const TextStyle(color: Colors.grey),
-                      children: [
-                        TextSpan(text: "Login here", style: TextStyle(color: Colors.blue.shade700, fontWeight: FontWeight.bold)),
-                      ],
+                        child: _isLoading
+                            ? const SizedBox(
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Text(
+                                "REGISTER",
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                ),
+                              ),
+                      ),
                     ),
-                  ),
+
+                    const SizedBox(height: 20),
+
+                    TextButton(
+                      onPressed: () {
+                        Navigator.pushReplacement(context, webPageRoute(const LoginScreen()));
+                      },
+                      child: RichText(
+                        text: TextSpan(
+                          text: "Already have an account? ",
+                          style: const TextStyle(color: Colors.grey),
+                          children: [
+                            TextSpan(text: "Login here", style: TextStyle(color: WebTheme.harborBlue, fontWeight: FontWeight.bold)),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
           ),
         ),
@@ -326,16 +337,20 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
       initialValue: _selectedRole,
       decoration: InputDecoration(
         labelText: "Account Type",
-        prefixIcon: const Icon(Icons.badge_outlined, color: Colors.grey),
+        prefixIcon: const Icon(Icons.badge_outlined, color: WebTheme.harborBlue),
         filled: true,
-        fillColor: Colors.grey.shade50,
+        fillColor: WebTheme.foam,
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.grey.shade300),
+          borderRadius: BorderRadius.circular(10),
+          borderSide: BorderSide.none,
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.grey.shade300),
+          borderRadius: BorderRadius.circular(10),
+          borderSide: BorderSide.none,
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: WebTheme.harborBlue, width: 2),
         ),
       ),
       items: const [
@@ -381,18 +396,18 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: Colors.amber.shade50,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.amber.shade300),
+            color: WebTheme.sealGold.withValues(alpha: 0.10),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: WebTheme.sealGold.withValues(alpha: 0.35)),
           ),
           child: Row(
             children: [
-              Icon(Icons.warning_amber_rounded, color: Colors.amber.shade700),
+              const Icon(Icons.warning_amber_rounded, color: WebTheme.sealGold),
               const SizedBox(width: 12),
               const Expanded(
                 child: Text(
                   "Business Permit / KYC upload will be required after successful registration.",
-                  style: TextStyle(fontSize: 12, color: Colors.black87),
+                  style: TextStyle(fontSize: 12, color: WebTheme.inkNavy),
                 ),
               ),
             ],
@@ -416,18 +431,17 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
         Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: Colors.blue.shade50,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.blue.shade200),
+            color: WebTheme.foam,
+            borderRadius: BorderRadius.circular(10),
           ),
           child: const Row(
             children: [
-              Icon(Icons.info_outline, color: Colors.blue),
+              Icon(Icons.info_outline, color: WebTheme.harborBlue),
               SizedBox(width: 12),
               Expanded(
                 child: Text(
                   "Use this to place water orders and track your order history. Browsing the Bulletin Board and station map never requires an account.",
-                  style: TextStyle(fontSize: 12, color: Colors.black87),
+                  style: TextStyle(fontSize: 12, color: WebTheme.inkNavy),
                 ),
               ),
             ],
@@ -451,17 +465,16 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
         Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: Colors.blue.shade50,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.blue.shade200),
+            color: WebTheme.foam,
+            borderRadius: BorderRadius.circular(10),
           ),
           child: Column(
             children: [
               const Row(
                 children: [
-                  Icon(Icons.vpn_key, color: Colors.blue),
+                  Icon(Icons.vpn_key, color: WebTheme.harborBlue),
                   SizedBox(width: 8),
-                  Text("Station Link Key", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue)),
+                  Text("Station Link Key", style: TextStyle(fontWeight: FontWeight.bold, color: WebTheme.harborBlue)),
                 ],
               ),
               const SizedBox(height: 8),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../widgets/web_page_route.dart';
 import 'org_home_screen.dart';
 
 /// Shown when a driver or customer account is used to log into the
@@ -36,7 +37,7 @@ class MobileOnlyScreen extends StatelessWidget {
                   if (context.mounted) {
                     Navigator.pushAndRemoveUntil(
                       context,
-                      MaterialPageRoute(builder: (context) => const OrgHomeScreen()),
+                      webPageRoute(const OrgHomeScreen()),
                       (route) => false,
                     );
                   }

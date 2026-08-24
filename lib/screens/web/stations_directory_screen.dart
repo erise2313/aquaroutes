@@ -3,6 +3,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
 
+import '../../constants/web_theme.dart';
 import '../../models/station.dart';
 import '../../providers/web_locale_provider.dart';
 import '../../services/station_service.dart';
@@ -18,6 +19,8 @@ import '../../widgets/skeleton_loader.dart';
 import '../../widgets/star_rating.dart';
 import '../../widgets/web_footer.dart';
 import '../../widgets/web_nav_bar.dart';
+import '../../widgets/web_page_header.dart';
+import '../../widgets/web_seal.dart';
 
 /// Full station directory for the website -- search + water-type + barangay
 /// filters alongside a map, reusing the same StationService.fetchPublicStations
@@ -102,6 +105,7 @@ class _StationsDirectoryScreenState extends ConsumerState<StationsDirectoryScree
     final filtered = _filtered;
 
     return Scaffold(
+      backgroundColor: WebTheme.paper,
       appBar: const WebNavBar(currentPage: WebPage.stations),
       body: Stack(
         children: [
@@ -130,6 +134,7 @@ class _StationsDirectoryScreenState extends ConsumerState<StationsDirectoryScree
               controller: _scrollController,
               child: Column(
                 children: [
+                  FadeSlideIn(child: WebPageHeader(eyebrow: 'THE DIRECTORY', title: t('stations_title'))),
                   Center(
                     child: ConstrainedBox(
                       constraints: const BoxConstraints(maxWidth: 1200),
@@ -138,11 +143,7 @@ class _StationsDirectoryScreenState extends ConsumerState<StationsDirectoryScree
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            FadeSlideIn(
-                              child: Text(t('stations_title'), style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
-                            ),
-                            const SizedBox(height: 16),
-                            FadeSlideIn(delay: const Duration(milliseconds: 80), child: _buildFilters(t)),
+                            _buildFilters(t),
                             const SizedBox(height: 16),
                             LayoutBuilder(
                               builder: (context, constraints) {
@@ -257,33 +258,34 @@ class _StationsDirectoryScreenState extends ConsumerState<StationsDirectoryScree
   Widget _buildStationCard(PublicStation station) {
     return HoverScale(
       scale: 1.01,
-      child: Card(
-      margin: const EdgeInsets.only(bottom: 12, right: 8),
-      child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: Colors.grey.shade200,
-          backgroundImage: station.photoUrl != null ? NetworkImage(station.photoUrl!) : null,
-          child: station.photoUrl == null ? const Icon(Icons.storefront, color: Colors.grey) : null,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12, right: 8),
+        decoration: BoxDecoration(color: WebTheme.foam, borderRadius: BorderRadius.circular(10)),
+        child: ListTile(
+          leading: CircleAvatar(
+            backgroundColor: Colors.grey.shade200,
+            backgroundImage: station.photoUrl != null ? NetworkImage(station.photoUrl!) : null,
+            child: station.photoUrl == null ? const Icon(Icons.storefront, color: Colors.grey) : null,
+          ),
+          title: Row(
+            children: [
+              Expanded(child: Text(station.stationName, overflow: TextOverflow.ellipsis, style: const TextStyle(color: WebTheme.inkNavy, fontWeight: FontWeight.w600))),
+              if (station.isColorumVerified) const WebSeal(size: 20),
+            ],
+          ),
+          subtitle: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '${station.barangayName ?? station.stationAddress} · ${formatPeso(station.pricePerJug)}/jug',
+                style: const TextStyle(fontSize: 12),
+              ),
+              const SizedBox(height: 4),
+              StarRatingDisplay(rating: station.avgRating, reviewCount: station.reviewCount, size: 14),
+            ],
+          ),
+          isThreeLine: true,
         ),
-        title: Row(
-          children: [
-            Expanded(child: Text(station.stationName, overflow: TextOverflow.ellipsis)),
-            if (station.isColorumVerified) const Icon(Icons.verified, color: Colors.green, size: 16),
-          ],
-        ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              '${station.barangayName ?? station.stationAddress} · ${formatPeso(station.pricePerJug)}/jug',
-              style: const TextStyle(fontSize: 12),
-            ),
-            const SizedBox(height: 4),
-            StarRatingDisplay(rating: station.avgRating, reviewCount: station.reviewCount, size: 14),
-          ],
-        ),
-        isThreeLine: true,
-      ),
       ),
     );
   }

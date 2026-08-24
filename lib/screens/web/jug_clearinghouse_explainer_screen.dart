@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../constants/app_colors.dart';
+import '../../constants/web_theme.dart';
 import '../../providers/web_locale_provider.dart';
 import '../../web_strings.dart';
 import '../../widgets/back_to_top_button.dart';
 import '../../widgets/fade_slide_in.dart';
 import '../../widgets/web_footer.dart';
 import '../../widgets/web_nav_bar.dart';
+import '../../widgets/web_page_header.dart';
 
 /// Content-only explainer for the jug clearinghouse -- a genuine
 /// differentiator no comparable chamber/AMS site template has, so it earns
@@ -43,6 +44,7 @@ class _JugClearinghouseExplainerScreenState extends ConsumerState<JugClearinghou
     ];
 
     return Scaffold(
+      backgroundColor: WebTheme.paper,
       appBar: const WebNavBar(currentPage: WebPage.jugClearinghouse),
       body: Stack(
         children: [
@@ -50,6 +52,7 @@ class _JugClearinghouseExplainerScreenState extends ConsumerState<JugClearinghou
             controller: _scrollController,
             child: Column(
               children: [
+                FadeSlideIn(child: WebPageHeader(eyebrow: 'HOW IT WORKS', title: t('jug_clearinghouse_title'), subtitle: t('jug_clearinghouse_intro'))),
                 Center(
                   child: ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 800),
@@ -58,29 +61,16 @@ class _JugClearinghouseExplainerScreenState extends ConsumerState<JugClearinghou
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          FadeSlideIn(
-                            child: Text(t('jug_clearinghouse_title'), style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
-                          ),
-                          const SizedBox(height: 12),
-                          FadeSlideIn(
-                            delay: const Duration(milliseconds: 80),
-                            child: Text(t('jug_clearinghouse_intro'), style: const TextStyle(fontSize: 16, height: 1.5)),
-                          ),
-                          const SizedBox(height: 12),
-                          FadeSlideIn(
-                            delay: const Duration(milliseconds: 120),
-                            child: Container(
-                              padding: const EdgeInsets.all(16),
-                              decoration: BoxDecoration(color: AppColors.primary.withValues(alpha: 0.06), borderRadius: BorderRadius.circular(12)),
-                              child: const Text(
-                                'Reusable Slim and Round 5-gallon jugs regularly end up at a different station than the one that owns them -- a driver delivers water in one station\'s jug, and picks up an empty jug bearing a competitor\'s brand. Without a shared system, that jug is effectively lost to its owner. The clearinghouse makes those swaps fair and auditable across the whole association.',
-                                style: TextStyle(height: 1.5),
-                              ),
+                          Container(
+                            padding: const EdgeInsets.all(18),
+                            decoration: BoxDecoration(color: WebTheme.foam, borderRadius: BorderRadius.circular(10), border: Border(left: BorderSide(color: WebTheme.sealGold, width: 4))),
+                            child: const Text(
+                              'Reusable Slim and Round 5-gallon jugs regularly end up at a different station than the one that owns them -- a driver delivers water in one station\'s jug, and picks up an empty jug bearing a competitor\'s brand. Without a shared system, that jug is effectively lost to its owner. The clearinghouse makes those swaps fair and auditable across the whole association.',
+                              style: TextStyle(height: 1.5, color: WebTheme.inkNavy),
                             ),
                           ),
                           const SizedBox(height: 32),
-                          for (var i = 0; i < steps.length; i++)
-                            FadeSlideIn(delay: Duration(milliseconds: 160 + i * 60), child: _buildStep(i + 1, steps[i].$1, steps[i].$2)),
+                          for (var i = 0; i < steps.length; i++) _buildStep(i + 1, steps[i].$1, steps[i].$2),
                         ],
                       ),
                     ),
@@ -102,13 +92,13 @@ class _JugClearinghouseExplainerScreenState extends ConsumerState<JugClearinghou
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          CircleAvatar(radius: 16, backgroundColor: AppColors.primary, child: Text('$number', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold))),
+          CircleAvatar(radius: 16, backgroundColor: WebTheme.harborBlue, child: Text('$number', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold))),
           const SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: WebTheme.inkNavy)),
                 const SizedBox(height: 4),
                 Text(description, style: const TextStyle(color: Colors.grey, height: 1.4)),
               ],

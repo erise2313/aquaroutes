@@ -22,12 +22,12 @@ class WebStrings {
     'nav_register': {WebLocale.en: 'Register a Station', WebLocale.tl: 'Magparehistro ng Istasyon'},
 
     // Hero
-    'hero_title': {WebLocale.en: 'GENTRI WASA', WebLocale.tl: 'GENTRI WASA'},
+    'hero_title': {WebLocale.en: 'Every jug, certified.', WebLocale.tl: 'Bawat galong, sertipikado.'},
     'hero_subtitle': {
       WebLocale.en:
-          'The Water Station Association of General Trias, Cavite -- overseeing station accreditation, worker accountability, and fair pricing for every refilling station in the association.',
+          'GENTRI WASA reviews and accredits every water refilling station in General Trias, Cavite -- so the seal on a station means something before you ever order a drop.',
       WebLocale.tl:
-          'Ang Water Station Association ng General Trias, Cavite -- namamahala sa akreditasyon ng istasyon, pananagutan ng manggagawa, at makatarungang presyo para sa bawat istasyon ng tubig sa asosasyon.',
+          'Sinusuri at inaakredita ng GENTRI WASA ang bawat water refilling station sa General Trias, Cavite -- para may kahulugan ang selyo sa istasyon bago ka pa mag-order.',
     },
     'hero_register_cta': {WebLocale.en: 'Register Your Station', WebLocale.tl: 'Irehistro ang Iyong Istasyon'},
     'hero_admin_login_cta': {WebLocale.en: 'WASA Admin Login', WebLocale.tl: 'WASA Admin Login'},

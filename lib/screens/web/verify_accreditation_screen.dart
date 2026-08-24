@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../constants/web_theme.dart';
 import '../../models/station.dart';
 import '../../providers/web_locale_provider.dart';
 import '../../services/station_service.dart';
@@ -12,6 +13,8 @@ import '../../widgets/fade_slide_in.dart';
 import '../../widgets/skeleton_loader.dart';
 import '../../widgets/web_footer.dart';
 import '../../widgets/web_nav_bar.dart';
+import '../../widgets/web_page_header.dart';
+import '../../widgets/web_seal.dart';
 
 /// "Confirm this station is really WASA-accredited" lookup -- reuses the
 /// existing public_stations data (is_colorum_verified/is_accredited), no
@@ -74,6 +77,7 @@ class _VerifyAccreditationScreenState extends ConsumerState<VerifyAccreditationS
     final matches = _matches;
 
     return Scaffold(
+      backgroundColor: WebTheme.paper,
       appBar: const WebNavBar(currentPage: WebPage.verifyAccreditation),
       body: Stack(
         children: [
@@ -81,6 +85,7 @@ class _VerifyAccreditationScreenState extends ConsumerState<VerifyAccreditationS
             controller: _scrollController,
             child: Column(
               children: [
+                FadeSlideIn(child: WebPageHeader(eyebrow: 'VERIFICATION', title: t('verify_title'), subtitle: t('verify_intro'))),
                 Center(
                   child: ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 700),
@@ -89,25 +94,13 @@ class _VerifyAccreditationScreenState extends ConsumerState<VerifyAccreditationS
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          FadeSlideIn(
-                            child: Text(t('verify_title'), style: const TextStyle(fontSize: 26, fontWeight: FontWeight.bold)),
-                          ),
-                          const SizedBox(height: 12),
-                          FadeSlideIn(
-                            delay: const Duration(milliseconds: 80),
-                            child: Text(t('verify_intro'), style: const TextStyle(fontSize: 16, height: 1.5)),
-                          ),
-                          const SizedBox(height: 24),
-                          FadeSlideIn(
-                            delay: const Duration(milliseconds: 140),
-                            child: TextField(
-                              controller: _searchController,
-                              onChanged: (_) => setState(() => _hasSearched = true),
-                              decoration: const InputDecoration(
-                                hintText: 'Enter a station name...',
-                                prefixIcon: Icon(Icons.search),
-                                border: OutlineInputBorder(),
-                              ),
+                          TextField(
+                            controller: _searchController,
+                            onChanged: (_) => setState(() => _hasSearched = true),
+                            decoration: const InputDecoration(
+                              hintText: 'Enter a station name...',
+                              prefixIcon: Icon(Icons.search, color: WebTheme.harborBlue),
+                              border: OutlineInputBorder(),
                             ),
                           ),
                           const SizedBox(height: 24),
@@ -133,23 +126,23 @@ class _VerifyAccreditationScreenState extends ConsumerState<VerifyAccreditationS
   }
 
   Widget _buildVerifiedCard(PublicStation station) {
-    return Card(
+    return Container(
       margin: const EdgeInsets.only(bottom: 12),
-      color: Colors.green.shade50,
+      decoration: BoxDecoration(color: WebTheme.sealGold.withValues(alpha: 0.10), borderRadius: BorderRadius.circular(10), border: Border.all(color: WebTheme.sealGold.withValues(alpha: 0.3))),
       child: ListTile(
-        leading: const Icon(Icons.verified, color: Colors.green, size: 32),
-        title: Text(station.stationName, style: const TextStyle(fontWeight: FontWeight.bold)),
+        leading: const WebSeal(size: 36),
+        title: Text(station.stationName, style: const TextStyle(fontWeight: FontWeight.bold, color: WebTheme.inkNavy)),
         subtitle: Text('${station.barangayName ?? station.stationAddress} · WASA-accredited and verified'),
       ),
     );
   }
 
   Widget _buildNotFoundCard() {
-    return Card(
-      color: Colors.red.shade50,
+    return Container(
+      decoration: BoxDecoration(color: Colors.red.shade50, borderRadius: BorderRadius.circular(10)),
       child: const ListTile(
         leading: Icon(Icons.error_outline, color: Colors.red, size: 32),
-        title: Text('No accredited station found by that name', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: Text('No accredited station found by that name', style: TextStyle(fontWeight: FontWeight.bold, color: WebTheme.inkNavy)),
         subtitle: Text('Double-check the spelling, or the station may not be WASA-accredited.'),
       ),
     );
