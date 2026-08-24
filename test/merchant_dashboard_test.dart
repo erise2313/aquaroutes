@@ -3,12 +3,12 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('calculateOrderCounts', () {
-    test('counts pending, active, and completed orders from a mixed list', () {
+    test('counts pending, active (incl. assigned), and done orders from a mixed list', () {
       final orders = [
         {'status': 'pending'},
+        {'status': 'assigned'},
         {'status': 'active'},
-        {'status': 'active'},
-        {'status': 'completed'},
+        {'status': 'done'},
         {'status': 'done'},
       ];
 
@@ -17,6 +17,20 @@ void main() {
       expect(counts['pending'], 1);
       expect(counts['active'], 2);
       expect(counts['done'], 2);
+    });
+
+    test('excludes cancelled orders from every bucket', () {
+      final orders = [
+        {'status': 'pending'},
+        {'status': 'cancelled'},
+        {'status': 'cancelled'},
+      ];
+
+      final counts = calculateOrderCounts(orders);
+
+      expect(counts['pending'], 1);
+      expect(counts['active'], 0);
+      expect(counts['done'], 0);
     });
   });
 }

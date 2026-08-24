@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:latlong2/latlong.dart';
+
+import '../../widgets/custom_map_marker.dart';
 
 class LocationPickerScreen extends StatefulWidget {
   final double? initialLatitude;
@@ -19,27 +22,20 @@ class LocationPickerScreen extends StatefulWidget {
 }
 
 class _LocationPickerScreenState extends State<LocationPickerScreen> {
-  late GoogleMapController _mapController;
+  final MapController _mapController = MapController();
   late TextEditingController _stationNameController;
 
   LatLng? _selectedLocation;
-  Set<Marker> _markers = {};
   bool _isLoadingLocation = false;
 
   @override
   void initState() {
     super.initState();
-    _stationNameController = TextEditingController(
-      text: widget.initialStationName ?? '',
-    );
-
-    // Initialize with provided location or default to Manila
+    _stationNameController = TextEditingController(text: widget.initialStationName ?? '');
     _selectedLocation = LatLng(
-      widget.initialLatitude ?? 14.0583,
-      widget.initialLongitude ?? 121.0363,
+      widget.initialLatitude ?? 14.3868,
+      widget.initialLongitude ?? 120.8817,
     );
-
-    _addMarker(_selectedLocation!);
   }
 
   @override
@@ -48,75 +44,45 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
     super.dispose();
   }
 
-  void _addMarker(LatLng location) {
-    setState(() {
-      _selectedLocation = location;
-      _markers = {
-        Marker(
-          markerId: const MarkerId('selected_location'),
-          position: location,
-          infoWindow: InfoWindow(
-            title: 'Water Station',
-            snippet:
-                '${location.latitude.toStringAsFixed(4)}, ${location.longitude.toStringAsFixed(4)}',
-          ),
-        ),
-      };
-    });
+  void _selectLocation(LatLng location) {
+    setState(() => _selectedLocation = location);
   }
 
   Future<void> _getCurrentLocation() async {
     setState(() => _isLoadingLocation = true);
 
     try {
-      // Check permission
       LocationPermission permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
       }
 
-      if (permission == LocationPermission.whileInUse ||
-          permission == LocationPermission.always) {
+      if (permission == LocationPermission.whileInUse || permission == LocationPermission.always) {
         final Position position = await Geolocator.getCurrentPosition(
-          desiredAccuracy: LocationAccuracy.high,
+          locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
         );
-
         final location = LatLng(position.latitude, position.longitude);
-        _addMarker(location);
-
-        // Animate camera to current location
-        await _mapController.animateCamera(
-          CameraUpdate.newCameraPosition(
-            CameraPosition(target: location, zoom: 15),
-          ),
-        );
+        _selectLocation(location);
+        _mapController.move(location, 15);
       } else if (permission == LocationPermission.deniedForever) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text(
-                'Location permission is required. Please enable it in settings.',
-              ),
-            ),
+            const SnackBar(content: Text('Location permission is required. Please enable it in settings.')),
           );
         }
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Error getting location: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error getting location: $e')));
       }
     } finally {
-      setState(() => _isLoadingLocation = false);
+      if (mounted) setState(() => _isLoadingLocation = false);
     }
   }
 
   void _confirmLocation() {
     if (_selectedLocation == null) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Please select a location')));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please select a location')));
       return;
     }
 
@@ -127,7 +93,6 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
       return;
     }
 
-    // Return data to previous screen
     Navigator.pop(context, {
       'latitude': _selectedLocation!.latitude,
       'longitude': _selectedLocation!.longitude,
@@ -145,23 +110,29 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
       ),
       body: Stack(
         children: [
-          // Google Map
-          GoogleMap(
-            initialCameraPosition: CameraPosition(
-              target: _selectedLocation!,
-              zoom: 15,
+          FlutterMap(
+            mapController: _mapController,
+            options: MapOptions(
+              initialCenter: _selectedLocation!,
+              initialZoom: 15,
+              onTap: (tapPosition, point) => _selectLocation(point),
             ),
-            onMapCreated: (controller) {
-              _mapController = controller;
-            },
-            onTap: _addMarker,
-            markers: _markers,
-            myLocationButtonEnabled: false,
-            myLocationEnabled: false,
-            zoomControlsEnabled: false,
+            children: [
+              TileLayer(
+                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                userAgentPackageName: 'ph.gentriwasa.aquaroute',
+              ),
+              if (_selectedLocation != null)
+                MarkerLayer(markers: [
+                  Marker(
+                    point: _selectedLocation!,
+                    width: 40,
+                    height: 40,
+                    child: const MapPin(kind: MapPinKind.station),
+                  ),
+                ]),
+            ],
           ),
-
-          // Station Name Input
           Positioned(
             top: 16,
             left: 16,
@@ -172,30 +143,19 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(12),
                 boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
+                  BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 8, offset: const Offset(0, 2)),
                 ],
               ),
               child: TextField(
                 controller: _stationNameController,
                 decoration: InputDecoration(
                   hintText: 'Enter water station name',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 8,
-                  ),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 ),
               ),
             ),
           ),
-
-          // Current Location Button
           Positioned(
             bottom: 100,
             right: 16,
@@ -206,16 +166,11 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
                   ? const SizedBox(
                       width: 24,
                       height: 24,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation(Colors.white),
-                      ),
+                      child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation(Colors.white)),
                     )
                   : const Icon(Icons.my_location),
             ),
           ),
-
-          // Location Info and Confirm Button
           Positioned(
             bottom: 0,
             left: 0,
@@ -224,22 +179,14 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(16),
-                  topRight: Radius.circular(16),
-                ),
+                borderRadius: const BorderRadius.only(topLeft: Radius.circular(16), topRight: Radius.circular(16)),
                 boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
-                    blurRadius: 8,
-                    offset: const Offset(0, -2),
-                  ),
+                  BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 8, offset: const Offset(0, -2)),
                 ],
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Selected Coordinates Display
                   if (_selectedLocation != null)
                     Container(
                       padding: const EdgeInsets.all(12),
@@ -257,19 +204,12 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
                               children: [
                                 const Text(
                                   'Selected Location',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: Colors.blue,
-                                    fontWeight: FontWeight.bold,
-                                  ),
+                                  style: TextStyle(fontSize: 12, color: Colors.blue, fontWeight: FontWeight.bold),
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
                                   '${_selectedLocation!.latitude.toStringAsFixed(4)}, ${_selectedLocation!.longitude.toStringAsFixed(4)}',
-                                  style: const TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w500,
-                                  ),
+                                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
                                 ),
                               ],
                             ),
@@ -278,8 +218,6 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
                       ),
                     ),
                   const SizedBox(height: 12),
-
-                  // Confirm Button
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton.icon(

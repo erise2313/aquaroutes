@@ -20,15 +20,19 @@ dependencies:
   http: ^1.1.0
   
   # Maps & Geolocation
-  google_maps_flutter: ^2.14.2
   geolocator: ^14.0.2
-  
+
   # Utilities
   flutter_dotenv: ^6.0.1 # For securing your Google/Supabase Keys
   intl: ^0.20.3          # For formatting dates/currencies
   geocoding: ^4.0.0
-  flutter_polyline_points: ^3.1.0
-  googleapis_auth: ^2.0.0
+  file_picker: ^8.0.0    # Permit Vault document uploads
+  qr_flutter: ^4.1.0     # Worker WASA QR clearance badge
+  shared_preferences: ^2.3.0 # Persisting a guest's last order id for order tracking
+
+  # Maps (OpenStreetMap) -- replaces google_maps_flutter across the app
+  flutter_map: ^7.0.0
+  latlong2: ^0.9.1
 
 dev_dependencies:
   flutter_test:
@@ -37,5 +41,7 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    - .env
 
 

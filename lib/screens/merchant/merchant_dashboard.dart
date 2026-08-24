@@ -1,8 +1,34 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart'; // Required for Clipboard copy action
+import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:aquaroute/screens/merchant/sandbox_screen.dart'; 
-import 'package:aquaroute/screens/merchant/driver_management.dart'; // Import Fleet Management screen
+import 'package:aquaroute/screens/merchant/driver_management.dart';
+import 'package:aquaroute/screens/merchant/hire_check_screen.dart';
+import 'package:aquaroute/screens/merchant/jug_clearinghouse_screen.dart';
+import 'package:aquaroute/screens/merchant/permit_vault_screen.dart';
+import 'package:aquaroute/screens/merchant/worker_registry_screen.dart';
+import 'package:aquaroute/services/permit_service.dart';
+import 'package:aquaroute/services/supabase_service.dart';
+
+/// 'assigned' rolls into "active" alongside 'active' (both mean a driver is
+/// on it, just not picked up yet vs. en route); 'done' is counted on its
+/// own; 'cancelled' is intentionally excluded from every bucket -- the old
+/// version miscounted cancelled orders as "done".
+Map<String, int> calculateOrderCounts(List<dynamic> orders) {
+  int pending = 0, active = 0, done = 0;
+
+  for (final order in orders) {
+    final status = order['status']?.toString().toLowerCase();
+    if (status == 'pending') {
+      pending++;
+    } else if (status == 'assigned' || status == 'active') {
+      active++;
+    } else if (status == 'done') {
+      done++;
+    }
+  }
+
+  return {'pending': pending, 'active': active, 'done': done};
+}
 
 class MerchantDashboardScreen extends StatefulWidget {
   const MerchantDashboardScreen({super.key});
@@ -13,10 +39,12 @@ class MerchantDashboardScreen extends StatefulWidget {
 
 class _MerchantDashboardScreenState extends State<MerchantDashboardScreen> {
   final supabase = Supabase.instance.client;
-  
+  final _permitService = PermitService(SupabaseService.instance);
+
   int _pendingCount = 0;
   int _activeCount = 0;
   int _doneCount = 0;
+  int _renewalDueCount = 0;
   String _inviteCode = "Loading...";
   bool _isLoading = true;
 
@@ -26,46 +54,32 @@ class _MerchantDashboardScreenState extends State<MerchantDashboardScreen> {
     _fetchDashboardData();
   }
 
-  // Combined fetch function to retrieve both order stats and station invite code in one go
   Future<void> _fetchDashboardData() async {
     try {
       final userId = supabase.auth.currentUser!.id;
 
-      // 1. Get Merchant's Station ID and invite code
+      // 1. Get the owner's station id and invite code.
       final stationData = await supabase
-          .from('water_stations') // Confirmed matching table name
+          .from('water_stations')
           .select('id, invite_code')
-          .eq('owner_id', userId)
+          .eq('owner_profile_id', userId)
           .maybeSingle();
 
       if (stationData != null) {
-        final stationId = stationData['id'];
+        final stationId = stationData['id'] as String;
         final String inviteCode = stationData['invite_code'] ?? 'NO CODE';
 
-        // 2. Fetch order statuses
-        final response = await supabase
-            .from('orders')
-            .select('status')
-            .eq('station_id', stationId);
-
-        int pending = 0, active = 0, done = 0;
-
-        for (var order in response) {
-          final status = order['status']?.toString().toLowerCase();
-          if (status == 'pending') {
-            pending++;
-          } else if (status == 'active') {
-            active++;
-          } else {
-            done++;
-          }
-        }
+        final response = await supabase.from('orders').select('status').eq('station_id', stationId);
+        final counts = calculateOrderCounts(response);
+        final permits = await _permitService.fetchStationPermits(stationId);
+        final renewalDueCount = permits.where((p) => p.isRequired && p.isRenewalDueSoon).length;
 
         if (mounted) {
           setState(() {
-            _pendingCount = pending;
-            _activeCount = active;
-            _doneCount = done;
+            _pendingCount = counts['pending']!;
+            _activeCount = counts['active']!;
+            _doneCount = counts['done']!;
+            _renewalDueCount = renewalDueCount;
             _inviteCode = inviteCode;
             _isLoading = false;
           });
@@ -88,34 +102,24 @@ class _MerchantDashboardScreenState extends State<MerchantDashboardScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Merchant Dashboard', style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold)),
+        title: const Text('Station Dashboard', style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold)),
         backgroundColor: Colors.white,
         elevation: 0,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.bug_report, color: Colors.redAccent, size: 30),
-            tooltip: 'Open Dev Sandbox',
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const SandboxScreen()),
-              ).then((_) => _fetchDashboardData()); // Refresh stats when returning
-            },
-          ),
-        ],
       ),
-      body: _isLoading 
+      body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : RefreshIndicator(
               onRefresh: _fetchDashboardData,
               child: ListView(
                 padding: const EdgeInsets.all(16),
                 children: [
-                  // --- 1. STATION INVITE CODE CARD ---
                   _buildInviteCodeCard(_inviteCode),
+                  if (_renewalDueCount > 0) ...[
+                    const SizedBox(height: 16),
+                    _buildRenewalBanner(),
+                  ],
                   const SizedBox(height: 16),
 
-                  // --- 2. LIVE ORDER STATISTICS ---
                   const Text('Live order overview', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87)),
                   const SizedBox(height: 16),
                   Row(
@@ -129,28 +133,54 @@ class _MerchantDashboardScreenState extends State<MerchantDashboardScreen> {
                   ),
                   const SizedBox(height: 24),
 
-                  // --- 3. FLEET QUICK ACTION NAVIGATION ---
+                  const Text('Governance & compliance', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87)),
+                  const SizedBox(height: 12),
+                  _buildNavCard(
+                    icon: Icons.folder_shared_outlined,
+                    color: Colors.teal,
+                    title: 'Permit Vault',
+                    subtitle: 'Upload business, sanitary, and (if alkaline) technical permits',
+                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const PermitVaultScreen())),
+                  ),
+                  const SizedBox(height: 8),
+                  _buildNavCard(
+                    icon: Icons.badge_outlined,
+                    color: Colors.indigo,
+                    title: 'Worker Registry',
+                    subtitle: 'Manage worker clearance and file security incidents',
+                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const WorkerRegistryScreen())),
+                  ),
+                  const SizedBox(height: 8),
+                  _buildNavCard(
+                    icon: Icons.fact_check_outlined,
+                    color: Colors.teal,
+                    title: 'Hire Check',
+                    subtitle: 'Search a worker\'s clearance history before hiring them',
+                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const HireCheckScreen())),
+                  ),
+                  const SizedBox(height: 8),
+                  _buildNavCard(
+                    icon: Icons.swap_horiz,
+                    color: Colors.deepPurple,
+                    title: 'Jug Clearinghouse',
+                    subtitle: 'Settle Slim/Round 5-gal jug balances with other stations',
+                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const JugClearinghouseScreen())),
+                  ),
+                  const SizedBox(height: 24),
+
                   const Text('Fleet management', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87)),
                   const SizedBox(height: 12),
-                  Card(
-                    elevation: 1,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    child: ListTile(
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      leading: CircleAvatar(
-                        backgroundColor: Colors.blue.shade100,
-                        child: const Icon(Icons.local_shipping, color: Colors.blue),
-                      ),
-                      title: const Text('Track & Manage Drivers', style: TextStyle(fontWeight: FontWeight.bold)),
-                      subtitle: const Text('Configure vehicle capacities, plates, and monitor idle drivers'),
-                      trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (context) => const DriverManagementScreen()),
-                        ).then((_) => _fetchDashboardData());
-                      },
-                    ),
+                  _buildNavCard(
+                    icon: Icons.local_shipping,
+                    color: Colors.blue,
+                    title: 'Track & Manage Drivers',
+                    subtitle: 'Configure vehicle capacities, plates, and monitor idle drivers',
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const DriverManagementScreen()),
+                      ).then((_) => _fetchDashboardData());
+                    },
                   ),
                 ],
               ),
@@ -158,7 +188,45 @@ class _MerchantDashboardScreenState extends State<MerchantDashboardScreen> {
     );
   }
 
-  // Beautiful Invite Code widget containing Copy to Clipboard functionality
+  Widget _buildNavCard({
+    required IconData icon,
+    required Color color,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    return Card(
+      elevation: 1,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        leading: CircleAvatar(backgroundColor: color.withValues(alpha: 0.1), child: Icon(icon, color: color)),
+        title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+        subtitle: Text(subtitle),
+        trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
+        onTap: onTap,
+      ),
+    );
+  }
+
+  Widget _buildRenewalBanner() {
+    return Card(
+      elevation: 1,
+      color: Colors.amber.shade50,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: ListTile(
+        leading: Icon(Icons.warning_amber_rounded, color: Colors.amber.shade800),
+        title: Text(
+          _renewalDueCount == 1 ? '1 permit needs renewal soon' : '$_renewalDueCount permits need renewal soon',
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
+        subtitle: const Text('Expiring within 30 days, or already expired.'),
+        trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
+        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const PermitVaultScreen())).then((_) => _fetchDashboardData()),
+      ),
+    );
+  }
+
   Widget _buildInviteCodeCard(String code) {
     return Card(
       elevation: 2,
@@ -173,14 +241,11 @@ class _MerchantDashboardScreenState extends State<MerchantDashboardScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  "STATION INVITE CODE", 
-                  style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blueGrey, letterSpacing: 1.0, fontSize: 12)
+                  "STATION INVITE CODE",
+                  style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blueGrey, letterSpacing: 1.0, fontSize: 12),
                 ),
                 const SizedBox(height: 4),
-                Text(
-                  code, 
-                  style: const TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: Colors.blue, letterSpacing: 1.5)
-                ),
+                Text(code, style: const TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: Colors.blue, letterSpacing: 1.5)),
               ],
             ),
             IconButton(
@@ -193,7 +258,7 @@ class _MerchantDashboardScreenState extends State<MerchantDashboardScreen> {
                     content: Text("Copied invite code '$code' to clipboard!"),
                     backgroundColor: Colors.blue.shade600,
                     behavior: SnackBarBehavior.floating,
-                  )
+                  ),
                 );
               },
             ),
@@ -206,10 +271,7 @@ class _MerchantDashboardScreenState extends State<MerchantDashboardScreen> {
   Widget _buildStatCard(String title, int count, Color bgColor, Color textColor) {
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(12),
-      ),
+      decoration: BoxDecoration(color: bgColor, borderRadius: BorderRadius.circular(12)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
