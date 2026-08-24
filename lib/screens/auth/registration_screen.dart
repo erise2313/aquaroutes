@@ -1,9 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'dart:math'; // Required for generating the invite code
-import '../merchant/merchant_navigation.dart';
-import '../customer/customer_navigation.dart';
-import '../driver/driver_dashboard.dart'; // Ensure this points to your new Driver file
+import 'dart:math'; // Required for generating the invite/worker code
+
+import '../../widgets/auth_text_field.dart';
+import '../../widgets/wasa_shield_logo.dart';
+import 'login_screen.dart';
+
+/// Self-registration for the three roles that can sign themselves up:
+/// station_owner, driver, and public_consumer (a resident/customer account).
+/// Browsing the app and the Bulletin Board stay no-login by design, but
+/// placing an order requires an account (see quick_order_screen.dart) --
+/// this is where that account gets created. wasa_admin accounts are seeded
+/// directly via SQL (0010_seed_gentri_wasa.sql or a manual insert), never
+/// through this screen.
 
 class RegistrationScreen extends StatefulWidget {
   const RegistrationScreen({super.key});
@@ -14,14 +23,16 @@ class RegistrationScreen extends StatefulWidget {
 
 class _RegistrationScreenState extends State<RegistrationScreen> {
   final supabase = Supabase.instance.client;
+  final _formKey = GlobalKey<FormState>();
 
   // Shared Controllers
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
   final _fullNameController = TextEditingController();
 
-  // Merchant-Specific Controllers
-  final _businessNameController = TextEditingController();
+  // Station Owner-Specific Controllers
+  final _stationNameController = TextEditingController();
   final _stationAddressController = TextEditingController();
 
   // Driver-Specific Controllers
@@ -29,86 +40,143 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
   final _plateNumberController = TextEditingController();
   final _capacityController = TextEditingController();
 
-  String _selectedRole = 'customer';
+  String _selectedRole = 'station_owner';
   bool _isLoading = false;
 
-  // Generates a random 6-character code for Merchants
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
+    _fullNameController.dispose();
+    _stationNameController.dispose();
+    _stationAddressController.dispose();
+    _inviteCodeController.dispose();
+    _plateNumberController.dispose();
+    _capacityController.dispose();
+    super.dispose();
+  }
+
+  // Generates a random 6-character invite code for a new station.
   String _generateInviteCode() {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
     final rnd = Random();
     return String.fromCharCodes(Iterable.generate(6, (_) => chars.codeUnitAt(rnd.nextInt(chars.length))));
   }
 
+  String? _requiredField(String? value, String label) {
+    if (value == null || value.trim().isEmpty) return 'Enter $label';
+    return null;
+  }
+
+  String? _validateEmail(String? value) {
+    final trimmed = value?.trim() ?? '';
+    if (trimmed.isEmpty) return 'Enter your email address';
+    if (!trimmed.contains('@') || !trimmed.contains('.')) return 'Enter a valid email address';
+    return null;
+  }
+
+  String? _validatePassword(String? value) {
+    if (value == null || value.isEmpty) return 'Enter a password';
+    if (value.length < 8) return 'Password must be at least 8 characters';
+    return null;
+  }
+
+  String? _validateConfirmPassword(String? value) {
+    if (value != _passwordController.text) return 'Passwords do not match';
+    return null;
+  }
+
   Future<void> _signUp() async {
+    if (!(_formKey.currentState?.validate() ?? false)) return;
+
     setState(() => _isLoading = true);
-    
-    String? assignedStationId;
 
     try {
-      // 1. SECURE DRIVER CHECK: Verify invite code BEFORE creating the Auth account
-      if (_selectedRole == 'driver') {
-        // Removed the .toUpperCase() so we pass the raw text
-        final code = _inviteCodeController.text.trim(); 
-        
-        final stationMatch = await supabase
-            .from('water_stations')
-            .select('id')
-            // Changed .eq to .ilike for case-insensitive matching
-            .ilike('invite_code', code) 
-            .maybeSingle();
+      // Create the base Authentication Account. The handle_new_auth_user
+      // trigger (0001_core_identity.sql) creates the matching `profiles` row.
+      // The driver path's invite-code validation now happens server-side
+      // inside register_driver_for_station() (0005_workers.sql) instead of
+      // a client-side pre-check, since that same RPC also has to run after
+      // the auth session exists (it reads auth.uid()).
+      //
+      // If signUp() already succeeded on a previous attempt but the
+      // role-linking RPC below then failed (e.g. a driver mistyped their
+      // invite code), the account already exists and is already signed in
+      // -- calling signUp() again for the same email would just fail with
+      // "User already registered" and leave them stuck. Reuse the existing
+      // session and retry only the RPC in that case -- but only when it's
+      // for the SAME email being submitted now, otherwise a user who
+      // changes the email field to try a different account entirely would
+      // have the RPC silently applied to the old, still-signed-in identity.
+      final currentSessionEmail = supabase.auth.currentSession?.user.email;
+      final isRetryOfSameAccount = currentSessionEmail != null && currentSessionEmail == _emailController.text.trim();
 
-        if (stationMatch == null) {
-          throw Exception("Invalid Station Invite Code! Please ask your boss for the correct key.");
-        }
-        assignedStationId = stationMatch['id'];
+      if (!isRetryOfSameAccount) {
+        final res = await supabase.auth.signUp(
+          email: _emailController.text.trim(),
+          password: _passwordController.text,
+          data: {'full_name': _fullNameController.text.trim()},
+        );
+        if (res.user == null) return;
       }
 
-      // 2. Create the base Authentication Account
-      final res = await supabase.auth.signUp(
-        email: _emailController.text.trim(),
-        password: _passwordController.text,
-      );
-
-      final user = res.user;
-
-      if (user != null) {
-        // 3. Upsert into user_profiles with the new driver data
-        await supabase.from('user_profiles').upsert({
-          'id': user.id, 
-          'role': _selectedRole,
-          'full_name': _fullNameController.text.trim(),
-          
-          // Merchant Data
-          'business_name': _selectedRole == 'merchant' ? _businessNameController.text.trim() : null,
-          'station_address': _selectedRole == 'merchant' ? _stationAddressController.text.trim() : null,
-          'kyc_status': _selectedRole == 'merchant' ? 'pending_upload' : null,
-          
-          // Driver Data
-          'assigned_station_id': assignedStationId,
-          'vehicle_plate': _selectedRole == 'driver' ? _plateNumberController.text.trim().toUpperCase() : null,
-          'jug_capacity': _selectedRole == 'driver' ? int.tryParse(_capacityController.text.trim()) : null,
+      if (_selectedRole == 'station_owner') {
+        // Single RPC creates the water_stations row and the station_owner
+        // membership atomically -- see register_station_owner()
+        // (0003_memberships.sql). There is deliberately no client-insert
+        // RLS policy on memberships, so a raw two-step insert here would
+        // silently fail on the membership row (this was a real bug: station
+        // owner registration didn't work at all before this RPC existed).
+        //
+        // _generateInviteCode() picks 6 random characters with no
+        // uniqueness pre-check -- an extremely unlikely but real collision
+        // against an existing station's invite_code would otherwise surface
+        // as a raw "duplicate key" database error. Retry with a fresh code
+        // a few times before giving up.
+        for (var attempt = 0; ; attempt++) {
+          try {
+            await supabase.rpc('register_station_owner', params: {
+              'p_station_name': _stationNameController.text.trim(),
+              'p_station_address': _stationAddressController.text.trim(),
+              'p_invite_code': _generateInviteCode(),
+              // Placeholder coordinates until the owner sets their real
+              // location via the location picker in their profile screen.
+              'p_latitude': 14.3868,
+              'p_longitude': 120.8817,
+            });
+            break;
+          } on PostgrestException catch (e) {
+            final isInviteCodeCollision = e.code == '23505' && (e.message.contains('invite_code'));
+            if (!isInviteCodeCollision || attempt >= 4) rethrow;
+          }
+        }
+      } else if (_selectedRole == 'driver') {
+        // Single RPC creates the workers row, opens the first
+        // worker_station_history entry, and inserts the driver membership
+        // -- see register_driver_for_station() (0005_workers.sql). Raises
+        // if the invite code doesn't match any station.
+        await supabase.rpc('register_driver_for_station', params: {
+          'p_invite_code': _inviteCodeController.text.trim(),
+          'p_full_name': _fullNameController.text.trim(),
+          'p_phone_number': null,
+          'p_vehicle_plate': _plateNumberController.text.trim().toUpperCase(),
+          'p_jug_capacity': int.tryParse(_capacityController.text.trim()),
         });
+      } else {
+        // Customer account -- just a membership row (role public_consumer,
+        // no station). Same reasoning as the other two RPCs: there is no
+        // client-insert RLS policy on memberships.
+        await supabase.rpc('register_customer', params: {
+          'p_full_name': _fullNameController.text.trim(),
+        });
+      }
 
-        // 4. MERCHANT ONLY: Automatically create their water station and generate their invite key
-        if (_selectedRole == 'merchant') {
-          final newCode = _generateInviteCode();
-          await supabase.from('water_stations').insert({
-            'owner_id': user.id,
-            'station_name': _businessNameController.text.trim(),
-            'invite_code': newCode, 
-          });
-        }
-
-        if (!mounted) return;
-
-        // 5. Route to the correct dashboard
-        if (_selectedRole == 'merchant') {
-          Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (context) => const MerchantNavigation()), (route) => false);
-        } else if (_selectedRole == 'driver') {
-          Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (context) => const DriverDashboardScreen()), (route) => false);
-        } else {
-          Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (context) => const CustomerNavigation()), (route) => false);
-        }
+      // AuthGate reacts to the resulting auth-state/membership change and
+      // routes to the right portal -- but only once this screen (pushed on
+      // top of AuthGate's route) pops back out of the way.
+      if (mounted) {
+        Navigator.of(context).popUntil((route) => route.isFirst);
       }
     } catch (e) {
       if (mounted) {
@@ -136,85 +204,122 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const Text(
-                "Create an Account",
-                style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
-                ),
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                "Join AquaRoutes and manage deliveries instantly.",
-                style: TextStyle(fontSize: 16, color: Colors.grey),
-              ),
-              const SizedBox(height: 32),
-
-              _buildRoleDropdown(),
-              const SizedBox(height: 24),
-
-              if (_selectedRole == 'merchant') _buildMerchantFields()
-              else if (_selectedRole == 'driver') _buildDriverFields()
-              else _buildCustomerFields(),
-
-              const SizedBox(height: 24),
-
-              _buildTextField(
-                controller: _emailController,
-                label: "Email Address",
-                icon: Icons.email_outlined,
-                isEmail: true,
-              ),
-              const SizedBox(height: 16),
-              _buildTextField(
-                controller: _passwordController,
-                label: "Password",
-                icon: Icons.lock_outline,
-                isPassword: true,
-              ),
-
-              const SizedBox(height: 32),
-
-              ElevatedButton(
-                onPressed: _isLoading ? null : _signUp,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue.shade600,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const WasaShieldLogo(size: 64),
+                const SizedBox(height: 20),
+                const Text(
+                  "Create an Account",
+                  style: TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
                   ),
                 ),
-                child: _isLoading
-                    ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(
-                          color: Colors.white,
-                          strokeWidth: 2,
+                const SizedBox(height: 8),
+                const Text(
+                  "Join GenTri: WASA and manage deliveries instantly.",
+                  style: TextStyle(fontSize: 16, color: Colors.grey),
+                ),
+                const SizedBox(height: 32),
+
+                _buildRoleDropdown(),
+                const SizedBox(height: 24),
+
+                if (_selectedRole == 'driver')
+                  _buildDriverFields()
+                else if (_selectedRole == 'public_consumer')
+                  _buildCustomerFields()
+                else
+                  _buildStationOwnerFields(),
+
+                const SizedBox(height: 24),
+
+                AuthTextField(
+                  controller: _emailController,
+                  label: "Email Address",
+                  icon: Icons.email_outlined,
+                  keyboardType: TextInputType.emailAddress,
+                  textInputAction: TextInputAction.next,
+                  validator: _validateEmail,
+                ),
+                const SizedBox(height: 16),
+                AuthTextField(
+                  controller: _passwordController,
+                  label: "Password",
+                  icon: Icons.lock_outline,
+                  isPassword: true,
+                  textInputAction: TextInputAction.next,
+                  validator: _validatePassword,
+                ),
+                const SizedBox(height: 16),
+                AuthTextField(
+                  controller: _confirmPasswordController,
+                  label: "Confirm Password",
+                  icon: Icons.lock_outline,
+                  isPassword: true,
+                  textInputAction: TextInputAction.done,
+                  validator: _validateConfirmPassword,
+                  onSubmitted: (_) => _signUp(),
+                ),
+
+                const SizedBox(height: 32),
+
+                ElevatedButton(
+                  onPressed: _isLoading ? null : _signUp,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue.shade600,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: _isLoading
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        )
+                      : const Text(
+                          "REGISTER",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
                         ),
-                      )
-                    : const Text(
-                        "REGISTER",
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
-                      ),
-              ),
-            ],
+                ),
+
+                const SizedBox(height: 20),
+
+                TextButton(
+                  onPressed: () {
+                    Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const LoginScreen()));
+                  },
+                  child: RichText(
+                    text: TextSpan(
+                      text: "Already have an account? ",
+                      style: const TextStyle(color: Colors.grey),
+                      children: [
+                        TextSpan(text: "Login here", style: TextStyle(color: Colors.blue.shade700, fontWeight: FontWeight.bold)),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
     );
   }
-
-  // --- UI BUILDER HELPERS ---
 
   Widget _buildRoleDropdown() {
     return DropdownButtonFormField<String>(
@@ -234,9 +339,9 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
         ),
       ),
       items: const [
-        DropdownMenuItem(value: 'customer', child: Text("Customer (Buying Water)")),
-        DropdownMenuItem(value: 'merchant', child: Text("Business Owner (Selling Water)")),
-        DropdownMenuItem(value: 'driver', child: Text("Driver (Delivery Personnel)")),
+        DropdownMenuItem(value: 'station_owner', child: Text("Water Station Owner")),
+        DropdownMenuItem(value: 'driver', child: Text("Driver / Helper")),
+        DropdownMenuItem(value: 'public_consumer', child: Text("Resident / Customer Account")),
       ],
       onChanged: (String? newValue) {
         if (newValue != null) {
@@ -246,34 +351,31 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
     );
   }
 
-  Widget _buildCustomerFields() {
+  Widget _buildStationOwnerFields() {
     return Column(
       children: [
-        _buildTextField(controller: _fullNameController, label: "Full Name", icon: Icons.person_outline),
-      ],
-    );
-  }
-
-  // PRESERVED YOUR ORIGINAL UI FOR MERCHANTS
-  Widget _buildMerchantFields() {
-    return Column(
-      children: [
-        _buildTextField(
-          controller: _businessNameController,
+        AuthTextField(
+          controller: _stationNameController,
           label: "Water Station Name",
           icon: Icons.water_drop_outlined,
+          textInputAction: TextInputAction.next,
+          validator: (v) => _requiredField(v, 'your station name'),
         ),
         const SizedBox(height: 16),
-        _buildTextField(
+        AuthTextField(
           controller: _fullNameController,
           label: "Owner Full Name",
           icon: Icons.person_outline,
+          textInputAction: TextInputAction.next,
+          validator: (v) => _requiredField(v, 'your full name'),
         ),
         const SizedBox(height: 16),
-        _buildTextField(
+        AuthTextField(
           controller: _stationAddressController,
-          label: "Station Address (San Francisco, General Trias)", // Kept your local placeholder!
+          label: "Station Address (San Francisco, General Trias)",
           icon: Icons.store_mall_directory_outlined,
+          textInputAction: TextInputAction.next,
+          validator: (v) => _requiredField(v, 'your station address'),
         ),
         const SizedBox(height: 16),
         Container(
@@ -300,71 +402,105 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
     );
   }
 
-  // NEW DRIVER UI
-  Widget _buildDriverFields() {
+  Widget _buildCustomerFields() {
     return Column(
       children: [
-        _buildTextField(controller: _fullNameController, label: "Driver Full Name", icon: Icons.person_outline),
+        AuthTextField(
+          controller: _fullNameController,
+          label: "Full Name",
+          icon: Icons.person_outline,
+          textInputAction: TextInputAction.next,
+          validator: (v) => _requiredField(v, 'your full name'),
+        ),
         const SizedBox(height: 16),
         Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: Colors.blue.shade50, 
-            borderRadius: BorderRadius.circular(12), 
-            border: Border.all(color: Colors.blue.shade200)
+            color: Colors.blue.shade50,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.blue.shade200),
+          ),
+          child: const Row(
+            children: [
+              Icon(Icons.info_outline, color: Colors.blue),
+              SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  "Use this to place water orders and track your order history. Browsing the Bulletin Board and station map never requires an account.",
+                  style: TextStyle(fontSize: 12, color: Colors.black87),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDriverFields() {
+    return Column(
+      children: [
+        AuthTextField(
+          controller: _fullNameController,
+          label: "Driver Full Name",
+          icon: Icons.person_outline,
+          textInputAction: TextInputAction.next,
+          validator: (v) => _requiredField(v, 'your full name'),
+        ),
+        const SizedBox(height: 16),
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Colors.blue.shade50,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.blue.shade200),
           ),
           child: Column(
             children: [
               const Row(
                 children: [
-                  Icon(Icons.vpn_key, color: Colors.blue), 
+                  Icon(Icons.vpn_key, color: Colors.blue),
                   SizedBox(width: 8),
                   Text("Station Link Key", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue)),
                 ],
               ),
               const SizedBox(height: 8),
-              _buildTextField(controller: _inviteCodeController, label: "Enter Merchant Invite Code", icon: Icons.numbers),
+              AuthTextField(
+                controller: _inviteCodeController,
+                label: "Enter Station Invite Code",
+                icon: Icons.numbers,
+                textInputAction: TextInputAction.next,
+                validator: (v) => _requiredField(v, 'the station invite code'),
+              ),
             ],
           ),
         ),
         const SizedBox(height: 16),
         Row(
           children: [
-            Expanded(child: _buildTextField(controller: _plateNumberController, label: "Plate No.", icon: Icons.directions_car)),
+            Expanded(
+              child: AuthTextField(
+                controller: _plateNumberController,
+                label: "Plate No.",
+                icon: Icons.directions_car,
+                textInputAction: TextInputAction.next,
+                validator: (v) => _requiredField(v, 'the vehicle plate number'),
+              ),
+            ),
             const SizedBox(width: 12),
-            Expanded(child: _buildTextField(controller: _capacityController, label: "Max Jugs", icon: Icons.scale, isNumber: true)),
+            Expanded(
+              child: AuthTextField(
+                controller: _capacityController,
+                label: "Max Jugs",
+                icon: Icons.scale,
+                keyboardType: TextInputType.number,
+                textInputAction: TextInputAction.next,
+                validator: (v) => _requiredField(v, 'the jug capacity'),
+              ),
+            ),
           ],
         ),
       ],
-    );
-  }
-
-  Widget _buildTextField({
-    required TextEditingController controller,
-    required String label,
-    required IconData icon,
-    bool isPassword = false,
-    bool isEmail = false,
-    bool isNumber = false,
-  }) {
-    return TextField(
-      controller: controller,
-      obscureText: isPassword,
-      keyboardType: isEmail ? TextInputType.emailAddress : (isNumber ? TextInputType.number : TextInputType.text),
-      decoration: InputDecoration(
-        labelText: label,
-        prefixIcon: Icon(icon, color: Colors.grey.shade500),
-        filled: true,
-        fillColor: Colors.grey.shade50,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.grey.shade300),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.grey.shade300),
-        ),
-      ),
     );
   }
 }

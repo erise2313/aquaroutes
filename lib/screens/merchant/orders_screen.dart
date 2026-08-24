@@ -13,7 +13,7 @@ class MerchantOrdersScreen extends StatefulWidget {
 class _MerchantOrdersScreenState extends State<MerchantOrdersScreen> {
   final supabase = Supabase.instance.client;
   bool _isLoading = true;
-  
+
   List<dynamic> _newOrders = [];
   List<dynamic> _activeOrders = [];
   List<dynamic> _doneOrders = [];
@@ -32,7 +32,7 @@ class _MerchantOrdersScreenState extends State<MerchantOrdersScreen> {
       final stationData = await supabase
           .from('water_stations')
           .select('id')
-          .eq('owner_id', userId)
+          .eq('owner_profile_id', userId)
           .maybeSingle();
 
       if (stationData == null) {
@@ -42,22 +42,22 @@ class _MerchantOrdersScreenState extends State<MerchantOrdersScreen> {
 
       final stationId = stationData['id'];
 
+      // Workers currently flagged are excluded from the assignment list --
+      // a flagged worker shouldn't be dispatched until WASA clears them.
       final driversResponse = await supabase
-          .from('user_profiles')
-          .select('id, full_name, vehicle_plate, phone_number')
-          .eq('role', 'driver')
-          .eq('assigned_station_id', stationId);
+          .from('workers')
+          .select('id, full_name, vehicle_plate, phone_number, clearance_status')
+          .eq('station_id', stationId)
+          .neq('clearance_status', 'flagged');
 
       _availableDrivers = driversResponse;
 
-      // Realtime orders stream with joined customer profile phone numbers
       supabase
           .from('orders')
           .stream(primaryKey: ['id'])
           .eq('station_id', stationId)
           .order('created_at', ascending: false)
           .listen((data) async {
-            // Fetch associated customer phone numbers for the active list
             final pending = [];
             final active = [];
             final done = [];
@@ -66,11 +66,13 @@ class _MerchantOrdersScreenState extends State<MerchantOrdersScreen> {
               final status = order['status']?.toString().toLowerCase();
               if (status == 'pending') {
                 pending.add(order);
-              } else if (status == 'active') {
+              } else if (status == 'assigned' || status == 'active') {
                 active.add(order);
-              } else {
-                done.add(order); 
+              } else if (status == 'done') {
+                done.add(order);
               }
+              // 'cancelled' orders are intentionally excluded from every
+              // tab -- they previously got miscounted into "Done".
             }
 
             if (mounted) {
@@ -110,16 +112,16 @@ class _MerchantOrdersScreenState extends State<MerchantOrdersScreen> {
     await supabase.from('orders').update({'status': newStatus}).eq('id', orderId);
   }
 
-  Future<void> _assignDriver(String orderId, String driverId) async {
+  Future<void> _assignDriver(String orderId, String workerId) async {
     try {
       await supabase.from('orders').update({
-        'driver_id': driverId,
-        'status': 'active'
+        'driver_worker_id': workerId,
+        'status': 'assigned',
       }).eq('id', orderId);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Driver successfully assigned to order! 🚚'), backgroundColor: Colors.green),
+          const SnackBar(content: Text('Driver successfully assigned to order!'), backgroundColor: Colors.green),
         );
       }
     } catch (e) {
@@ -132,7 +134,7 @@ class _MerchantOrdersScreenState extends State<MerchantOrdersScreen> {
   void _showAssignDriverDialog(String orderId) {
     if (_availableDrivers.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No drivers found. Add drivers in Fleet Management first!')),
+        const SnackBar(content: Text('No drivers found. Add drivers in the Worker Registry first!')),
       );
       return;
     }
@@ -172,17 +174,6 @@ class _MerchantOrdersScreenState extends State<MerchantOrdersScreen> {
         ],
       ),
     );
-  }
-
-  Future<void> _deleteOrder(String orderId) async {
-    try {
-      await supabase.from('orders').delete().eq('id', orderId);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Order permanently deleted. 🗑️')));
-      }
-    } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error deleting: $e')));
-    }
   }
 
   @override
@@ -238,7 +229,7 @@ class _MerchantOrdersScreenState extends State<MerchantOrdersScreen> {
         itemBuilder: (context, index) {
           final order = orders[index];
           final shortId = order['id'].toString().substring(0, 6).toUpperCase();
-          
+
           DateTime date = DateTime.parse(order['created_at']);
           String time = DateFormat('h:mm a').format(date);
 
@@ -252,28 +243,18 @@ class _MerchantOrdersScreenState extends State<MerchantOrdersScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Row(
-                        children: [
-                          CircleAvatar(
-                            backgroundColor: Colors.blue.shade100,
-                            child: const Icon(Icons.water_drop, color: Colors.blue),
-                          ),
-                          const SizedBox(width: 12),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text('Order #$shortId', style: const TextStyle(fontWeight: FontWeight.bold)),
-                              Text('Created at $time', style: const TextStyle(color: Colors.grey, fontSize: 12)),
-                            ],
-                          ),
-                        ],
+                      CircleAvatar(
+                        backgroundColor: Colors.blue.shade100,
+                        child: const Icon(Icons.water_drop, color: Colors.blue),
                       ),
-                      IconButton(
-                        icon: const Icon(Icons.delete_outline, color: Colors.red),
-                        onPressed: () => _deleteOrder(order['id']),
-                        tooltip: 'Delete test order',
+                      const SizedBox(width: 12),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Order #$shortId', style: const TextStyle(fontWeight: FontWeight.bold)),
+                          Text('Created at $time', style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                        ],
                       ),
                     ],
                   ),
@@ -282,8 +263,7 @@ class _MerchantOrdersScreenState extends State<MerchantOrdersScreen> {
                     'Jugs: ${order['jugs_ordered']} | Total: ₱${order['total_amount']}',
                     style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.black87),
                   ),
-                  
-                  // If it's active, show call customer action for the merchant
+
                   if (listType == 'active') ...[
                     const SizedBox(height: 8),
                     Row(
@@ -291,8 +271,7 @@ class _MerchantOrdersScreenState extends State<MerchantOrdersScreen> {
                       children: [
                         TextButton.icon(
                           onPressed: () {
-                            // Extract or pass customer phone number linked to order
-                            String customerPhone = order['customer_phone'] ?? '';
+                            String customerPhone = order['customer_phone'] ?? order['guest_phone'] ?? '';
                             _makePhoneCall(customerPhone);
                           },
                           icon: const Icon(Icons.phone, size: 16, color: Colors.green),

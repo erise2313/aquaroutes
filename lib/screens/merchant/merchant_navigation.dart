@@ -3,54 +3,30 @@ import 'merchant_dashboard.dart';
 import 'orders_screen.dart';
 import 'tracking_screen.dart';
 import 'merchant_profile_screens.dart';
+import '../../widgets/responsive_nav_shell.dart';
+import '../public/bulletin_board_screen.dart';
 
-class MerchantNavigation extends StatefulWidget {
+class MerchantNavigation extends StatelessWidget {
   const MerchantNavigation({super.key});
 
   @override
-  State<MerchantNavigation> createState() => _MerchantNavigationState();
-}
-
-class _MerchantNavigationState extends State<MerchantNavigation> {
-  int _currentIndex = 0;
-
-  final List<Widget> _pages = const [
-    MerchantDashboardScreen(),
-    MerchantOrdersScreen(),
-    TrackingScreen(),
-    MerchantProfileScreen(),
-  ];
-
-  @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      // Use IndexedStack to keep pages alive in memory instead of rebuilding
-      body: IndexedStack(index: _currentIndex, children: _pages),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        onTap: (index) => setState(() => _currentIndex = index),
-        type: BottomNavigationBarType.fixed,
-        selectedItemColor: Colors.blue.shade700,
-        unselectedItemColor: Colors.grey,
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home_outlined),
-            activeIcon: Icon(Icons.home),
-            label: 'Home',
-          ),
-          BottomNavigationBarItem(icon: Icon(Icons.list_alt), label: 'Orders'),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.map_outlined),
-            activeIcon: Icon(Icons.map),
-            label: 'Track',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person_outline),
-            activeIcon: Icon(Icons.person),
-            label: 'Profile',
-          ),
-        ],
-      ),
+    return ResponsiveNavShell(
+      selectedItemColor: Colors.blue.shade700,
+      destinations: const [
+        NavShellDestination(icon: Icons.home_outlined, selectedIcon: Icons.home, label: 'Home'),
+        NavShellDestination(icon: Icons.list_alt, label: 'Orders'),
+        NavShellDestination(icon: Icons.map_outlined, selectedIcon: Icons.map, label: 'Track'),
+        NavShellDestination(icon: Icons.campaign_outlined, selectedIcon: Icons.campaign, label: 'Board'),
+        NavShellDestination(icon: Icons.person_outline, selectedIcon: Icons.person, label: 'Profile'),
+      ],
+      pages: const [
+        MerchantDashboardScreen(),
+        MerchantOrdersScreen(),
+        TrackingScreen(),
+        BulletinBoardScreen(),
+        MerchantProfileScreen(),
+      ],
     );
   }
 }

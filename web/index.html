@@ -18,21 +18,69 @@
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="A new Flutter project.">
+  <meta name="description" content="GENTRI WASA -- the Water Station Association of General Trias, Cavite. Station accreditation, delivery tracking, and community bulletins.">
+
+  <!-- Open Graph -->
+  <meta property="og:title" content="GENTRI WASA">
+  <meta property="og:description" content="The Water Station Association of General Trias, Cavite -- accredited stations, delivery tracking, and community bulletins.">
+  <meta property="og:type" content="website">
 
   <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <meta name="apple-mobile-web-app-title" content="aquaroutecapstone">
+  <meta name="apple-mobile-web-app-title" content="GENTRI WASA">
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
 
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="favicon.png"/>
 
-  <title>aquaroutecapstone</title>
+  <title>GENTRI WASA</title>
   <link rel="manifest" href="manifest.json">
+
+  <style>
+    #splash {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #1565C0, #00ACC1);
+      z-index: 9999;
+    }
+    #splash .spinner {
+      width: 48px;
+      height: 48px;
+      border: 4px solid rgba(255, 255, 255, 0.35);
+      border-top-color: #ffffff;
+      border-radius: 50%;
+      animation: splash-spin 0.9s linear infinite;
+    }
+    #splash .splash-label {
+      margin-top: 16px;
+      color: #ffffff;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-size: 15px;
+      letter-spacing: 0.5px;
+    }
+    @keyframes splash-spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
 </head>
 <body>
+  <div id="splash">
+    <div class="spinner"></div>
+    <div class="splash-label">GENTRI WASA</div>
+  </div>
   <script src="flutter_bootstrap.js" async></script>
+  <script>
+    window.addEventListener('flutter-first-frame', function () {
+      var splash = document.getElementById('splash');
+      if (splash) {
+        splash.remove();
+      }
+    });
+  </script>
 </body>
 </html>
