@@ -187,7 +187,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   const Text('Needs Your Review', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 12),
                   if (_reviewItems.isEmpty)
-                    const Text('Nothing pending review right now.', style: TextStyle(color: Colors.grey))
+                    Text('Nothing pending review right now.', style: TextStyle(color: Colors.grey.shade700))
                   else
                     ..._reviewItems.map(_buildReviewItemTile),
                   const SizedBox(height: 24),
@@ -241,7 +241,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         children: [
           Text(label, style: TextStyle(color: color, fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
-          Text('$count', style: const TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: Colors.black87)),
+          Text('$count', style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurface)),
         ],
       ),
     );

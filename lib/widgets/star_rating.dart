@@ -40,6 +40,8 @@ class StarRatingInput extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Minimum 48dp tap target regardless of the visual icon size.
+    final tapSize = size + 8 < 48 ? 48.0 : size + 8;
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: List.generate(5, (i) {
@@ -49,7 +51,7 @@ class StarRatingInput extends StatelessWidget {
           icon: Icon(starValue <= rating ? Icons.star : Icons.star_border, color: Colors.amber, size: size),
           tooltip: '$starValue star${starValue == 1 ? '' : 's'}',
           padding: EdgeInsets.zero,
-          constraints: BoxConstraints.tightFor(width: size + 8, height: size + 8),
+          constraints: BoxConstraints.tightFor(width: tapSize, height: tapSize),
         );
       }),
     );

@@ -100,10 +100,10 @@ class _MerchantDashboardScreenState extends State<MerchantDashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final onSurface = Theme.of(context).colorScheme.onSurface;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Station Dashboard', style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.white,
+        title: Text('Station Dashboard', style: TextStyle(fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurface)),
         elevation: 0,
       ),
       body: _isLoading
@@ -120,7 +120,7 @@ class _MerchantDashboardScreenState extends State<MerchantDashboardScreen> {
                   ],
                   const SizedBox(height: 16),
 
-                  const Text('Live order overview', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87)),
+                  Text('Live order overview', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: onSurface)),
                   const SizedBox(height: 16),
                   Row(
                     children: [
@@ -133,7 +133,7 @@ class _MerchantDashboardScreenState extends State<MerchantDashboardScreen> {
                   ),
                   const SizedBox(height: 24),
 
-                  const Text('Governance & compliance', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87)),
+                  Text('Governance & compliance', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: onSurface)),
                   const SizedBox(height: 12),
                   _buildNavCard(
                     icon: Icons.folder_shared_outlined,
@@ -168,7 +168,7 @@ class _MerchantDashboardScreenState extends State<MerchantDashboardScreen> {
                   ),
                   const SizedBox(height: 24),
 
-                  const Text('Fleet management', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87)),
+                  Text('Fleet management', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: onSurface)),
                   const SizedBox(height: 12),
                   _buildNavCard(
                     icon: Icons.local_shipping,
@@ -203,7 +203,7 @@ class _MerchantDashboardScreenState extends State<MerchantDashboardScreen> {
         leading: CircleAvatar(backgroundColor: color.withValues(alpha: 0.1), child: Icon(icon, color: color)),
         title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
         subtitle: Text(subtitle),
-        trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
+        trailing: Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey.shade700),
         onTap: onTap,
       ),
     );
@@ -221,7 +221,7 @@ class _MerchantDashboardScreenState extends State<MerchantDashboardScreen> {
           style: const TextStyle(fontWeight: FontWeight.bold),
         ),
         subtitle: const Text('Expiring within 30 days, or already expired.'),
-        trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
+        trailing: Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey.shade700),
         onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const PermitVaultScreen())).then((_) => _fetchDashboardData()),
       ),
     );

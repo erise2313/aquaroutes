@@ -70,7 +70,7 @@ class _HireCheckScreenState extends State<HireCheckScreen> {
           children: [
             Text('${result.fullName} -- Station History', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
             const SizedBox(height: 12),
-            if (history.isEmpty) const Text('No station history on record.', style: TextStyle(color: Colors.grey)),
+            if (history.isEmpty) Text('No station history on record.', style: TextStyle(color: Colors.grey.shade700)),
             ...history.map((h) {
               final range = h.leftAt == null
                   ? '${DateFormat('MMM yyyy').format(h.joinedAt)} -- present'
@@ -100,9 +100,9 @@ class _HireCheckScreenState extends State<HireCheckScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Text(
+            Text(
               'Search a worker by name or worker code before hiring them.',
-              style: TextStyle(color: Colors.grey),
+              style: TextStyle(color: Colors.grey.shade700),
             ),
             const SizedBox(height: 12),
             Row(
@@ -132,7 +132,7 @@ class _HireCheckScreenState extends State<HireCheckScreen> {
               child: !_hasSearched
                   ? const SizedBox.shrink()
                   : _results.isEmpty
-                      ? const Center(child: Text('No matching workers found.', style: TextStyle(color: Colors.grey)))
+                      ? Center(child: Text('No matching workers found.', style: TextStyle(color: Colors.grey.shade700)))
                       : ListView.builder(
                           itemCount: _results.length,
                           itemBuilder: (context, index) => _buildResultCard(_results[index]),

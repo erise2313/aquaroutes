@@ -38,14 +38,6 @@ Future<void> main() async {
     publishableKey: supabaseAnonKey,
   );
 
-  // TEMPORARY debug workaround: force every launch to start fully signed
-  // out instead of resuming a persisted session. Investigating a crash
-  // that appears tied to relaunching while still logged in (possibly a
-  // driver account resuming ON-DUTY GPS tracking on startup) -- this
-  // sidesteps that path entirely while we isolate the real cause. Remove
-  // once the crash is root-caused; don't ship this to a real build.
-  await Supabase.instance.client.auth.signOut();
-
   runApp(const ProviderScope(child: MyApp()));
 }
 
@@ -60,6 +52,11 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.blueAccent),
         useMaterial3: true,
       ),
+      darkTheme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blueAccent, brightness: Brightness.dark),
+        useMaterial3: true,
+      ),
+      themeMode: ThemeMode.system,
       home: const AuthGate(),
     );
   }

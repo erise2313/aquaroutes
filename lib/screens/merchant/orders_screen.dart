@@ -3,6 +3,10 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../services/order_service.dart';
+import '../../services/supabase_service.dart';
+import '../../widgets/confirm_dialog.dart';
+
 class MerchantOrdersScreen extends StatefulWidget {
   const MerchantOrdersScreen({super.key});
 
@@ -12,6 +16,7 @@ class MerchantOrdersScreen extends StatefulWidget {
 
 class _MerchantOrdersScreenState extends State<MerchantOrdersScreen> {
   final supabase = Supabase.instance.client;
+  final _orderService = OrderService(SupabaseService.instance);
   bool _isLoading = true;
 
   List<dynamic> _newOrders = [];
@@ -108,16 +113,45 @@ class _MerchantOrdersScreenState extends State<MerchantOrdersScreen> {
     }
   }
 
-  Future<void> _updateStatus(String orderId, String newStatus) async {
-    await supabase.from('orders').update({'status': newStatus}).eq('id', orderId);
+  Future<void> _rejectOrder(String orderId) async {
+    final confirmed = await showConfirmDialog(
+      context,
+      title: 'Reject Order?',
+      message: 'This order will be cancelled and the customer notified. This cannot be undone.',
+      confirmLabel: 'Reject',
+    );
+    if (!confirmed) return;
+
+    try {
+      await _orderService.ownerCancelOrder(orderId);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error rejecting order: $e')));
+      }
+    }
+  }
+
+  Future<void> _unassignOrder(String orderId) async {
+    final confirmed = await showConfirmDialog(
+      context,
+      title: 'Unassign Driver?',
+      message: 'This order goes back to the New/Pending queue so it can be reassigned to another driver.',
+      confirmLabel: 'Unassign',
+    );
+    if (!confirmed) return;
+
+    try {
+      await _orderService.unassignOrder(orderId);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error unassigning order: $e')));
+      }
+    }
   }
 
   Future<void> _assignDriver(String orderId, String workerId) async {
     try {
-      await supabase.from('orders').update({
-        'driver_worker_id': workerId,
-        'status': 'assigned',
-      }).eq('id', orderId);
+      await _orderService.assignDriver(orderId, workerId);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -182,8 +216,7 @@ class _MerchantOrdersScreenState extends State<MerchantOrdersScreen> {
       length: 3,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('Live Order Pipeline', style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold)),
-          backgroundColor: Colors.white,
+          title: Text('Live Order Pipeline', style: TextStyle(fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurface)),
           elevation: 0,
           actions: [
             IconButton(
@@ -218,7 +251,7 @@ class _MerchantOrdersScreenState extends State<MerchantOrdersScreen> {
 
   Widget _buildOrderList(List<dynamic> orders, String listType) {
     if (orders.isEmpty) {
-      return const Center(child: Text('No orders in this pipeline.', style: TextStyle(color: Colors.grey)));
+      return Center(child: Text('No orders in this pipeline.', style: TextStyle(color: Colors.grey.shade700)));
     }
 
     return RefreshIndicator(
@@ -253,7 +286,7 @@ class _MerchantOrdersScreenState extends State<MerchantOrdersScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text('Order #$shortId', style: const TextStyle(fontWeight: FontWeight.bold)),
-                          Text('Created at $time', style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                          Text('Created at $time', style: TextStyle(color: Colors.grey.shade700, fontSize: 12)),
                         ],
                       ),
                     ],
@@ -261,7 +294,7 @@ class _MerchantOrdersScreenState extends State<MerchantOrdersScreen> {
                   const SizedBox(height: 12),
                   Text(
                     'Jugs: ${order['jugs_ordered']} | Total: ₱${order['total_amount']}',
-                    style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.black87),
+                    style: TextStyle(fontWeight: FontWeight.w600, color: Theme.of(context).colorScheme.onSurface),
                   ),
 
                   if (listType == 'active') ...[
@@ -269,6 +302,11 @@ class _MerchantOrdersScreenState extends State<MerchantOrdersScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
+                        TextButton.icon(
+                          onPressed: () => _unassignOrder(order['id']),
+                          icon: Icon(Icons.person_remove_outlined, size: 16, color: Colors.grey.shade700),
+                          label: Text('Unassign', style: TextStyle(color: Colors.grey.shade700)),
+                        ),
                         TextButton.icon(
                           onPressed: () {
                             String customerPhone = order['customer_phone'] ?? order['guest_phone'] ?? '';
@@ -288,7 +326,7 @@ class _MerchantOrdersScreenState extends State<MerchantOrdersScreen> {
                         Expanded(
                           child: OutlinedButton(
                             style: OutlinedButton.styleFrom(foregroundColor: Colors.grey),
-                            onPressed: () => _updateStatus(order['id'], 'cancelled'),
+                            onPressed: () => _rejectOrder(order['id']),
                             child: const Text('REJECT'),
                           ),
                         ),

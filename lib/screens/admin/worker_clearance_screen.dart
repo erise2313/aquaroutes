@@ -177,7 +177,7 @@ class _WorkerClearanceScreenState extends State<WorkerClearanceScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(worker?['full_name'] ?? 'Unknown Worker', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-            Text('${worker?['worker_code'] ?? ''} · ${station?['station_name'] ?? 'Unknown Station'}', style: const TextStyle(color: Colors.grey)),
+            Text('${worker?['worker_code'] ?? ''} · ${station?['station_name'] ?? 'Unknown Station'}', style: TextStyle(color: Colors.grey.shade700)),
             const SizedBox(height: 8),
             Text('Type: ${incident['incident_type']}'),
             if (amount != null) Text('Amount involved: ₱$amount'),
@@ -221,7 +221,7 @@ class _WorkerClearanceScreenState extends State<WorkerClearanceScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(worker?['full_name'] ?? 'Unknown Worker', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-            Text(worker?['worker_code'] ?? '', style: const TextStyle(color: Colors.grey)),
+            Text(worker?['worker_code'] ?? '', style: TextStyle(color: Colors.grey.shade700)),
             const SizedBox(height: 8),
             Row(
               children: [

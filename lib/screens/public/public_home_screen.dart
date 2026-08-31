@@ -9,6 +9,7 @@ import '../auth/login_screen.dart';
 import '../auth/registration_screen.dart';
 import 'bulletin_feed.dart';
 import 'customer_account_screen.dart';
+import 'orders_tab_screen.dart';
 import 'quick_order_screen.dart';
 import 'station_map_screen.dart';
 
@@ -33,6 +34,7 @@ class _PublicHomeScreenState extends ConsumerState<PublicHomeScreen> {
     BulletinFeed(),
     QuickOrderScreen(),
     StationMapScreen(),
+    OrdersTabScreen(),
   ];
 
   @override
@@ -40,6 +42,7 @@ class _PublicHomeScreenState extends ConsumerState<PublicHomeScreen> {
     final membership = ref.watch(currentMembershipProvider).value;
     final isSignedInCustomer = membership?.role == AppRole.publicConsumer;
 
+    final onSurface = Theme.of(context).colorScheme.onSurface;
     return Scaffold(
       appBar: AppBar(
         titleSpacing: 12,
@@ -47,17 +50,16 @@ class _PublicHomeScreenState extends ConsumerState<PublicHomeScreen> {
           children: [
             const WasaShieldLogo(size: 32),
             const SizedBox(width: 10),
-            const Text('GenTri: WASA', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black87)),
+            Text('GenTri: WASA', style: TextStyle(fontWeight: FontWeight.bold, color: onSurface)),
           ],
         ),
-        backgroundColor: Colors.white,
         elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.black87),
+        iconTheme: IconThemeData(color: onSurface),
         actions: isSignedInCustomer
             ? [
                 IconButton(
                   tooltip: 'My Account',
-                  icon: const Icon(Icons.account_circle_outlined, color: Colors.black87),
+                  icon: Icon(Icons.account_circle_outlined, color: onSurface),
                   onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const CustomerAccountScreen())),
                 ),
                 const SizedBox(width: 8),
@@ -85,6 +87,7 @@ class _PublicHomeScreenState extends ConsumerState<PublicHomeScreen> {
           BottomNavigationBarItem(icon: Icon(Icons.campaign_outlined), activeIcon: Icon(Icons.campaign), label: 'Board'),
           BottomNavigationBarItem(icon: Icon(Icons.local_shipping_outlined), activeIcon: Icon(Icons.local_shipping), label: 'Order'),
           BottomNavigationBarItem(icon: Icon(Icons.map_outlined), activeIcon: Icon(Icons.map), label: 'Map'),
+          BottomNavigationBarItem(icon: Icon(Icons.receipt_long_outlined), activeIcon: Icon(Icons.receipt_long), label: 'Orders'),
         ],
       ),
     );

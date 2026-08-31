@@ -48,6 +48,20 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
   bool _isLoading = false;
 
   @override
+  void initState() {
+    super.initState();
+    // If we got here already signed in (e.g. the "Finish Setting Up Your
+    // Account" button on NoMembershipScreen, for an account whose role-RPC
+    // failed after signUp() succeeded), prefill the email so the
+    // isRetryOfSameAccount check below actually triggers without the user
+    // having to remember and retype it themselves.
+    final currentEmail = supabase.auth.currentSession?.user.email;
+    if (currentEmail != null) {
+      _emailController.text = currentEmail;
+    }
+  }
+
+  @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
@@ -227,10 +241,10 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                       style: WebTheme.display(fontSize: 26),
                     ),
                     const SizedBox(height: 8),
-                    const Text(
+                    Text(
                       "Join GenTri: WASA and manage deliveries instantly.",
                       textAlign: TextAlign.center,
-                      style: TextStyle(fontSize: 15, color: Colors.grey),
+                      style: TextStyle(fontSize: 15, color: Colors.grey.shade700),
                     ),
                     const SizedBox(height: 32),
 
@@ -253,6 +267,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                       keyboardType: TextInputType.emailAddress,
                       textInputAction: TextInputAction.next,
                       validator: _validateEmail,
+                      autofillHints: const [AutofillHints.email],
                     ),
                     const SizedBox(height: 16),
                     AuthTextField(
@@ -262,6 +277,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                       isPassword: true,
                       textInputAction: TextInputAction.next,
                       validator: _validatePassword,
+                      autofillHints: const [AutofillHints.newPassword],
                     ),
                     const SizedBox(height: 16),
                     AuthTextField(
@@ -272,6 +288,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                       textInputAction: TextInputAction.done,
                       validator: _validateConfirmPassword,
                       onSubmitted: (_) => _signUp(),
+                      autofillHints: const [AutofillHints.newPassword],
                     ),
 
                     const SizedBox(height: 32),
@@ -315,7 +332,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                       child: RichText(
                         text: TextSpan(
                           text: "Already have an account? ",
-                          style: const TextStyle(color: Colors.grey),
+                          style: TextStyle(color: Colors.grey.shade700),
                           children: [
                             TextSpan(text: "Login here", style: TextStyle(color: WebTheme.harborBlue, fontWeight: FontWeight.bold)),
                           ],
@@ -383,6 +400,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
           icon: Icons.person_outline,
           textInputAction: TextInputAction.next,
           validator: (v) => _requiredField(v, 'your full name'),
+          autofillHints: const [AutofillHints.name],
         ),
         const SizedBox(height: 16),
         AuthTextField(
@@ -426,6 +444,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
           icon: Icons.person_outline,
           textInputAction: TextInputAction.next,
           validator: (v) => _requiredField(v, 'your full name'),
+          autofillHints: const [AutofillHints.name],
         ),
         const SizedBox(height: 16),
         Container(
@@ -460,6 +479,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
           icon: Icons.person_outline,
           textInputAction: TextInputAction.next,
           validator: (v) => _requiredField(v, 'your full name'),
+          autofillHints: const [AutofillHints.name],
         ),
         const SizedBox(height: 16),
         Container(

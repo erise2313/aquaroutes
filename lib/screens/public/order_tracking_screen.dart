@@ -114,7 +114,7 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
                           ? 'This order has been delivered.'
                           : 'This order was cancelled.',
                       textAlign: TextAlign.center,
-                      style: const TextStyle(color: Colors.grey),
+                      style: TextStyle(color: Colors.grey.shade700),
                     ),
                   ],
                 ),
@@ -151,7 +151,7 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
                             child: Text(
                               _driver == null ? 'Driver assigned -- waiting for their first location update.' : 'Waiting for driver location…',
                               textAlign: TextAlign.center,
-                              style: const TextStyle(color: Colors.grey),
+                              style: TextStyle(color: Colors.grey.shade700),
                             ),
                           ),
                         ),
@@ -169,7 +169,7 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(_driver!.driverName!, style: const TextStyle(fontWeight: FontWeight.bold)),
-                              const Text('Your driver', style: TextStyle(color: Colors.grey, fontSize: 12)),
+                              Text('Your driver', style: TextStyle(color: Colors.grey.shade700, fontSize: 12)),
                             ],
                           ),
                         ),

@@ -119,7 +119,7 @@ class _ResourcesAdminScreenState extends State<ResourcesAdminScreen> {
           : _error != null
           ? ErrorState(message: _error!, onRetry: _load)
           : _resources.isEmpty
-          ? const Center(child: Text('No resources uploaded yet.', style: TextStyle(color: Colors.grey)))
+          ? Center(child: Text('No resources uploaded yet.', style: TextStyle(color: Colors.grey.shade700)))
           : ListView.builder(
               padding: const EdgeInsets.all(16),
               itemCount: _resources.length,

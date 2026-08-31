@@ -125,7 +125,7 @@ class _EventsAdminScreenState extends State<EventsAdminScreen> {
           : _error != null
           ? ErrorState(message: _error!, onRetry: _load)
           : _events.isEmpty
-          ? const Center(child: Text('No events yet.', style: TextStyle(color: Colors.grey)))
+          ? Center(child: Text('No events yet.', style: TextStyle(color: Colors.grey.shade700)))
           : ListView.builder(
               padding: const EdgeInsets.all(16),
               itemCount: _events.length,

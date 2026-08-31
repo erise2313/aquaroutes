@@ -3,9 +3,11 @@ import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../models/order.dart';
+import '../../services/order_service.dart';
 import '../../services/review_service.dart';
 import '../../services/supabase_service.dart';
 import '../../utils/formatters.dart';
+import '../../widgets/confirm_dialog.dart';
 import '../../widgets/error_state.dart';
 import '../../widgets/star_rating.dart';
 import 'order_tracking_screen.dart';
@@ -26,6 +28,7 @@ class MyOrdersScreen extends StatefulWidget {
 class _MyOrdersScreenState extends State<MyOrdersScreen> {
   final _supabase = Supabase.instance.client;
   final _reviewService = ReviewService(SupabaseService.instance);
+  final _orderService = OrderService(SupabaseService.instance);
 
   bool _isLoading = true;
   String? _error;
@@ -74,7 +77,7 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
           : _error != null
           ? ErrorState(message: _error!, onRetry: _load)
           : _orders.isEmpty
-          ? const Center(child: Text('No orders yet.', style: TextStyle(color: Colors.grey)))
+          ? Center(child: Text('No orders yet.', style: TextStyle(color: Colors.grey.shade700)))
           : RefreshIndicator(
               onRefresh: _load,
               child: ListView.builder(
@@ -84,6 +87,28 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
               ),
             ),
     );
+  }
+
+  Future<void> _cancelOrder(String orderId) async {
+    final confirmed = await showConfirmDialog(
+      context,
+      title: 'Cancel Order?',
+      message: 'This order will be cancelled. This cannot be undone.',
+      confirmLabel: 'Cancel Order',
+    );
+    if (!confirmed) return;
+
+    try {
+      await _orderService.cancelOrder(orderId: orderId);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Order cancelled.')));
+      }
+      _load();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not cancel order: $e')));
+      }
+    }
   }
 
   Widget _buildOrderCard(Map<String, dynamic> order) {
@@ -128,10 +153,22 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
               Text('${order['jugs_ordered']} jugs of ${order['water_type']}'),
               Text('Total: ${formatPeso(totalAmount)}'),
               const SizedBox(height: 4),
-              Text('Placed ${DateFormat('MMM d, yyyy h:mm a').format(createdAt)}', style: const TextStyle(color: Colors.grey, fontSize: 12)),
+              Text('Placed ${DateFormat('MMM d, yyyy h:mm a').format(createdAt)}', style: TextStyle(color: Colors.grey.shade700, fontSize: 12)),
               if (status == OrderStatus.assigned || status == OrderStatus.active) ...[
                 const SizedBox(height: 8),
                 const Row(children: [Icon(Icons.map_outlined, size: 16, color: Colors.blueGrey), SizedBox(width: 4), Text('Tap to track your driver', style: TextStyle(color: Colors.blueGrey, fontSize: 12))]),
+              ],
+              if (status == OrderStatus.pending || status == OrderStatus.assigned) ...[
+                const SizedBox(height: 8),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton.icon(
+                    onPressed: () => _cancelOrder(order['id'] as String),
+                    style: TextButton.styleFrom(foregroundColor: Colors.red),
+                    icon: const Icon(Icons.cancel_outlined, size: 18),
+                    label: const Text('Cancel Order'),
+                  ),
+                ),
               ],
               if (status == OrderStatus.done) ...[
                 const SizedBox(height: 8),

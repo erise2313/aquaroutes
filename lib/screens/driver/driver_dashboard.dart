@@ -8,10 +8,12 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../constants/app_colors.dart';
 import '../../models/permit.dart';
 import '../../services/location_service.dart';
+import '../../services/order_service.dart';
 import '../../services/route_optimization.dart';
 import '../../services/supabase_service.dart';
 import '../../services/worker_credential_service.dart';
 import '../../utils/formatters.dart';
+import '../../widgets/permission_rationale_dialog.dart';
 import '../public/bulletin_board_screen.dart';
 import 'driver_profile_screen.dart';
 
@@ -27,6 +29,7 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
   final supabase = Supabase.instance.client;
   final LocationService _locationService = LocationService();
   final RouteOptimizationService _routeService = RouteOptimizationService();
+  final _orderService = OrderService(SupabaseService.instance);
   final _credentialService = WorkerCredentialService(SupabaseService.instance);
 
   bool _isLoading = true;
@@ -136,25 +139,47 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
     }
   }
 
-  Future<void> _requestLocationPermissionAndStartTracking() async {
+  /// Returns whether GPS broadcasting actually started. Every early-return
+  /// case (location services off, permission denied, no linked station)
+  /// used to leave the ON-DUTY switch showing "Broadcasting GPS" while
+  /// nothing was actually being sent -- the caller now only flips the
+  /// switch on when this genuinely succeeds.
+  Future<bool> _requestLocationPermissionAndStartTracking() async {
     bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) return;
+    if (!serviceEnabled) return false;
+
+    if (mounted) {
+      await maybeShowLocationRationale(
+        context,
+        'GenTri: WASA needs your location so dispatch can route deliveries to you and customers can track you on the map while you\'re on duty.',
+      );
+    }
 
     LocationPermission permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
-      if (permission == LocationPermission.denied) return;
+      if (permission == LocationPermission.denied) return false;
     }
-    if (permission == LocationPermission.deniedForever) return;
+    if (permission == LocationPermission.deniedForever) return false;
 
-    _locationService.startTracking(_workerId!);
+    if (_stationId == null) return false;
+    _locationService.startTracking(_workerId!, _stationId!);
+    return true;
   }
 
   Future<void> _toggleOnDuty(bool value) async {
     if (_workerId == null) return;
 
     if (value) {
-      await _requestLocationPermissionAndStartTracking();
+      final started = await _requestLocationPermissionAndStartTracking();
+      if (!started) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Could not start GPS broadcasting -- check location permission/service and try again.')),
+          );
+        }
+        return;
+      }
     } else {
       await _locationService.stopTracking(_workerId!);
     }
@@ -192,7 +217,7 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
 
         final orderDetails = await supabase
             .from('orders')
-            .select('total_amount, guest_name, guest_phone, customer_phone, profiles(full_name, phone_number)')
+            .select('status, total_amount, guest_name, guest_phone, customer_phone, profiles(full_name, phone_number)')
             .eq('id', currentOrder['id'])
             .maybeSingle();
 
@@ -212,7 +237,7 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
         if (mounted) {
           setState(() {
             _orderedStops = List<Map<String, dynamic>>.from(activeOrders);
-            _currentActiveOrder = currentOrder;
+            _currentActiveOrder = {...currentOrder, 'status': orderDetails?['status'] ?? 'assigned'};
             _destination = LatLng(
               double.parse(currentOrder['lat'].toString()),
               double.parse(currentOrder['lng'].toString()),
@@ -336,14 +361,26 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
     );
   }
 
+  Future<void> _startDelivery() async {
+    if (_currentActiveOrder == null) return;
+    try {
+      await _orderService.startDelivery(_currentActiveOrder!['id'] as String);
+      _fetchActiveDelivery();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+      }
+    }
+  }
+
   Future<void> _finalizeDelivery(int emptyJugsCollected, bool paymentCollected) async {
     setState(() => _isLoading = true);
     try {
-      await supabase.from('orders').update({
-        'status': 'done',
-        'empty_jugs_returned': emptyJugsCollected,
-        'payment_collected': paymentCollected,
-      }).eq('id', _currentActiveOrder!['id']);
+      await _orderService.completeDelivery(
+        _currentActiveOrder!['id'] as String,
+        emptyJugsReturned: emptyJugsCollected,
+        paymentCollected: paymentCollected,
+      );
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -450,7 +487,7 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
             const SizedBox(height: 16),
             const Text('Not currently linked to a station.', style: TextStyle(fontSize: 18, color: AppColors.driverText)),
             const SizedBox(height: 8),
-            const Text('Join a station from your profile to start receiving deliveries.', style: TextStyle(fontSize: 14, color: Colors.grey)),
+            Text('Join a station from your profile to start receiving deliveries.', style: TextStyle(fontSize: 14, color: Colors.grey.shade700)),
             const SizedBox(height: 16),
             ElevatedButton(
               onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const DriverProfileScreen())),
@@ -542,7 +579,7 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
           const SizedBox(height: 16),
           const Text('No active deliveries right now.', style: TextStyle(fontSize: 18, color: AppColors.driverText)),
           const SizedBox(height: 8),
-          const Text('Waiting for the station to assign an order...', style: TextStyle(fontSize: 14, color: Colors.grey)),
+          Text('Waiting for the station to assign an order...', style: TextStyle(fontSize: 14, color: Colors.grey.shade700)),
         ],
       ),
     );
@@ -550,6 +587,7 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
 
   Widget _buildActiveDeliveryCard() {
     final shortId = _currentActiveOrder!['id'].toString().substring(0, 6).toUpperCase();
+    final isEnRoute = _currentActiveOrder!['status'] == 'active';
 
     return Padding(
       padding: const EdgeInsets.all(24.0),
@@ -566,7 +604,7 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
                   const SizedBox(height: 4),
                   Row(
                     children: [
-                      Text('Deliver to: $_customerName', style: const TextStyle(fontSize: 14, color: Colors.grey, fontWeight: FontWeight.bold)),
+                      Text('Deliver to: $_customerName', style: TextStyle(fontSize: 14, color: Colors.grey.shade700, fontWeight: FontWeight.bold)),
                       const SizedBox(width: 8),
                       InkWell(
                         onTap: () => _makePhoneCall(_customerPhone, 'Customer'),
@@ -578,17 +616,20 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
               ),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(color: Colors.orange.shade900, borderRadius: BorderRadius.circular(20)),
-                child: const Text('ACTIVE', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                decoration: BoxDecoration(
+                  color: isEnRoute ? Colors.indigo : Colors.orange.shade900,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(isEnRoute ? 'EN ROUTE' : 'ASSIGNED', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
               ),
             ],
           ),
-          const Divider(height: 24, thickness: 1, color: Colors.grey),
+          Divider(height: 24, thickness: 1, color: Colors.grey.shade700),
           Row(
             children: [
               const Icon(Icons.store, color: Colors.blueGrey, size: 18),
               const SizedBox(width: 8),
-              Expanded(child: Text('Station: $_stationName', style: const TextStyle(fontSize: 13, color: Colors.grey))),
+              Expanded(child: Text('Station: $_stationName', style: TextStyle(fontSize: 13, color: Colors.grey.shade700))),
               TextButton.icon(
                 onPressed: () => _makePhoneCall(_stationPhone, 'Water Station'),
                 icon: const Icon(Icons.phone, size: 18, color: AppColors.driverOnDuty),
@@ -601,6 +642,19 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
           const SizedBox(height: 8),
           _buildDetailRow(Icons.payments, 'Collect:', formatPeso(_totalAmount)),
           const Spacer(),
+          if (!isEnRoute) ...[
+            OutlinedButton.icon(
+              onPressed: _startDelivery,
+              icon: const Icon(Icons.local_shipping_outlined, color: AppColors.driverOnDuty),
+              label: const Text('START DELIVERY', style: TextStyle(color: AppColors.driverOnDuty, fontWeight: FontWeight.bold)),
+              style: OutlinedButton.styleFrom(
+                side: const BorderSide(color: AppColors.driverOnDuty),
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
           ElevatedButton.icon(
             onPressed: _showCompletionDialog,
             icon: const Icon(Icons.check_circle, size: 32, color: Colors.white),
@@ -621,7 +675,7 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
       children: [
         Icon(icon, color: Colors.blueGrey, size: 22),
         const SizedBox(width: 12),
-        Text(label, style: const TextStyle(fontSize: 16, color: Colors.grey)),
+        Text(label, style: TextStyle(fontSize: 16, color: Colors.grey.shade700)),
         const Spacer(),
         Text(value, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.driverText)),
       ],

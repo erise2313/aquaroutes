@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:intl/intl.dart';
@@ -10,11 +11,17 @@ import '../../services/worker_service.dart';
 import '../../utils/formatters.dart';
 import '../../widgets/confirm_dialog.dart';
 
-/// Station-owner side of the Worker Security Registry: add workers and file
-/// incidents (missing cash, lost jugs, etc). Filing an incident immediately
-/// knocks the worker back to pending_clearance; only a WASA admin can
-/// confirm it into 'flagged' or dismiss it (0005_workers.sql triggers) --
-/// this screen deliberately has no way to flag a worker directly.
+/// Station-owner side of the Worker Security Registry: share the station's
+/// invite code so a worker can self-register as a driver, and file
+/// incidents (missing cash, lost jugs, etc). A worker must have their own
+/// account to ever upload the ID/license credentials clearance requires --
+/// a raw owner-added record with no account can never legitimately clear,
+/// so this screen deliberately has no "add worker" form, only the invite
+/// code (register_driver_for_station() creates the real account). Filing an
+/// incident immediately knocks the worker back to pending_clearance; only a
+/// WASA admin can confirm it into 'flagged' or dismiss it (0005_workers.sql
+/// triggers) -- this screen deliberately has no way to flag a worker
+/// directly either.
 class WorkerRegistryScreen extends StatefulWidget {
   const WorkerRegistryScreen({super.key});
 
@@ -25,10 +32,10 @@ class WorkerRegistryScreen extends StatefulWidget {
 class _WorkerRegistryScreenState extends State<WorkerRegistryScreen> {
   final _workerService = WorkerService(SupabaseService.instance);
   final _supabase = Supabase.instance.client;
-  final _addWorkerFormKey = GlobalKey<FormState>();
   final _incidentFormKey = GlobalKey<FormState>();
 
   String? _stationId;
+  String? _inviteCode;
   bool _isLoading = true;
 
   @override
@@ -39,70 +46,50 @@ class _WorkerRegistryScreenState extends State<WorkerRegistryScreen> {
 
   Future<void> _resolveStation() async {
     final userId = _supabase.auth.currentUser!.id;
-    final station = await _supabase.from('water_stations').select('id').eq('owner_profile_id', userId).maybeSingle();
+    final station = await _supabase.from('water_stations').select('id, invite_code').eq('owner_profile_id', userId).maybeSingle();
     if (mounted) {
       setState(() {
         _stationId = station?['id'] as String?;
+        _inviteCode = station?['invite_code'] as String?;
         _isLoading = false;
       });
     }
   }
 
-  void _showAddWorkerDialog() {
-    final nameController = TextEditingController();
-    final phoneController = TextEditingController();
-    final plateController = TextEditingController();
-    final capacityController = TextEditingController();
-
+  void _showInviteCodeDialog() {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Add Worker'),
-        content: SingleChildScrollView(
-          child: Form(
-            key: _addWorkerFormKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextFormField(
-                  controller: nameController,
-                  decoration: const InputDecoration(labelText: 'Full Name'),
-                  validator: (v) => (v == null || v.trim().isEmpty) ? 'Full name is required.' : null,
-                ),
-                TextFormField(
-                  controller: phoneController,
-                  keyboardType: TextInputType.phone,
-                  decoration: const InputDecoration(labelText: 'Phone Number'),
-                  validator: (v) {
-                    if (v == null || v.trim().isEmpty) return null;
-                    return RegExp(r'^[0-9+\-\s]{7,}$').hasMatch(v.trim()) ? null : 'Enter a valid phone number.';
-                  },
-                ),
-                TextFormField(controller: plateController, decoration: const InputDecoration(labelText: 'Vehicle Plate')),
-                TextFormField(
-                  controller: capacityController,
-                  keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(labelText: 'Jug Capacity'),
-                ),
-              ],
+        title: const Text('Share Invite Code'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Give this code to a new worker so they can register themselves as a driver at your station. '
+              'This creates their own account, which they need to upload their Government ID and Driver\'s License for WASA clearance.',
             ),
-          ),
+            const SizedBox(height: 16),
+            Center(
+              child: Text(
+                _inviteCode ?? '—',
+                style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, letterSpacing: 2),
+              ),
+            ),
+          ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-          ElevatedButton(
-            onPressed: () async {
-              if (!_addWorkerFormKey.currentState!.validate()) return;
-              await _workerService.addWorker(
-                stationId: _stationId!,
-                fullName: nameController.text.trim(),
-                phoneNumber: phoneController.text.trim(),
-                vehiclePlate: plateController.text.trim(),
-                jugCapacity: int.tryParse(capacityController.text.trim()),
-              );
-              if (context.mounted) Navigator.pop(context);
-            },
-            child: const Text('Add'),
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Close')),
+          ElevatedButton.icon(
+            onPressed: _inviteCode == null
+                ? null
+                : () {
+                    Clipboard.setData(ClipboardData(text: _inviteCode!));
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Invite code copied to clipboard.')));
+                  },
+            icon: const Icon(Icons.copy),
+            label: const Text('Copy Code'),
           ),
         ],
       ),
@@ -222,7 +209,7 @@ class _WorkerRegistryScreenState extends State<WorkerRegistryScreen> {
                   const SizedBox(height: 12),
                   Expanded(
                     child: incidents.isEmpty
-                        ? const Center(child: Text('No incidents filed against this worker.', style: TextStyle(color: Colors.grey)))
+                        ? Center(child: Text('No incidents filed against this worker.', style: TextStyle(color: Colors.grey.shade700)))
                         : ListView.builder(
                             controller: scrollController,
                             itemCount: incidents.length,
@@ -269,7 +256,7 @@ class _WorkerRegistryScreenState extends State<WorkerRegistryScreen> {
             Text(
               'Filed ${DateFormat('MMM d, yyyy').format(incident.createdAt)}'
               '${incident.resolvedAt != null ? ' · Resolved ${DateFormat('MMM d, yyyy').format(incident.resolvedAt!)}' : ''}',
-              style: const TextStyle(color: Colors.grey, fontSize: 12),
+              style: TextStyle(color: Colors.grey.shade700, fontSize: 12),
             ),
           ],
         ),
@@ -283,7 +270,7 @@ class _WorkerRegistryScreenState extends State<WorkerRegistryScreen> {
       appBar: AppBar(
         title: const Text('Worker Registry'),
         actions: [
-          IconButton(icon: const Icon(Icons.person_add), onPressed: _stationId == null ? null : _showAddWorkerDialog),
+          IconButton(icon: const Icon(Icons.share), tooltip: 'Share Invite Code', onPressed: _stationId == null ? null : _showInviteCodeDialog),
         ],
       ),
       body: _isLoading
@@ -339,9 +326,9 @@ class _WorkerRegistryScreenState extends State<WorkerRegistryScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(worker.fullName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                      Text(worker.workerCode, style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                      Text(worker.workerCode, style: TextStyle(color: Colors.grey.shade700, fontSize: 12)),
                       if (worker.vehiclePlate != null)
-                        Text('Plate: ${worker.vehiclePlate}', style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                        Text('Plate: ${worker.vehiclePlate}', style: TextStyle(color: Colors.grey.shade700, fontSize: 12)),
                     ],
                   ),
                 ),
@@ -367,7 +354,7 @@ class _WorkerRegistryScreenState extends State<WorkerRegistryScreen> {
                 ),
                 TextButton(
                   onPressed: () => _removeFromRoster(worker),
-                  child: const Text('Remove from Roster', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                  child: Text('Remove from Roster', style: TextStyle(fontSize: 12, color: Colors.grey.shade700)),
                 ),
               ],
             ),
