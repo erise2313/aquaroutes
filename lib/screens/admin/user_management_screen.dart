@@ -74,7 +74,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _memberships.isEmpty
-          ? const Center(child: Text('No station owner or driver accounts yet.', style: TextStyle(color: Colors.grey)))
+          ? Center(child: Text('No station owner or driver accounts yet.', style: TextStyle(color: Colors.grey.shade700)))
           : RefreshIndicator(
               onRefresh: _fetchMemberships,
               child: ListView.builder(

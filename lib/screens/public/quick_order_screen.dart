@@ -8,12 +8,14 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../models/station.dart';
 import '../../providers/app_state.dart';
+import '../../services/nearby_service.dart';
 import '../../services/order_service.dart';
 import '../../services/station_service.dart';
 import '../../services/supabase_service.dart';
 import '../../utils/formatters.dart';
 import '../../widgets/custom_map_marker.dart';
 import '../../widgets/error_state.dart';
+import '../../widgets/permission_rationale_dialog.dart';
 import '../auth/login_screen.dart';
 import '../auth/registration_screen.dart';
 import 'order_confirmation_screen.dart';
@@ -35,6 +37,9 @@ class QuickOrderScreen extends ConsumerStatefulWidget {
 class _QuickOrderScreenState extends ConsumerState<QuickOrderScreen> {
   final _stationService = StationService(SupabaseService.instance);
   final _orderService = OrderService(SupabaseService.instance);
+  final _nearbyService = NearbyService();
+  double? _userLat;
+  double? _userLng;
 
   final _formKey = GlobalKey<FormState>();
   final _phoneController = TextEditingController();
@@ -122,11 +127,27 @@ class _QuickOrderScreenState extends ConsumerState<QuickOrderScreen> {
       _fetchError = null;
     });
     try {
-      final stations = await _stationService.fetchPublicStations();
+      var stations = await _stationService.fetchPublicStations();
+
+      // Best-effort "near me" sort -- if location is unavailable/denied,
+      // fall back to the unsorted list rather than blocking ordering on it.
+      if (mounted) {
+        await maybeShowLocationRationale(
+          context,
+          'GenTri: WASA can use your location to show and sort nearby water stations.',
+        );
+      }
+      final position = await _nearbyService.getCurrentPositionOrNull();
+      if (position != null) {
+        stations = _nearbyService.sortByDistance(stations, position.latitude, position.longitude);
+        _userLat = position.latitude;
+        _userLng = position.longitude;
+      }
+
       if (mounted) {
         setState(() {
           _availableStations = stations;
-          if (stations.isNotEmpty) _selectedStationId = stations.first.id;
+          if (stations.isNotEmpty) _selectedStationId = stations.firstWhere((s) => s.isOrderable, orElse: () => stations.first).id;
           _isFetchingStations = false;
         });
       }
@@ -176,6 +197,12 @@ class _QuickOrderScreenState extends ConsumerState<QuickOrderScreen> {
     if (station == null || _selectedLocation == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please select a station and drop a pin for your delivery address!')),
+      );
+      return;
+    }
+    if (!station.isOrderable) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('This station is currently closed and not accepting orders.')),
       );
       return;
     }
@@ -332,14 +359,22 @@ class _QuickOrderScreenState extends ConsumerState<QuickOrderScreen> {
                                     radius: 10,
                                     backgroundColor: Colors.grey.shade200,
                                     backgroundImage: s.photoUrl != null ? NetworkImage(s.photoUrl!) : null,
-                                    child: s.photoUrl == null ? const Icon(Icons.storefront, size: 12, color: Colors.grey) : null,
+                                    child: s.photoUrl == null ? Icon(Icons.storefront, size: 12, color: Colors.grey.shade700) : null,
                                   ),
                                   const SizedBox(width: 8),
-                                  Flexible(child: Text(s.stationName, overflow: TextOverflow.ellipsis)),
+                                  Flexible(child: Text(s.stationName, overflow: TextOverflow.ellipsis, style: TextStyle(color: s.isOrderable ? null : Colors.grey))),
                                   if (s.isColorumVerified) const Padding(
                                     padding: EdgeInsets.only(left: 6),
                                     child: Icon(Icons.verified, size: 16, color: Colors.green),
                                   ),
+                                  if (_userLat != null && _userLng != null) ...[
+                                    const SizedBox(width: 6),
+                                    Text('· ${_nearbyService.formatDistance(_nearbyService.distanceKm(_userLat!, _userLng!, s))}', style: TextStyle(fontSize: 11, color: Colors.grey.shade700)),
+                                  ],
+                                  if (!s.isOrderable) ...[
+                                    const SizedBox(width: 6),
+                                    const Text('(Closed)', style: TextStyle(fontSize: 11, color: Colors.redAccent, fontWeight: FontWeight.bold)),
+                                  ],
                                 ],
                               ),
                             );
@@ -365,6 +400,40 @@ class _QuickOrderScreenState extends ConsumerState<QuickOrderScreen> {
                                 ),
                             ],
                           ),
+                          if (station.offeredJugTypes.isNotEmpty || station.offersJugExchange) ...[
+                            const SizedBox(height: 6),
+                            Wrap(
+                              spacing: 6,
+                              runSpacing: 4,
+                              children: [
+                                for (final jugType in station.offeredJugTypes)
+                                  Chip(
+                                    visualDensity: VisualDensity.compact,
+                                    label: Text(jugType == 'slim_5gal' ? 'Slim 5-gal' : 'Round 5-gal', style: const TextStyle(fontSize: 11)),
+                                  ),
+                                if (station.offersJugExchange)
+                                  const Chip(
+                                    visualDensity: VisualDensity.compact,
+                                    avatar: Icon(Icons.swap_horiz, size: 14),
+                                    label: Text('Jug exchange accepted', style: TextStyle(fontSize: 11)),
+                                  ),
+                              ],
+                            ),
+                          ],
+                          if (!station.isOrderable) ...[
+                            const SizedBox(height: 8),
+                            Container(
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(color: Colors.red.shade50, borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.red.shade200)),
+                              child: const Row(
+                                children: [
+                                  Icon(Icons.info_outline, color: Colors.redAccent, size: 18),
+                                  SizedBox(width: 8),
+                                  Expanded(child: Text('This station is currently closed and not accepting orders. Please pick another station.', style: TextStyle(color: Colors.redAccent, fontSize: 12))),
+                                ],
+                              ),
+                            ),
+                          ],
                         ],
                         const SizedBox(height: 16),
                         TextFormField(
@@ -420,10 +489,10 @@ class _QuickOrderScreenState extends ConsumerState<QuickOrderScreen> {
                           ),
                         ],
                         const SizedBox(height: 8),
-                        const Text('Cash on delivery only.', style: TextStyle(color: Colors.grey, fontSize: 12)),
+                        Text('Cash on delivery only.', style: TextStyle(color: Colors.grey.shade700, fontSize: 12)),
                         const SizedBox(height: 16),
                         ElevatedButton(
-                          onPressed: _isLoading ? null : _submitOrder,
+                          onPressed: (_isLoading || station?.isOrderable == false) ? null : _submitOrder,
                           style: ElevatedButton.styleFrom(backgroundColor: Colors.blue.shade700, padding: const EdgeInsets.symmetric(vertical: 20)),
                           child: _isLoading
                               ? const CircularProgressIndicator(color: Colors.white)
@@ -466,10 +535,10 @@ class _OrderLoginGate extends StatelessWidget {
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 8),
-              const Text(
+              Text(
                 'Browsing the Bulletin Board and station map never requires an account -- only ordering does.',
                 textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.grey),
+                style: TextStyle(color: Colors.grey.shade700),
               ),
               const SizedBox(height: 24),
               ElevatedButton(

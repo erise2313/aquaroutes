@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../models/membership.dart';
 import '../../providers/app_state.dart';
@@ -10,6 +11,7 @@ import '../merchant/merchant_navigation.dart';
 import '../public/public_home_screen.dart';
 import '../web/mobile_only_screen.dart';
 import '../web/org_home_screen.dart';
+import '../web/reset_password_screen.dart';
 import 'account_suspended_screen.dart';
 import 'no_membership_screen.dart';
 
@@ -38,6 +40,16 @@ class AuthGate extends ConsumerWidget {
       loading: () => const _SplashScreen(),
       error: (_, _) => kIsWeb ? const OrgHomeScreen() : const PublicHomeScreen(),
       data: (state) {
+        // Supabase Flutter auto-detects a password-recovery token in the
+        // URL fragment on web with no extra config -- intercept it here
+        // before the normal session/membership routing below, since a
+        // recovery session still has state.session != null and would
+        // otherwise just route into whatever portal this account normally
+        // uses instead of letting them actually set a new password.
+        if (kIsWeb && state.event == AuthChangeEvent.passwordRecovery) {
+          return const ResetPasswordScreen();
+        }
+
         final session = state.session;
         if (session == null) return kIsWeb ? const OrgHomeScreen() : const PublicHomeScreen();
 

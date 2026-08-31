@@ -6,6 +6,7 @@ import '../../models/order.dart';
 import '../../services/order_service.dart';
 import '../../services/supabase_service.dart';
 import '../../utils/formatters.dart';
+import '../../widgets/confirm_dialog.dart';
 import 'order_tracking_screen.dart';
 
 /// Guest order tracking. No account exists for a guest order, so the phone
@@ -147,6 +148,28 @@ class _TrackOrderScreenState extends State<TrackOrderScreen> {
     );
   }
 
+  Future<void> _cancelOrder(GuestOrderStatus result) async {
+    final confirmed = await showConfirmDialog(
+      context,
+      title: 'Cancel Order?',
+      message: 'This order will be cancelled. This cannot be undone.',
+      confirmLabel: 'Cancel Order',
+    );
+    if (!confirmed) return;
+
+    try {
+      await _orderService.cancelOrder(orderId: result.id, guestPhone: _phoneController.text.trim());
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Order cancelled.')));
+      }
+      _lookup();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not cancel order: $e')));
+      }
+    }
+  }
+
   Widget _buildResultCard(GuestOrderStatus result) {
     final (statusColor, statusLabel) = switch (result.status) {
       OrderStatus.pending => (Colors.orange, 'Pending'),
@@ -176,7 +199,7 @@ class _TrackOrderScreenState extends State<TrackOrderScreen> {
             Text('${result.jugsOrdered} jugs of ${result.waterType}'),
             Text('Total: ${formatPeso(result.totalAmount)}'),
             const SizedBox(height: 4),
-            Text('Placed ${DateFormat('MMM d, yyyy h:mm a').format(result.createdAt)}', style: const TextStyle(color: Colors.grey, fontSize: 12)),
+            Text('Placed ${DateFormat('MMM d, yyyy h:mm a').format(result.createdAt)}', style: TextStyle(color: Colors.grey.shade700, fontSize: 12)),
             if (result.status == OrderStatus.assigned || result.status == OrderStatus.active) ...[
               const SizedBox(height: 12),
               OutlinedButton.icon(
@@ -193,6 +216,15 @@ class _TrackOrderScreenState extends State<TrackOrderScreen> {
                 ),
                 icon: const Icon(Icons.map_outlined),
                 label: const Text('Track my driver'),
+              ),
+            ],
+            if (result.status == OrderStatus.pending || result.status == OrderStatus.assigned) ...[
+              const SizedBox(height: 8),
+              TextButton.icon(
+                onPressed: () => _cancelOrder(result),
+                style: TextButton.styleFrom(foregroundColor: Colors.red),
+                icon: const Icon(Icons.cancel_outlined, size: 18),
+                label: const Text('Cancel Order'),
               ),
             ],
           ],

@@ -4,6 +4,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../../widgets/custom_map_marker.dart';
+import '../../widgets/permission_rationale_dialog.dart';
 
 class LocationPickerScreen extends StatefulWidget {
   final double? initialLatitude;
@@ -52,6 +53,13 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
     setState(() => _isLoadingLocation = true);
 
     try {
+      if (mounted) {
+        await maybeShowLocationRationale(
+          context,
+          'GenTri: WASA needs your location so we can pin your station\'s exact spot on the map for customers.',
+        );
+      }
+
       LocationPermission permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();

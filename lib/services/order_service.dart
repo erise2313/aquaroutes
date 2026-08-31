@@ -21,15 +21,62 @@ class OrderService {
         .order('created_at', ascending: false);
   }
 
-  Future<void> updateStatus(String orderId, String newStatus) {
-    return _supabase.client.from('orders').update({'status': newStatus}).eq('id', orderId);
+  /// All status/assignment changes go through set_order_status() (a single
+  /// security-definer RPC) instead of raw table updates -- it validates the
+  /// transition server-side per caller role (customer/guest, driver, owner/
+  /// admin) and locks the row, closing the race conditions and cross-driver
+  /// tampering a raw `.update()` from each screen used to allow.
+  Future<void> assignDriver(String orderId, String workerId) {
+    return _supabase.client.rpc('set_order_status', params: {
+      'p_order_id': orderId,
+      'p_new_status': 'assigned',
+      'p_driver_worker_id': workerId,
+    });
   }
 
-  Future<void> assignDriver(String orderId, String workerId) {
-    return _supabase.client.from('orders').update({
-      'driver_worker_id': workerId,
-      'status': 'assigned',
-    }).eq('id', orderId);
+  Future<void> unassignOrder(String orderId) {
+    return _supabase.client.rpc('set_order_status', params: {
+      'p_order_id': orderId,
+      'p_new_status': 'pending',
+    });
+  }
+
+  Future<void> ownerCancelOrder(String orderId) {
+    return _supabase.client.rpc('set_order_status', params: {
+      'p_order_id': orderId,
+      'p_new_status': 'cancelled',
+    });
+  }
+
+  /// Customer/guest self-cancel -- only valid while the order hasn't gone
+  /// out for delivery yet. `guestPhone` authenticates a signed-out caller
+  /// the same way lookup_guest_order()/get_active_delivery_driver() do.
+  Future<void> cancelOrder({required String orderId, String? guestPhone}) {
+    return _supabase.client.rpc('set_order_status', params: {
+      'p_order_id': orderId,
+      'p_new_status': 'cancelled',
+      'p_guest_phone': guestPhone,
+    });
+  }
+
+  Future<void> startDelivery(String orderId) {
+    return _supabase.client.rpc('set_order_status', params: {
+      'p_order_id': orderId,
+      'p_new_status': 'active',
+    });
+  }
+
+  Future<void> completeDelivery(
+    String orderId, {
+    required int emptyJugsReturned,
+    required bool paymentCollected,
+  }) {
+    return _supabase.client.rpc('set_order_status', params: {
+      'p_order_id': orderId,
+      'p_new_status': 'done',
+      'p_empty_jugs_returned': emptyJugsReturned,
+      'p_payment_collected': paymentCollected,
+    });
   }
 
   Future<String> insertQuickOrder({

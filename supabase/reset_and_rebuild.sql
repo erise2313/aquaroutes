@@ -248,6 +248,10 @@ begin
     return v_existing_station_id;
   end if;
 
+  if exists (select 1 from memberships where profile_id = auth.uid()) then
+    raise exception 'This account already has a different role. Sign out and use a different email, or contact WASA.';
+  end if;
+
   select id into v_association_id from associations limit 1;
   if v_association_id is null then
     raise exception 'No association configured.';
@@ -268,8 +272,12 @@ create or replace function register_customer(p_full_name text) returns void as $
 declare
   v_association_id uuid;
 begin
-  if exists (select 1 from memberships where profile_id = auth.uid()) then
+  if exists (select 1 from memberships where profile_id = auth.uid() and role = 'public_consumer') then
     return;
+  end if;
+
+  if exists (select 1 from memberships where profile_id = auth.uid()) then
+    raise exception 'This account already has a different role. Sign out and use a different email, or contact WASA.';
   end if;
 
   select id into v_association_id from associations limit 1;
@@ -589,10 +597,32 @@ declare
   v_station_id uuid;
   v_association_id uuid;
   v_worker_id uuid;
+  v_current_station_id uuid;
 begin
-  select id into v_worker_id from workers where profile_id = auth.uid();
+  select id, station_id into v_worker_id, v_current_station_id from workers where profile_id = auth.uid();
+
   if v_worker_id is not null then
+    if v_current_station_id is not null then
+      return v_worker_id;
+    end if;
+
+    -- Previously left/removed from a station -- re-link to the new one
+    -- instead of silently returning a stale, still-unlinked id.
+    select id, association_id into v_station_id, v_association_id
+      from water_stations where invite_code ilike p_invite_code;
+    if v_station_id is null then
+      raise exception 'Invalid station invite code.';
+    end if;
+
+    update workers set station_id = v_station_id, updated_at = now() where id = v_worker_id;
+    update memberships set station_id = v_station_id, association_id = v_association_id
+      where profile_id = auth.uid() and role = 'driver';
+    insert into worker_station_history (worker_id, station_id) values (v_worker_id, v_station_id);
     return v_worker_id;
+  end if;
+
+  if exists (select 1 from memberships where profile_id = auth.uid()) then
+    raise exception 'This account already has a different role. Sign out and use a different email, or contact WASA.';
   end if;
 
   select id, association_id into v_station_id, v_association_id
@@ -642,6 +672,9 @@ begin
   update worker_station_history set status = 'left', left_at = now(), ended_by_profile_id = auth.uid()
     where worker_id = v_worker_id and status = 'active';
 
+  update orders set status = 'pending', driver_worker_id = null
+    where driver_worker_id = v_worker_id and status in ('assigned', 'active');
+
   update workers set station_id = v_new_station_id, updated_at = now() where id = v_worker_id;
 
   update memberships set station_id = v_new_station_id, association_id = v_association_id
@@ -660,6 +693,9 @@ begin
     raise exception 'No worker record found for this account.';
   end if;
 
+  update orders set status = 'pending', driver_worker_id = null
+    where driver_worker_id = v_worker_id and status in ('assigned', 'active');
+
   update workers set station_id = null, updated_at = now() where id = v_worker_id;
   update memberships set station_id = null where profile_id = auth.uid() and role = 'driver';
   update worker_station_history set status = 'left', left_at = now(), ended_by_profile_id = auth.uid()
@@ -677,6 +713,9 @@ begin
   if v_station_id is null or auth_station_id() is null or v_station_id <> auth_station_id() then
     raise exception 'Not authorized to remove this worker.';
   end if;
+
+  update orders set status = 'pending', driver_worker_id = null
+    where driver_worker_id = p_worker_id and status in ('assigned', 'active');
 
   update workers set station_id = null, updated_at = now() where id = p_worker_id;
   if v_profile_id is not null then
@@ -790,6 +829,7 @@ create or replace function insert_quick_order(
 declare
   new_order_id uuid;
   v_is_active boolean;
+  v_accepts_new_orders boolean;
 begin
   if p_client_request_id is not null then
     select id into new_order_id from orders where client_request_id = p_client_request_id;
@@ -798,8 +838,15 @@ begin
     end if;
   end if;
 
-  select is_active into v_is_active from water_stations where id = p_station_id;
-  if v_is_active is null or not v_is_active then
+  select is_active, accepts_new_orders into v_is_active, v_accepts_new_orders
+    from water_stations where id = p_station_id;
+  -- is_active is the WASA-admin-controlled enable/suspend flag;
+  -- accepts_new_orders is the owner's own "open/closed right now" toggle
+  -- (merchant_profile_screens.dart) -- deliberately separate columns so an
+  -- owner flipping their own open/closed status can never override an
+  -- admin suspension (see trg_prevent_owner_self_accreditation, which
+  -- blocks owners from touching is_active at all).
+  if v_is_active is null or not v_is_active or not coalesce(v_accepts_new_orders, true) then
     raise exception 'This station is not currently accepting orders.';
   end if;
 
@@ -819,6 +866,87 @@ begin
   ) returning id into new_order_id;
 
   return new_order_id;
+end;
+$$ language plpgsql security definer set search_path = public;
+
+create or replace function set_order_status(
+  p_order_id uuid,
+  p_new_status order_status,
+  p_driver_worker_id uuid default null,
+  p_guest_phone text default null,
+  p_empty_jugs_returned int default null,
+  p_payment_collected boolean default null
+) returns void as $$
+declare
+  o orders%rowtype;
+  v_caller_worker_id uuid;
+  v_is_owner_or_admin boolean;
+  v_new_driver_station_id uuid;
+  v_new_driver_clearance clearance_status;
+begin
+  select * into o from orders where id = p_order_id for update;
+  if not found then
+    raise exception 'Order not found.';
+  end if;
+
+  v_is_owner_or_admin := auth_has_role('wasa_admin')
+    or exists (select 1 from water_stations where id = o.station_id and owner_profile_id = auth.uid());
+
+  -- Customer / guest: cancel their own order only, before it's out for delivery.
+  if (auth.uid() is not null and o.customer_profile_id = auth.uid())
+     or (auth.uid() is null and p_guest_phone is not null and o.guest_phone = p_guest_phone) then
+    if o.status not in ('pending', 'assigned') or p_new_status <> 'cancelled' then
+      raise exception 'You can only cancel an order before it is out for delivery.';
+    end if;
+    update orders set status = 'cancelled' where id = p_order_id;
+    return;
+  end if;
+
+  -- Station owner / WASA admin: assign, cancel, unassign.
+  if v_is_owner_or_admin then
+    if o.status = 'pending' and p_new_status = 'assigned' then
+      if p_driver_worker_id is null then
+        raise exception 'A driver must be specified to assign this order.';
+      end if;
+      select station_id, clearance_status into v_new_driver_station_id, v_new_driver_clearance
+        from workers where id = p_driver_worker_id;
+      if v_new_driver_station_id is null or v_new_driver_station_id <> o.station_id then
+        raise exception 'That driver does not belong to this station.';
+      end if;
+      if v_new_driver_clearance = 'flagged' then
+        raise exception 'This driver is flagged and cannot be assigned deliveries.';
+      end if;
+      update orders set status = 'assigned', driver_worker_id = p_driver_worker_id where id = p_order_id;
+      return;
+    elsif o.status in ('pending', 'assigned') and p_new_status = 'cancelled' then
+      update orders set status = 'cancelled' where id = p_order_id;
+      return;
+    elsif o.status = 'assigned' and p_new_status = 'pending' then
+      update orders set status = 'pending', driver_worker_id = null where id = p_order_id;
+      return;
+    else
+      raise exception 'Not a valid status change for a station owner.';
+    end if;
+  end if;
+
+  -- Driver: start/complete their own assigned delivery only.
+  select id into v_caller_worker_id from workers where profile_id = auth.uid();
+  if v_caller_worker_id is not null and o.driver_worker_id = v_caller_worker_id then
+    if o.status = 'assigned' and p_new_status = 'active' then
+      update orders set status = 'active' where id = p_order_id;
+      return;
+    elsif o.status in ('assigned', 'active') and p_new_status = 'done' then
+      update orders set status = 'done',
+        empty_jugs_returned = coalesce(p_empty_jugs_returned, empty_jugs_returned),
+        payment_collected = coalesce(p_payment_collected, payment_collected)
+      where id = p_order_id;
+      return;
+    else
+      raise exception 'Not a valid status change for a driver.';
+    end if;
+  end if;
+
+  raise exception 'Not authorized to change this order.';
 end;
 $$ language plpgsql security definer set search_path = public;
 
@@ -868,8 +996,9 @@ begin
        or new.delivery_fee is distinct from old.delivery_fee
        or new.total_amount is distinct from old.total_amount
        or new.jugs_ordered is distinct from old.jugs_ordered
-       or new.station_id is distinct from old.station_id then
-      raise exception 'Drivers may not modify order financial or station details.';
+       or new.station_id is distinct from old.station_id
+       or new.driver_worker_id is distinct from old.driver_worker_id then
+      raise exception 'Drivers may not modify order financial, station, or assignment details.';
     end if;
   end if;
   return new;
@@ -883,6 +1012,18 @@ create trigger trg_protect_order_financial_fields
 -- ---- 0007_jug_clearinghouse.sql ----
 
 create type jug_type as enum ('slim_5gal', 'round_5gal');
+
+-- Reuses jug_type (above) for the station-facing "which containers do you
+-- fill" question -- a customer-discovery detail, distinct from the
+-- inter-station clearinghouse ledger below but sharing the same enum.
+alter table water_stations add column offered_jug_types jug_type[] not null default '{}';
+alter table water_stations add column offers_jug_exchange boolean not null default false;
+
+-- Owner-controlled "open right now" toggle, deliberately separate from
+-- is_active (the WASA-admin-only enable/suspend flag guarded by
+-- trg_prevent_owner_self_accreditation below) -- an owner closing for the
+-- day can never accidentally/intentionally undo an admin suspension.
+alter table water_stations add column accepts_new_orders boolean not null default true;
 
 create table jug_ledger_entries (
   id uuid primary key default gen_random_uuid(),
@@ -926,6 +1067,7 @@ create index jug_settlements_owner_idx on jug_settlements (owner_station_id);
 create or replace function confirm_jug_settlement(p_settlement_id uuid) returns void as $$
 declare
   s jug_settlements%rowtype;
+  v_owed int;
 begin
   select * into s from jug_settlements where id = p_settlement_id for update;
 
@@ -939,6 +1081,16 @@ begin
 
   if auth_station_id() is null or auth_station_id() <> s.owner_station_id then
     raise exception 'only the owning/receiving station may confirm this settlement';
+  end if;
+
+  select coalesce(sum(quantity), 0) into v_owed
+    from jug_ledger_entries
+    where holder_station_id = s.holder_station_id
+      and owner_station_id = s.owner_station_id
+      and jug_type = s.jug_type;
+
+  if s.quantity > v_owed then
+    raise exception 'This settlement (% jugs) exceeds the current outstanding balance (% jugs).', s.quantity, v_owed;
   end if;
 
   insert into jug_ledger_entries (holder_station_id, owner_station_id, jug_type, quantity, recorded_by)
@@ -1216,7 +1368,9 @@ create policy stations_driver_read on water_stations for select
 create view public_stations as
   select ws.id, ws.station_name, ws.station_address, ws.latitude, ws.longitude,
          ws.price_per_jug, ws.delivery_fee, ws.offered_water_types, ws.photo_url,
-         ws.is_colorum_verified, ws.is_accredited, b.name as barangay_name,
+         ws.is_colorum_verified, ws.is_accredited, ws.is_active,
+         ws.offered_jug_types, ws.offers_jug_exchange, ws.accepts_new_orders,
+         b.name as barangay_name,
          coalesce(r.avg_rating, 0) as avg_rating,
          coalesce(r.review_count, 0) as review_count
   from water_stations ws
@@ -1307,15 +1461,15 @@ create policy orders_owner_all on orders for all
   using (station_id in (select id from water_stations where owner_profile_id = auth.uid()))
   with check (station_id in (select id from water_stations where owner_profile_id = auth.uid()));
 create policy orders_driver_read on orders for select
-  using (station_id = auth_station_id());
+  using (driver_worker_id = (select id from workers where profile_id = auth.uid()));
 create policy orders_driver_update on orders for update
-  using (station_id = auth_station_id());
+  using (driver_worker_id = (select id from workers where profile_id = auth.uid()));
 create policy orders_customer_read on orders for select
   using (customer_profile_id = auth.uid());
-create policy orders_public_insert on orders for insert
-  with check (customer_profile_id is null and guest_name is not null);
-create policy orders_authenticated_insert on orders for insert
-  with check (customer_profile_id = auth.uid());
+-- No direct-insert policy for anon/authenticated -- all order creation goes
+-- through insert_quick_order() (security definer, bypasses RLS as the
+-- function owner), which enforces accepts-new-orders/is_active and
+-- idempotency checks a raw client insert could otherwise skip entirely.
 create policy orders_admin_read on orders for select
   using (auth_has_role('wasa_admin'));
 

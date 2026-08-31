@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -15,7 +16,13 @@ class LocationService {
 
   bool get isTracking => _subscription != null;
 
-  void startTracking(String workerId) {
+  /// `stationId` is required because `driver_states.station_id` is `not
+  /// null` with no default -- omitting it from the upsert (as a past
+  /// version of this method did) throws a constraint violation on the
+  /// first write for a given worker. That exception used to propagate
+  /// uncaught out of this stream listener and crash the app, most visibly
+  /// when a driver's session resumed on-duty at launch.
+  void startTracking(String workerId, String stationId) {
     if (_subscription != null) return;
 
     const locationSettings = LocationSettings(
@@ -24,13 +31,19 @@ class LocationService {
     );
 
     _subscription = Geolocator.getPositionStream(locationSettings: locationSettings).listen((position) async {
-      await _supabase.from('driver_states').upsert({
-        'worker_id': workerId,
-        'current_location': 'POINT(${position.longitude} ${position.latitude})',
-        'current_speed': position.speed,
-        'last_updated': DateTime.now().toIso8601String(),
-        'is_active': true,
-      });
+      try {
+        await _supabase.from('driver_states').upsert({
+          'worker_id': workerId,
+          'station_id': stationId,
+          'current_location': 'POINT(${position.longitude} ${position.latitude})',
+          'current_speed': position.speed,
+          'last_updated': DateTime.now().toIso8601String(),
+          'is_active': true,
+        });
+      } catch (e) {
+        debugPrint('LocationService: failed to broadcast position, stopping tracking: $e');
+        await stopTracking(workerId);
+      }
     });
   }
 

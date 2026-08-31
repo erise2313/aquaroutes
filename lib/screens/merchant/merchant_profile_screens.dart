@@ -46,6 +46,9 @@ class _MerchantProfileScreenState extends State<MerchantProfileScreen> {
   String? _stationPhotoUrl;
   Map<String, dynamic>? _profileData;
   Map<String, dynamic>? _stationData;
+  bool _isAcceptingOrders = true;
+  final Set<String> _offeredJugTypes = {};
+  bool _offersJugExchange = false;
 
   final TextEditingController _fullNameController = TextEditingController();
   final TextEditingController _stationNameController = TextEditingController();
@@ -115,6 +118,11 @@ class _MerchantProfileScreenState extends State<MerchantProfileScreen> {
           _emailController.text = supabase.auth.currentUser?.email ?? '';
           _latitudeController.text = (station?['latitude'] as num?)?.toString() ?? '';
           _longitudeController.text = (station?['longitude'] as num?)?.toString() ?? '';
+          _isAcceptingOrders = station?['accepts_new_orders'] as bool? ?? true;
+          _offeredJugTypes
+            ..clear()
+            ..addAll(List<String>.from(station?['offered_jug_types'] as List? ?? const []));
+          _offersJugExchange = station?['offers_jug_exchange'] as bool? ?? false;
           _isLoading = false;
         });
       }
@@ -219,6 +227,9 @@ class _MerchantProfileScreenState extends State<MerchantProfileScreen> {
         stationPayload['latitude'] = lat;
         stationPayload['longitude'] = lng;
       }
+      stationPayload['accepts_new_orders'] = _isAcceptingOrders;
+      stationPayload['offered_jug_types'] = _offeredJugTypes.toList();
+      stationPayload['offers_jug_exchange'] = _offersJugExchange;
 
       await supabase.from('water_stations').update(stationPayload).eq('id', _stationId!);
 
@@ -245,13 +256,11 @@ class _MerchantProfileScreenState extends State<MerchantProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey.shade50,
       appBar: AppBar(
-        title: const Text(
+        title: Text(
           "Station Profile",
-          style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold),
+          style: TextStyle(fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurface),
         ),
-        backgroundColor: Colors.white,
         elevation: 0,
       ),
       body: _isLoading ? const Center(child: CircularProgressIndicator()) : _buildProfileContent(),
@@ -494,9 +503,9 @@ class _MerchantProfileScreenState extends State<MerchantProfileScreen> {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: Theme.of(context).colorScheme.surfaceContainerHighest,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.grey.shade200),
+          border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
         ),
         child: Column(
           children: [
@@ -538,9 +547,9 @@ class _MerchantProfileScreenState extends State<MerchantProfileScreen> {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: Theme.of(context).colorScheme.surfaceContainerHighest,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.grey.shade200),
+          border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
         ),
         child: Column(
           children: [
@@ -559,13 +568,13 @@ class _MerchantProfileScreenState extends State<MerchantProfileScreen> {
                 child: _isUploadingStationPhoto
                     ? const Center(child: CircularProgressIndicator())
                     : (_stationPhotoUrl == null
-                        ? const Center(
+                        ? Center(
                             child: Column(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Icon(Icons.add_a_photo_outlined, color: Colors.grey),
-                                SizedBox(height: 4),
-                                Text('Add Station Photo', style: TextStyle(color: Colors.grey, fontSize: 12)),
+                                Icon(Icons.add_a_photo_outlined, color: Colors.grey.shade700),
+                                const SizedBox(height: 4),
+                                Text('Add Station Photo', style: TextStyle(color: Colors.grey.shade700, fontSize: 12)),
                               ],
                             ),
                           )
@@ -602,6 +611,39 @@ class _MerchantProfileScreenState extends State<MerchantProfileScreen> {
               backgroundColor: Colors.grey.shade100,
             ),
             const SizedBox(height: 16),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              value: _isAcceptingOrders,
+              onChanged: (v) => setState(() => _isAcceptingOrders = v),
+              title: const Text('Accepting Orders', style: TextStyle(fontWeight: FontWeight.w600)),
+              subtitle: const Text('Turn off when closed -- customers will see this station as closed and can\'t order.', style: TextStyle(fontSize: 12)),
+            ),
+            const Divider(),
+            const Align(alignment: Alignment.centerLeft, child: Text('Container Options', style: TextStyle(fontWeight: FontWeight.w600))),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              children: [
+                FilterChip(
+                  label: const Text('Slim 5-gal'),
+                  selected: _offeredJugTypes.contains('slim_5gal'),
+                  onSelected: (v) => setState(() => v ? _offeredJugTypes.add('slim_5gal') : _offeredJugTypes.remove('slim_5gal')),
+                ),
+                FilterChip(
+                  label: const Text('Round 5-gal'),
+                  selected: _offeredJugTypes.contains('round_5gal'),
+                  onSelected: (v) => setState(() => v ? _offeredJugTypes.add('round_5gal') : _offeredJugTypes.remove('round_5gal')),
+                ),
+              ],
+            ),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              value: _offersJugExchange,
+              onChanged: (v) => setState(() => _offersJugExchange = v),
+              title: const Text('Accepts Jug Exchange', style: TextStyle(fontWeight: FontWeight.w600)),
+              subtitle: const Text('Customers can bring an empty jug of any brand and swap it for a full one.', style: TextStyle(fontSize: 12)),
+            ),
+            const SizedBox(height: 16),
             Align(
               alignment: Alignment.centerRight,
               child: ElevatedButton.icon(
@@ -627,9 +669,9 @@ class _MerchantProfileScreenState extends State<MerchantProfileScreen> {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: Theme.of(context).colorScheme.surfaceContainerHighest,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.grey.shade200),
+          border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
         ),
         child: Column(
           children: [

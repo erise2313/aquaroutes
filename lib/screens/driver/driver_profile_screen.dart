@@ -291,11 +291,11 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
                   TextField(
                     controller: _fullNameController,
                     style: const TextStyle(color: AppColors.driverText),
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       labelText: 'Full Name',
-                      labelStyle: TextStyle(color: Colors.grey),
+                      labelStyle: TextStyle(color: Colors.grey.shade700),
                       border: OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.person, color: Colors.grey),
+                      prefixIcon: Icon(Icons.person, color: Colors.grey.shade700),
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -303,23 +303,23 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
                     controller: _phoneController,
                     keyboardType: TextInputType.phone,
                     style: const TextStyle(color: AppColors.driverText),
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       labelText: 'Phone Number',
                       hintText: 'e.g., 09123456789',
-                      labelStyle: TextStyle(color: Colors.grey),
+                      labelStyle: TextStyle(color: Colors.grey.shade700),
                       border: OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.phone, color: Colors.grey),
+                      prefixIcon: Icon(Icons.phone, color: Colors.grey.shade700),
                     ),
                   ),
                   const SizedBox(height: 16),
                   TextField(
                     controller: _vehiclePlateController,
                     style: const TextStyle(color: AppColors.driverText),
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       labelText: 'Vehicle Plate Number',
-                      labelStyle: TextStyle(color: Colors.grey),
+                      labelStyle: TextStyle(color: Colors.grey.shade700),
                       border: OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.directions_car, color: Colors.grey),
+                      prefixIcon: Icon(Icons.directions_car, color: Colors.grey.shade700),
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -327,11 +327,11 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
                     controller: _jugCapacityController,
                     keyboardType: TextInputType.number,
                     style: const TextStyle(color: AppColors.driverText),
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       labelText: 'Jug Capacity',
-                      labelStyle: TextStyle(color: Colors.grey),
+                      labelStyle: TextStyle(color: Colors.grey.shade700),
                       border: OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.water_drop, color: Colors.grey),
+                      prefixIcon: Icon(Icons.water_drop, color: Colors.grey.shade700),
                     ),
                   ),
                   const SizedBox(height: 32),
@@ -368,7 +368,7 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
             backgroundImage: _avatarUrl != null ? NetworkImage(_avatarUrl!) : null,
             child: _isUploadingAvatar
                 ? const CircularProgressIndicator(color: AppColors.primary)
-                : (_avatarUrl == null ? const Icon(Icons.local_shipping, size: 45, color: Colors.grey) : null),
+                : (_avatarUrl == null ? Icon(Icons.local_shipping, size: 45, color: Colors.grey.shade700) : null),
           ),
           Container(
             padding: const EdgeInsets.all(6),
@@ -388,7 +388,7 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('CURRENT STATION', style: TextStyle(color: Colors.grey, letterSpacing: 1.2, fontSize: 12)),
+          Text('CURRENT STATION', style: TextStyle(color: Colors.grey.shade700, letterSpacing: 1.2, fontSize: 12)),
           const SizedBox(height: 8),
           Text(
             isLinked ? (_stationName ?? 'Unknown Station') : 'Not currently linked to a station',
@@ -427,11 +427,11 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('MY CREDENTIALS', style: TextStyle(color: Colors.grey, letterSpacing: 1.2, fontSize: 12)),
+          Text('MY CREDENTIALS', style: TextStyle(color: Colors.grey.shade700, letterSpacing: 1.2, fontSize: 12)),
           const SizedBox(height: 8),
-          const Text(
+          Text(
             'Submit these for WASA to review and clear your account.',
-            style: TextStyle(color: Colors.grey, fontSize: 12),
+            style: TextStyle(color: Colors.grey.shade700, fontSize: 12),
           ),
           const SizedBox(height: 12),
           ..._credentials.map(_buildCredentialTile),
@@ -457,7 +457,7 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
         children: [
           Text(label, style: TextStyle(color: color)),
           if (credential.status == PermitStatus.rejected && credential.rejectionReason != null && credential.rejectionReason!.isNotEmpty)
-            Text('Reason: ${credential.rejectionReason}', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+            Text('Reason: ${credential.rejectionReason}', style: TextStyle(fontSize: 12, color: Colors.grey.shade700)),
         ],
       ),
       trailing: TextButton(
@@ -483,7 +483,7 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
       ),
       child: Column(
         children: [
-          const Text('GENTRI WASA WORKER BADGE', style: TextStyle(color: Colors.grey, letterSpacing: 1.5, fontSize: 12)),
+          Text('GENTRI WASA WORKER BADGE', style: TextStyle(color: Colors.grey.shade700, letterSpacing: 1.5, fontSize: 12)),
           const SizedBox(height: 16),
           Container(
             padding: const EdgeInsets.all(12),

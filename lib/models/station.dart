@@ -16,6 +16,17 @@ class Station {
   final bool isColorumVerified;
   final bool isAccredited;
   final String accreditationStatus;
+  final bool isActive;
+  final List<String> offeredJugTypes;
+  final bool offersJugExchange;
+  final bool acceptsNewOrders;
+
+  /// Whether a customer can actually order from this station right now --
+  /// requires both the WASA-admin-controlled `isActive` (not suspended)
+  /// AND the owner's own `acceptsNewOrders` toggle ("open right now").
+  /// Deliberately two separate flags (see supabase/patch_station_discovery.sql)
+  /// so an owner's own open/closed toggle can never undo an admin suspension.
+  bool get isOrderable => isActive && acceptsNewOrders;
 
   const Station({
     required this.id,
@@ -34,6 +45,10 @@ class Station {
     required this.isColorumVerified,
     required this.isAccredited,
     required this.accreditationStatus,
+    this.isActive = true,
+    this.offeredJugTypes = const [],
+    this.offersJugExchange = false,
+    this.acceptsNewOrders = true,
   });
 
   bool get offersAlkaline => offeredWaterTypes.contains('alkaline');
@@ -56,6 +71,10 @@ class Station {
       isColorumVerified: map['is_colorum_verified'] as bool? ?? false,
       isAccredited: map['is_accredited'] as bool? ?? false,
       accreditationStatus: map['accreditation_status'] as String? ?? 'pending',
+      isActive: map['is_active'] as bool? ?? true,
+      offeredJugTypes: List<String>.from(map['offered_jug_types'] as List? ?? const []),
+      offersJugExchange: map['offers_jug_exchange'] as bool? ?? false,
+      acceptsNewOrders: map['accepts_new_orders'] as bool? ?? true,
     );
   }
 
@@ -76,6 +95,10 @@ class Station {
       'is_colorum_verified': isColorumVerified,
       'is_accredited': isAccredited,
       'accreditation_status': accreditationStatus,
+      'is_active': isActive,
+      'offered_jug_types': offeredJugTypes,
+      'offers_jug_exchange': offersJugExchange,
+      'accepts_new_orders': acceptsNewOrders,
     };
   }
 }
@@ -97,6 +120,13 @@ class PublicStation {
   final String? barangayName;
   final double avgRating;
   final int reviewCount;
+  final bool isActive;
+  final List<String> offeredJugTypes;
+  final bool offersJugExchange;
+  final bool acceptsNewOrders;
+
+  /// See Station.isOrderable's doc comment -- same combined check.
+  bool get isOrderable => isActive && acceptsNewOrders;
 
   const PublicStation({
     required this.id,
@@ -113,6 +143,10 @@ class PublicStation {
     this.barangayName,
     this.avgRating = 0,
     this.reviewCount = 0,
+    this.isActive = true,
+    this.offeredJugTypes = const [],
+    this.offersJugExchange = false,
+    this.acceptsNewOrders = true,
   });
 
   bool get offersAlkaline => offeredWaterTypes.contains('alkaline');
@@ -133,6 +167,10 @@ class PublicStation {
       barangayName: map['barangay_name'] as String?,
       avgRating: (map['avg_rating'] as num?)?.toDouble() ?? 0,
       reviewCount: (map['review_count'] as num?)?.toInt() ?? 0,
+      isActive: map['is_active'] as bool? ?? true,
+      offeredJugTypes: List<String>.from(map['offered_jug_types'] as List? ?? const []),
+      offersJugExchange: map['offers_jug_exchange'] as bool? ?? false,
+      acceptsNewOrders: map['accepts_new_orders'] as bool? ?? true,
     );
   }
 }

@@ -136,6 +136,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       keyboardType: TextInputType.emailAddress,
                       textInputAction: TextInputAction.next,
                       validator: _validateEmail,
+                      autofillHints: const [AutofillHints.email],
                     ),
                     const SizedBox(height: 16),
                     AuthTextField(
@@ -146,6 +147,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       textInputAction: TextInputAction.done,
                       validator: _validatePassword,
                       onSubmitted: (_) => _login(),
+                      autofillHints: const [AutofillHints.password],
                     ),
                     Align(
                       alignment: Alignment.centerRight,
@@ -181,7 +183,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       child: RichText(
                         text: TextSpan(
                           text: "Don't have an account? ",
-                          style: const TextStyle(color: Colors.grey),
+                          style: TextStyle(color: Colors.grey.shade700),
                           children: [
                             TextSpan(text: "Register here", style: TextStyle(color: WebTheme.harborBlue, fontWeight: FontWeight.bold)),
                           ],

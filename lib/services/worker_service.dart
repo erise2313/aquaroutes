@@ -23,22 +23,6 @@ class WorkerService {
     return _supabase.client.from('driver_states').select().eq('worker_id', workerId).maybeSingle();
   }
 
-  Future<void> addWorker({
-    required String stationId,
-    required String fullName,
-    String? phoneNumber,
-    String? vehiclePlate,
-    int? jugCapacity,
-  }) {
-    return _supabase.client.from('workers').insert({
-      'station_id': stationId,
-      'full_name': fullName,
-      'phone_number': phoneNumber,
-      'vehicle_plate': vehiclePlate,
-      'jug_capacity': jugCapacity,
-    });
-  }
-
   Future<void> updateWorker(String workerId, Map<String, dynamic> fields) {
     return _supabase.client.from('workers').update(fields).eq('id', workerId);
   }
