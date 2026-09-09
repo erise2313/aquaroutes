@@ -66,16 +66,27 @@ class OrderService {
     });
   }
 
+  /// [jugExchangeOriginStationId] lets the driver confirm/correct which
+  /// station's jug was actually handed back (they're the one looking at
+  /// it) -- if omitted, whatever the customer declared at order time is
+  /// kept as-is. [noJugExchange] overrides that entirely to "no exchange
+  /// happened," in case the customer's order-time declaration turns out
+  /// to be wrong at the doorstep. set_order_status writes the resulting
+  /// jug_ledger_entries row automatically -- see supabase/patch_jug_provenance.sql.
   Future<void> completeDelivery(
     String orderId, {
     required int emptyJugsReturned,
     required bool paymentCollected,
+    String? jugExchangeOriginStationId,
+    bool noJugExchange = false,
   }) {
     return _supabase.client.rpc('set_order_status', params: {
       'p_order_id': orderId,
       'p_new_status': 'done',
       'p_empty_jugs_returned': emptyJugsReturned,
       'p_payment_collected': paymentCollected,
+      'p_jug_exchange_origin_station_id': jugExchangeOriginStationId,
+      'p_no_jug_exchange': noJugExchange,
     });
   }
 
@@ -92,6 +103,8 @@ class OrderService {
     String? guestPhone,
     String? clientRequestId,
     DateTime? scheduledFor,
+    String? jugType,
+    String? jugExchangeOriginStationId,
   }) async {
     final id = await _supabase.client.rpc('insert_quick_order', params: {
       'p_station_id': stationId,
@@ -106,6 +119,8 @@ class OrderService {
       'p_guest_phone': guestPhone,
       'p_client_request_id': clientRequestId,
       'p_scheduled_for': scheduledFor?.toIso8601String(),
+      'p_jug_type': jugType,
+      'p_jug_exchange_origin_station_id': jugExchangeOriginStationId,
     });
     return id as String;
   }

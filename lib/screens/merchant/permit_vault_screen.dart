@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../models/permit.dart';
+import '../../models/web_content.dart';
 import '../../services/permit_service.dart';
 import '../../services/supabase_service.dart';
 
@@ -27,6 +28,7 @@ class _PermitVaultScreenState extends State<PermitVaultScreen> {
   String? _stationId;
   bool _isAccredited = false;
   List<Permit> _permits = [];
+  Map<PermitType, PermitTypeLabel> _labels = {};
 
   @override
   void initState() {
@@ -35,6 +37,7 @@ class _PermitVaultScreenState extends State<PermitVaultScreen> {
   }
 
   Future<void> _load() async {
+    if (!mounted) return;
     setState(() => _isLoading = true);
     try {
       final userId = _supabase.auth.currentUser!.id;
@@ -45,18 +48,20 @@ class _PermitVaultScreenState extends State<PermitVaultScreen> {
           .maybeSingle();
 
       if (station == null) {
-        setState(() => _isLoading = false);
+        if (mounted) setState(() => _isLoading = false);
         return;
       }
 
       final stationId = station['id'] as String;
       final permits = await _permitService.fetchStationPermits(stationId);
+      final labels = await _permitService.fetchPermitLabels();
 
       if (mounted) {
         setState(() {
           _stationId = stationId;
           _isAccredited = station['is_accredited'] as bool? ?? false;
           _permits = permits.where((p) => p.isRequired).toList();
+          _labels = {for (final l in labels) l.permitType: l};
           _isLoading = false;
         });
       }
@@ -133,7 +138,7 @@ class _PermitVaultScreenState extends State<PermitVaultScreen> {
   }
 
   Widget _buildPermitCard(Permit permit) {
-    final label = _permitLabel(permit.permitType);
+    final label = _labels[permit.permitType]?.label ?? permit.permitType.name;
     final (statusColor, statusIcon, statusLabel) = switch (permit.status) {
       PermitStatus.approved => (Colors.green, Icons.check_circle, 'Approved'),
       PermitStatus.pendingReview => (Colors.orange, Icons.hourglass_top, 'Pending Review'),
@@ -173,20 +178,5 @@ class _PermitVaultScreenState extends State<PermitVaultScreen> {
         ),
       ),
     );
-  }
-
-  String _permitLabel(PermitType type) {
-    switch (type) {
-      case PermitType.businessPermit:
-        return "Mayor's Business Permit";
-      case PermitType.sanitaryPermit:
-        return 'Sanitary Permit';
-      case PermitType.fdaLicense:
-        return 'FDA License to Operate';
-      case PermitType.alkalineTechCert:
-        return 'Alkaline Machine Technical Certification';
-      case PermitType.alkalineWaterTest:
-        return 'Alkaline Water Quality Test Report';
-    }
   }
 }

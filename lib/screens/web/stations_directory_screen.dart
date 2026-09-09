@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../../constants/web_theme.dart';
+import '../../web_router.dart';
 import '../../models/station.dart';
 import '../../providers/web_locale_provider.dart';
 import '../../services/station_service.dart';
@@ -105,7 +107,7 @@ class _StationsDirectoryScreenState extends ConsumerState<StationsDirectoryScree
     final filtered = _filtered;
 
     return Scaffold(
-      backgroundColor: WebTheme.paper,
+      backgroundColor: WebTheme.of(context).paper,
       appBar: const WebNavBar(currentPage: WebPage.stations),
       body: Stack(
         children: [
@@ -152,7 +154,12 @@ class _StationsDirectoryScreenState extends ConsumerState<StationsDirectoryScree
                                   height: 500,
                                   width: isWide ? 420 : double.infinity,
                                   child: filtered.isEmpty
-                                      ? const Center(child: Text('No stations match your filters.', style: TextStyle(color: Colors.grey)))
+                                      ? Center(
+                                          child: Text(
+                                            _stations.isEmpty ? 'No verified stations yet.' : 'No stations match your filters.',
+                                            style: const TextStyle(color: Colors.grey),
+                                          ),
+                                        )
                                       : ListView.builder(
                                           itemCount: filtered.length,
                                           itemBuilder: (context, index) => _buildStationCard(filtered[index]),
@@ -171,17 +178,18 @@ class _StationsDirectoryScreenState extends ConsumerState<StationsDirectoryScree
                                           userAgentPackageName: 'ph.gentriwasa.aquaroute',
                                         ),
                                         MarkerLayer(
-                                          markers: filtered
-                                              .map((s) => Marker(
-                                                    point: LatLng(s.latitude, s.longitude),
-                                                    width: 40,
-                                                    height: 40,
-                                                    child: MapPin(
-                                                      kind: s.offersAlkaline ? MapPinKind.stationAlkaline : MapPinKind.station,
-                                                      isAccredited: s.isAccredited,
-                                                    ),
-                                                  ))
-                                              .toList(),
+                                          markers: filtered.map((s) {
+                                            final pin = MapPin(
+                                              kind: s.offersAlkaline ? MapPinKind.stationAlkaline : MapPinKind.station,
+                                              isAccredited: s.isAccredited,
+                                            );
+                                            return Marker(
+                                              point: LatLng(s.latitude, s.longitude),
+                                              width: 40,
+                                              height: 40,
+                                              child: s.isOrderable ? pin : Opacity(opacity: 0.45, child: pin),
+                                            );
+                                          }).toList(),
                                         ),
                                       ],
                                     ),
@@ -260,31 +268,39 @@ class _StationsDirectoryScreenState extends ConsumerState<StationsDirectoryScree
       scale: 1.01,
       child: Container(
         margin: const EdgeInsets.only(bottom: 12, right: 8),
-        decoration: BoxDecoration(color: WebTheme.foam, borderRadius: BorderRadius.circular(10)),
+        decoration: BoxDecoration(color: WebTheme.of(context).foam, borderRadius: BorderRadius.circular(10)),
         child: ListTile(
           leading: CircleAvatar(
-            backgroundColor: Colors.grey.shade200,
+            backgroundColor: WebTheme.of(context).border,
             backgroundImage: station.photoUrl != null ? NetworkImage(station.photoUrl!) : null,
             child: station.photoUrl == null ? const Icon(Icons.storefront, color: Colors.grey) : null,
           ),
           title: Row(
             children: [
-              Expanded(child: Text(station.stationName, overflow: TextOverflow.ellipsis, style: const TextStyle(color: WebTheme.inkNavy, fontWeight: FontWeight.w600))),
+              Expanded(child: Text(station.stationName, overflow: TextOverflow.ellipsis, style: TextStyle(color: WebTheme.of(context).ink, fontWeight: FontWeight.w600))),
               if (station.isColorumVerified) const WebSeal(size: 20),
             ],
           ),
           subtitle: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                '${station.barangayName ?? station.stationAddress} · ${formatPeso(station.pricePerJug)}/jug',
-                style: const TextStyle(fontSize: 12),
-              ),
+              Builder(builder: (context) {
+                final status = stationAvailabilityStatus(acceptsNewOrders: station.acceptsNewOrders, isOpenNow: station.isOpenNow);
+                return Text(
+                  '${station.barangayName ?? station.stationAddress} · ${formatPeso(station.pricePerJug)}/jug · ${status.label}',
+                  style: TextStyle(fontSize: 12, color: status.isOpen ? null : Colors.redAccent, fontWeight: status.isOpen ? null : FontWeight.w600),
+                );
+              }),
               const SizedBox(height: 4),
               StarRatingDisplay(rating: station.avgRating, reviewCount: station.reviewCount, size: 14),
             ],
           ),
           isThreeLine: true,
+          // These cards had no tap target at all: the directory listed
+          // stations but there was no way to open one, on the site whose
+          // whole point is telling people which stations are accredited.
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => context.go(WebRoutes.station(station.id)),
         ),
       ),
     );

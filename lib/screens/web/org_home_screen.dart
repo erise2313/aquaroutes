@@ -25,7 +25,6 @@ import '../../widgets/web_footer.dart';
 import '../../widgets/web_nav_bar.dart';
 import '../../widgets/web_page_route.dart';
 import '../../widgets/web_seal.dart';
-import '../auth/login_screen.dart';
 import '../auth/registration_screen.dart';
 import 'news_screen.dart';
 import 'stations_directory_screen.dart';
@@ -98,7 +97,7 @@ class _OrgHomeScreenState extends ConsumerState<OrgHomeScreen> {
     final barangaysServed = _stations.map((s) => s.barangayName).whereType<String>().toSet().length;
 
     return Scaffold(
-      backgroundColor: WebTheme.paper,
+      backgroundColor: WebTheme.of(context).paper,
       appBar: const WebNavBar(currentPage: WebPage.home),
       body: Stack(
         children: [
@@ -131,7 +130,7 @@ class _OrgHomeScreenState extends ConsumerState<OrgHomeScreen> {
                     child: Column(
                       children: [
                         FadeSlideIn(child: _buildHero(t)),
-                        const WaveDivider(topColor: WebTheme.deepTeal, bottomColor: WebTheme.paper),
+                        WaveDivider(topColor: WebTheme.deepTeal, bottomColor: WebTheme.of(context).paper),
                         Center(
                           child: ConstrainedBox(
                             constraints: const BoxConstraints(maxWidth: 1100),
@@ -205,23 +204,26 @@ class _OrgHomeScreenState extends ConsumerState<OrgHomeScreen> {
                       onPressed: () => Navigator.push(context, webPageRoute(const RegistrationScreen())),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: WebTheme.sealGold,
-                        foregroundColor: WebTheme.inkNavy,
+                        foregroundColor: WebTheme.of(context).ink,
                         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
                       ),
                       child: Text(t('hero_register_cta'), style: const TextStyle(fontWeight: FontWeight.w700)),
                     ),
                   ),
+                  // Balances the CTA row with a second, genuinely useful
+                  // action for the other real visitor type (a resident
+                  // looking for a station), not a filler button.
                   HoverScale(
                     child: OutlinedButton(
-                      onPressed: () => Navigator.push(context, webPageRoute(const LoginScreen())),
+                      onPressed: () => Navigator.push(context, webPageRoute(const StationsDirectoryScreen())),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: Colors.white,
                         side: const BorderSide(color: Colors.white54),
                         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
                       ),
-                      child: Text(t('hero_admin_login_cta')),
+                      child: Text(t('hero_find_station_cta')),
                     ),
                   ),
                 ],
@@ -248,20 +250,20 @@ class _OrgHomeScreenState extends ConsumerState<OrgHomeScreen> {
     return Container(
       width: 240,
       padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(color: WebTheme.foam, borderRadius: BorderRadius.circular(10), border: Border.all(color: WebTheme.harborBlue.withValues(alpha: 0.08))),
+      decoration: BoxDecoration(color: WebTheme.of(context).foam, borderRadius: BorderRadius.circular(10), border: Border.all(color: WebTheme.harborBlue.withValues(alpha: 0.08))),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              CountUpText(value: value, start: _statsRevealed, style: GoogleFonts.fraunces(fontSize: 36, fontWeight: FontWeight.w600, color: WebTheme.inkNavy)),
+              CountUpText(value: value, start: _statsRevealed, style: GoogleFonts.fraunces(fontSize: 36, fontWeight: FontWeight.w600, color: WebTheme.of(context).ink)),
               const SizedBox(width: 8),
               Padding(padding: const EdgeInsets.only(bottom: 6), child: WebSeal(size: 18, outlined: true)),
             ],
           ),
           const SizedBox(height: 4),
-          Text(label, style: const TextStyle(color: WebTheme.inkNavy, fontSize: 13)),
+          Text(label, style: TextStyle(color: WebTheme.of(context).ink, fontSize: 13)),
         ],
       ),
     );
@@ -304,7 +306,7 @@ class _OrgHomeScreenState extends ConsumerState<OrgHomeScreen> {
           children: [
             Row(
               children: [
-                Expanded(child: Text(station.stationName, style: const TextStyle(fontWeight: FontWeight.bold, color: WebTheme.inkNavy), maxLines: 1, overflow: TextOverflow.ellipsis)),
+                Expanded(child: Text(station.stationName, style: TextStyle(fontWeight: FontWeight.bold, color: WebTheme.of(context).ink), maxLines: 1, overflow: TextOverflow.ellipsis)),
                 if (station.isColorumVerified) const WebSeal(size: 20),
               ],
             ),
@@ -344,7 +346,7 @@ class _OrgHomeScreenState extends ConsumerState<OrgHomeScreen> {
               child: Container(
                 margin: const EdgeInsets.only(bottom: 12),
                 padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(color: WebTheme.foam, borderRadius: BorderRadius.circular(10)),
+                decoration: BoxDecoration(color: WebTheme.of(context).foam, borderRadius: BorderRadius.circular(10)),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -352,7 +354,7 @@ class _OrgHomeScreenState extends ConsumerState<OrgHomeScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(b.title, style: const TextStyle(fontWeight: FontWeight.bold, color: WebTheme.inkNavy)),
+                          Text(b.title, style: TextStyle(fontWeight: FontWeight.bold, color: WebTheme.of(context).ink)),
                           const SizedBox(height: 4),
                           Text(b.body, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.black54)),
                         ],
@@ -395,7 +397,7 @@ class _HoverCardState extends State<_HoverCard> {
           width: widget.width,
           child: Container(
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: WebTheme.of(context).card,
               borderRadius: BorderRadius.circular(10),
               boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: _hovering ? 0.10 : 0.05), blurRadius: _hovering ? 16 : 8, offset: const Offset(0, 4))],
             ),

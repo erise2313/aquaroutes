@@ -78,12 +78,14 @@ class _TrackOrderScreenState extends State<TrackOrderScreen> {
         orderId: _orderIdController.text.trim(),
         guestPhone: _phoneController.text.trim(),
       );
+      if (!mounted) return;
       setState(() {
         _result = result;
         _error = result == null ? 'No matching order found. Check the order ID and phone number.' : null;
         _isLoading = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _error = 'Could not look up this order: $e';
         _isLoading = false;
@@ -152,7 +154,7 @@ class _TrackOrderScreenState extends State<TrackOrderScreen> {
     final confirmed = await showConfirmDialog(
       context,
       title: 'Cancel Order?',
-      message: 'This order will be cancelled. This cannot be undone.',
+      message: 'Your ${formatPeso(result.totalAmount)} order from ${result.stationName} will be cancelled. This cannot be undone.',
       confirmLabel: 'Cancel Order',
     );
     if (!confirmed) return;
@@ -196,7 +198,7 @@ class _TrackOrderScreenState extends State<TrackOrderScreen> {
               ],
             ),
             const SizedBox(height: 8),
-            Text('${result.jugsOrdered} jugs of ${result.waterType}'),
+            Text('${result.jugsOrdered} ${jugTypeLabel(result.jugType) == null ? 'jugs' : '${jugTypeLabel(result.jugType)} jugs'} of ${result.waterType}'),
             Text('Total: ${formatPeso(result.totalAmount)}'),
             const SizedBox(height: 4),
             Text('Placed ${DateFormat('MMM d, yyyy h:mm a').format(result.createdAt)}', style: TextStyle(color: Colors.grey.shade700, fontSize: 12)),

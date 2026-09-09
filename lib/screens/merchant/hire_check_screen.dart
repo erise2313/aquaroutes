@@ -28,6 +28,7 @@ class _HireCheckScreenState extends State<HireCheckScreen> {
   bool _isSearching = false;
   bool _hasSearched = false;
   List<HireCheckResult> _results = [];
+  String? _loadingHistoryWorkerId;
 
   @override
   void dispose() {
@@ -57,7 +58,18 @@ class _HireCheckScreenState extends State<HireCheckScreen> {
   }
 
   Future<void> _showHistory(HireCheckResult result) async {
-    final history = await _workerService.fetchStationHistory(result.workerId);
+    setState(() => _loadingHistoryWorkerId = result.workerId);
+    final List<WorkerStationHistoryEntry> history;
+    try {
+      history = await _workerService.fetchStationHistory(result.workerId);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not load station history: $e')));
+      }
+      return;
+    } finally {
+      if (mounted) setState(() => _loadingHistoryWorkerId = null);
+    }
     if (!mounted) return;
 
     showModalBottomSheet(
@@ -160,7 +172,7 @@ class _HireCheckScreenState extends State<HireCheckScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(result.workerCode),
-            Text('Confirmed incidents: ${result.confirmedIncidentCount}'),
+            Text('Confirmed incidents: ${result.confirmedIncidentCount} (details are private to the worker\'s own station)'),
           ],
         ),
         isThreeLine: true,
@@ -173,7 +185,12 @@ class _HireCheckScreenState extends State<HireCheckScreen> {
               decoration: BoxDecoration(color: color.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(8)),
               child: Text(label, style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 11)),
             ),
-            TextButton(onPressed: () => _showHistory(result), child: const Text('History', style: TextStyle(fontSize: 12))),
+            _loadingHistoryWorkerId == result.workerId
+                ? const Padding(
+                    padding: EdgeInsets.all(8),
+                    child: SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2)),
+                  )
+                : TextButton(onPressed: () => _showHistory(result), child: const Text('History', style: TextStyle(fontSize: 12))),
           ],
         ),
       ),

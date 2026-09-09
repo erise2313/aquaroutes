@@ -2,27 +2,19 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../constants/web_theme.dart';
+import '../../models/web_content.dart';
 import '../../providers/web_locale_provider.dart';
+import '../../services/supabase_service.dart';
+import '../../services/web_content_service.dart';
 import '../../web_strings.dart';
 import '../../widgets/back_to_top_button.dart';
+import '../../widgets/error_state.dart';
 import '../../widgets/fade_slide_in.dart';
+import '../../widgets/skeleton_loader.dart';
 import '../../widgets/web_footer.dart';
 import '../../widgets/web_nav_bar.dart';
 import '../../widgets/web_page_header.dart';
 import '../../widgets/web_seal.dart';
-
-/// Static coverage-area list -- mirrors the barangays seeded for the
-/// association (supabase/reset_and_rebuild.sql / 0010_seed_gentri_wasa.sql).
-/// Not queried live since it's fixed reference content, not user data.
-const _barangays = [
-  'Alingaro', 'Arnaldo (Poblacion 7)', 'Bacao I', 'Bacao II', 'Bagumbayan (Poblacion 5)',
-  'Biclatan', 'Buenavista I', 'Buenavista II', 'Buenavista III', 'Corregidor (Poblacion 10)',
-  'Dulong Bayan (Poblacion 3)', 'Gov. Ferrer (Poblacion 1)', 'Javalera', 'Manggahan', 'Navarro',
-  'Ninety Sixth (Poblacion 8)', 'Panungyanan', 'Pasong Camachile I', 'Pasong Camachile II',
-  'Pasong Kawayan I', 'Pasong Kawayan II', 'Pinagtipunan', 'Prinza (Poblacion 9)',
-  'Sampalucan (Poblacion 2)', 'San Francisco', 'San Gabriel (Poblacion 4)', 'San Juan I',
-  'San Juan II', 'Santa Clara', 'Santiago', 'Tapia', 'Tejero', 'Vibora (Poblacion 6)',
-];
 
 class AboutScreen extends ConsumerStatefulWidget {
   const AboutScreen({super.key});
@@ -32,12 +24,48 @@ class AboutScreen extends ConsumerStatefulWidget {
 }
 
 class _AboutScreenState extends ConsumerState<AboutScreen> {
+  final _webContentService = WebContentService(SupabaseService.instance);
   final _scrollController = ScrollController();
+
+  bool _isLoading = true;
+  String? _error;
+  List<WebContentItem> _whatWasaDoes = [];
+  List<String> _barangays = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
 
   @override
   void dispose() {
     _scrollController.dispose();
     super.dispose();
+  }
+
+  Future<void> _load() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+    try {
+      final items = await _webContentService.fetchItems('about', 'what_wasa_does');
+      // Live query instead of a hardcoded duplicate -- this used to be a
+      // static const list that had to be kept in sync with the real
+      // barangays table by hand.
+      final rows = await SupabaseService.instance.client.from('barangays').select('name').order('name');
+      final barangays = List<Map<String, dynamic>>.from(rows).map((r) => r['name'] as String).toList();
+      if (mounted) {
+        setState(() {
+          _whatWasaDoes = items;
+          _barangays = barangays;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() { _error = 'Could not load this page: $e'; _isLoading = false; });
+    }
   }
 
   @override
@@ -46,7 +74,7 @@ class _AboutScreenState extends ConsumerState<AboutScreen> {
     String t(String key) => WebStrings.t(locale, key);
 
     return Scaffold(
-      backgroundColor: WebTheme.paper,
+      backgroundColor: WebTheme.of(context).paper,
       appBar: const WebNavBar(currentPage: WebPage.about),
       body: Stack(
         children: [
@@ -60,15 +88,16 @@ class _AboutScreenState extends ConsumerState<AboutScreen> {
                     constraints: const BoxConstraints(maxWidth: 900),
                     child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
-                      child: Column(
+                      child: _isLoading
+                          ? const SkeletonList(count: 4, cardHeight: 40)
+                          : _error != null
+                              ? ErrorState(message: _error!, onRetry: _load)
+                              : Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text('What WASA Does', style: WebTheme.display(fontSize: 22)),
                           const SizedBox(height: 16),
-                          _bulletPoint('Reviews and accredits refilling stations before they can display the WASA verification seal.'),
-                          _bulletPoint('Maintains a shared worker security registry, so a driver flagged for an incident at one station can\'t simply move to another unnoticed.'),
-                          _bulletPoint('Sets and enforces minimum floor prices to prevent predatory undercutting between member stations.'),
-                          _bulletPoint('Coordinates the inter-station jug clearinghouse, so reusable 5-gallon containers get settled fairly between stations.'),
+                          for (final item in _whatWasaDoes) _bulletPoint(item.body),
                           const SizedBox(height: 40),
                           Text('Coverage Area', style: WebTheme.display(fontSize: 22)),
                           const SizedBox(height: 4),
@@ -79,8 +108,8 @@ class _AboutScreenState extends ConsumerState<AboutScreen> {
                             runSpacing: 8,
                             children: _barangays
                                 .map((b) => Chip(
-                                      label: Text(b, style: const TextStyle(fontSize: 12, color: WebTheme.inkNavy)),
-                                      backgroundColor: WebTheme.foam,
+                                      label: Text(b, style: TextStyle(fontSize: 12, color: WebTheme.of(context).ink)),
+                                      backgroundColor: WebTheme.of(context).foam,
                                       side: BorderSide.none,
                                     ))
                                 .toList(),
@@ -107,7 +136,7 @@ class _AboutScreenState extends ConsumerState<AboutScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Padding(padding: EdgeInsets.only(top: 2, right: 12), child: WebSeal(size: 18, outlined: true)),
-          Expanded(child: Text(text, style: const TextStyle(fontSize: 15, height: 1.5, color: WebTheme.inkNavy))),
+          Expanded(child: Text(text, style: TextStyle(fontSize: 15, height: 1.5, color: WebTheme.of(context).ink))),
         ],
       ),
     );

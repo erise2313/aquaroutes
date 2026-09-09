@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:intl/intl.dart';
@@ -23,11 +25,19 @@ class _MerchantOrdersScreenState extends State<MerchantOrdersScreen> {
   List<dynamic> _activeOrders = [];
   List<dynamic> _doneOrders = [];
   List<dynamic> _availableDrivers = [];
+  String? _stationId;
+  StreamSubscription<List<Map<String, dynamic>>>? _ordersSubscription;
 
   @override
   void initState() {
     super.initState();
     _setupRealtimeSubscription();
+  }
+
+  @override
+  void dispose() {
+    _ordersSubscription?.cancel();
+    super.dispose();
   }
 
   void _setupRealtimeSubscription() async {
@@ -46,18 +56,16 @@ class _MerchantOrdersScreenState extends State<MerchantOrdersScreen> {
       }
 
       final stationId = stationData['id'];
+      _stationId = stationId;
 
-      // Workers currently flagged are excluded from the assignment list --
-      // a flagged worker shouldn't be dispatched until WASA clears them.
-      final driversResponse = await supabase
-          .from('workers')
-          .select('id, full_name, vehicle_plate, phone_number, clearance_status')
-          .eq('station_id', stationId)
-          .neq('clearance_status', 'flagged');
+      await _refreshAvailableDrivers();
 
-      _availableDrivers = driversResponse;
-
-      supabase
+      // Refresh (app bar button / pull-to-refresh) previously called this
+      // whole method again, stacking a brand new listener on top of every
+      // prior one with none ever cancelled -- cancel any existing
+      // subscription first so there's only ever one active at a time.
+      await _ordersSubscription?.cancel();
+      _ordersSubscription = supabase
           .from('orders')
           .stream(primaryKey: ['id'])
           .eq('station_id', stationId)
@@ -96,6 +104,20 @@ class _MerchantOrdersScreenState extends State<MerchantOrdersScreen> {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
       }
     }
+  }
+
+  // Workers currently flagged are excluded from the assignment list -- a
+  // flagged worker shouldn't be dispatched until WASA clears them. Re-run
+  // right before showing the assign dialog (not just once on load) so a
+  // driver flagged in the meantime doesn't still appear as assignable.
+  Future<void> _refreshAvailableDrivers() async {
+    if (_stationId == null) return;
+    final driversResponse = await supabase
+        .from('workers')
+        .select('id, full_name, vehicle_plate, phone_number, clearance_status')
+        .eq('station_id', _stationId!)
+        .neq('clearance_status', 'flagged');
+    _availableDrivers = driversResponse;
   }
 
   Future<void> _makePhoneCall(String phoneNumber) async {
@@ -165,10 +187,17 @@ class _MerchantOrdersScreenState extends State<MerchantOrdersScreen> {
     }
   }
 
-  void _showAssignDriverDialog(String orderId) {
+  Future<void> _showAssignDriverDialog(String orderId) async {
+    try {
+      await _refreshAvailableDrivers();
+    } catch (e) {
+      debugPrint('Could not refresh available drivers: $e');
+    }
+    if (!mounted) return;
+
     if (_availableDrivers.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No drivers found. Add drivers in the Worker Registry first!')),
+        const SnackBar(content: Text('No eligible drivers yet. Share your station\'s invite code from the Worker Registry so a driver can register.')),
       );
       return;
     }
@@ -302,11 +331,22 @@ class _MerchantOrdersScreenState extends State<MerchantOrdersScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
-                        TextButton.icon(
-                          onPressed: () => _unassignOrder(order['id']),
-                          icon: Icon(Icons.person_remove_outlined, size: 16, color: Colors.grey.shade700),
-                          label: Text('Unassign', style: TextStyle(color: Colors.grey.shade700)),
-                        ),
+                        // set_order_status only allows an owner to unassign
+                        // (assigned -> pending); once a driver has actually
+                        // started the delivery (active), this would always
+                        // fail server-side, so it's swapped for a plain
+                        // status label instead of an actionable button.
+                        if (order['status']?.toString().toLowerCase() == 'assigned')
+                          TextButton.icon(
+                            onPressed: () => _unassignOrder(order['id']),
+                            icon: Icon(Icons.person_remove_outlined, size: 16, color: Colors.grey.shade700),
+                            label: Text('Unassign', style: TextStyle(color: Colors.grey.shade700)),
+                          )
+                        else
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            child: Text('Out for delivery', style: TextStyle(color: Colors.blue.shade700, fontWeight: FontWeight.w600, fontSize: 12)),
+                          ),
                         TextButton.icon(
                           onPressed: () {
                             String customerPhone = order['customer_phone'] ?? order['guest_phone'] ?? '';

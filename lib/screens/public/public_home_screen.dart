@@ -9,6 +9,7 @@ import '../auth/login_screen.dart';
 import '../auth/registration_screen.dart';
 import 'bulletin_feed.dart';
 import 'customer_account_screen.dart';
+import 'info/about_wasa_hub_screen.dart';
 import 'orders_tab_screen.dart';
 import 'quick_order_screen.dart';
 import 'station_map_screen.dart';
@@ -55,7 +56,13 @@ class _PublicHomeScreenState extends ConsumerState<PublicHomeScreen> {
         ),
         elevation: 0,
         iconTheme: IconThemeData(color: onSurface),
-        actions: isSignedInCustomer
+        actions: [
+          IconButton(
+            tooltip: 'About WASA',
+            icon: Icon(Icons.info_outline, color: onSurface),
+            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const AboutWasaHubScreen())),
+          ),
+          ...isSignedInCustomer
             ? [
                 IconButton(
                   tooltip: 'My Account',
@@ -75,6 +82,7 @@ class _PublicHomeScreenState extends ConsumerState<PublicHomeScreen> {
                 ),
                 const SizedBox(width: 8),
               ],
+        ],
       ),
       body: IndexedStack(index: _currentIndex, children: _pages),
       bottomNavigationBar: BottomNavigationBar(

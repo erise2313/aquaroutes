@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../models/jug_ledger.dart';
@@ -30,6 +31,7 @@ class _JugClearinghouseScreenState extends State<JugClearinghouseScreen> {
   String? _error;
   List<JugBalance> _balances = [];
   List<JugSettlement> _settlements = [];
+  List<JugLedgerEntry> _ledgerEntries = [];
 
   @override
   void initState() {
@@ -38,6 +40,7 @@ class _JugClearinghouseScreenState extends State<JugClearinghouseScreen> {
   }
 
   Future<void> _load() async {
+    if (!mounted) return;
     setState(() {
       _isLoading = true;
       _error = null;
@@ -54,6 +57,7 @@ class _JugClearinghouseScreenState extends State<JugClearinghouseScreen> {
       final stationId = station['id'] as String;
       final balances = await _jugService.fetchBalancesForStation(stationId);
       final settlements = await _jugService.fetchSettlementsForStation(stationId);
+      final ledgerEntries = await _jugService.fetchLedgerEntriesForStation(stationId);
       final allStations = await _supabase.from('water_stations').select('id, station_name');
       final names = {for (final s in allStations) s['id'] as String: s['station_name'] as String};
 
@@ -62,6 +66,7 @@ class _JugClearinghouseScreenState extends State<JugClearinghouseScreen> {
           _stationId = stationId;
           _balances = balances;
           _settlements = settlements;
+          _ledgerEntries = ledgerEntries;
           _stationNames = names;
           _isLoading = false;
         });
@@ -95,7 +100,7 @@ class _JugClearinghouseScreenState extends State<JugClearinghouseScreen> {
       context: context,
       builder: (dialogContext) => StatefulBuilder(
         builder: (dialogContext, setDialogState) => AlertDialog(
-          title: const Text('Record a Jug Transfer'),
+          title: const Text('Manual Adjustment'),
           content: SingleChildScrollView(
             child: Form(
               key: formKey,
@@ -103,6 +108,12 @@ class _JugClearinghouseScreenState extends State<JugClearinghouseScreen> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  const Text(
+                    'Deliveries now record jug exchanges automatically. Only use this for corrections -- '
+                    'a physical hand-off between stations directly, or fixing a mistake.',
+                    style: TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
+                  const SizedBox(height: 12),
                   DropdownButtonFormField<String>(
                     initialValue: selectedStationId,
                     decoration: const InputDecoration(labelText: 'Other Station'),
@@ -154,7 +165,24 @@ class _JugClearinghouseScreenState extends State<JugClearinghouseScreen> {
                 final quantity = int.parse(quantityController.text.trim());
                 final holderStationId = gaveJugs ? selectedStationId! : _stationId!;
                 final ownerStationId = gaveJugs ? _stationId! : selectedStationId!;
+                final otherStationName = otherStations.firstWhere((s) => s['id'] == selectedStationId)['station_name'] as String;
+                final jugLabel = jugType == JugType.slim5gal ? 'Slim 5-gal' : 'Round 5-gal';
+                final holderName = gaveJugs ? otherStationName : 'You';
                 Navigator.pop(dialogContext);
+
+                // Recording is a raw, immediate ledger entry with no
+                // undo/reject path (unlike settlements) -- confirm the
+                // exact effect before writing it, since the wrong direction
+                // silently pollutes both stations' balances.
+                final confirmed = await showConfirmDialog(
+                  context,
+                  title: 'Confirm Jug Transfer',
+                  message: '$holderName will now be recorded as holding $quantity $jugLabel belonging to '
+                      '${gaveJugs ? 'you' : otherStationName}. This cannot be undone -- only a station settlement can later balance it out.',
+                  confirmLabel: 'Record Transfer',
+                );
+                if (!confirmed) return;
+
                 try {
                   await _jugService.recordJugTransfer(
                     holderStationId: holderStationId,
@@ -179,25 +207,35 @@ class _JugClearinghouseScreenState extends State<JugClearinghouseScreen> {
 
   Future<void> _proposeSettlement(JugBalance balance) async {
     final isHolder = balance.holderStationId == _stationId;
-    await _jugService.proposeSettlement(
-      holderStationId: balance.holderStationId,
-      ownerStationId: balance.ownerStationId,
-      jugType: balance.jugType,
-      quantity: balance.netQty.abs(),
-      proposedByProfileId: _supabase.auth.currentUser!.id,
-    );
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(isHolder ? 'Settlement proposed to the owning station.' : 'Settlement proposed.')),
+    try {
+      await _jugService.proposeSettlement(
+        holderStationId: balance.holderStationId,
+        ownerStationId: balance.ownerStationId,
+        jugType: balance.jugType,
+        quantity: balance.netQty.abs(),
+        proposedByProfileId: _supabase.auth.currentUser!.id,
       );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(isHolder ? 'Settlement proposed to the owning station.' : 'Settlement proposed.')),
+        );
+      }
+      _load();
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not propose settlement: $e')));
     }
-    _load();
   }
 
   Future<void> _confirmSettlement(JugSettlement settlement) async {
     try {
       await _jugService.confirmSettlement(settlement.id);
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Settlement confirmed.')));
+    } on PostgrestException catch (e) {
+      // e.message is already the clean sentence confirm_jug_settlement()
+      // raises (e.g. the overdraft-guard message) -- showing the raw
+      // exception instead would wrap it in "PostgrestException(message: ...,
+      // code: ..., ...)".
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
     }
@@ -229,8 +267,8 @@ class _JugClearinghouseScreenState extends State<JugClearinghouseScreen> {
         title: const Text('Jug Clearinghouse'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.swap_horiz),
-            tooltip: 'Record a Jug Transfer',
+            icon: const Icon(Icons.edit_note),
+            tooltip: 'Manual Adjustment (corrections only -- deliveries record themselves)',
             onPressed: _stationId == null ? null : _showRecordTransferDialog,
           ),
         ],
@@ -267,20 +305,62 @@ class _JugClearinghouseScreenState extends State<JugClearinghouseScreen> {
     final otherStationName = _stationNames[otherStationId] ?? 'Unknown Station';
     final jugLabel = balance.jugType == JugType.slim5gal ? 'Slim 5-gal' : 'Round 5-gal';
 
+    // The individual events behind this net number -- "where are my jugs,"
+    // concretely, instead of just a net count.
+    final entries = _ledgerEntries
+        .where((e) =>
+            e.jugType == balance.jugType &&
+            ((e.holderStationId == balance.holderStationId && e.ownerStationId == balance.ownerStationId) ||
+                (e.holderStationId == balance.ownerStationId && e.ownerStationId == balance.holderStationId)))
+        .toList();
+
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
-      child: ListTile(
+      child: ExpansionTile(
+        // Deliberately NOT using ExpansionTile's `trailing` slot for the
+        // settlement button -- that would silently replace the expand
+        // chevron, leaving no visible sign the card can be opened to see
+        // its entry history. Putting the button inside `title` instead
+        // keeps the chevron as its own trailing element.
         leading: Icon(Icons.water_drop, color: isHolder ? Colors.orange : Colors.blue),
-        title: Text('$jugLabel · ${balance.netQty.abs()} jugs'),
+        title: Row(
+          children: [
+            Expanded(
+              child: Text('$jugLabel · ${balance.netQty.abs()} jugs'),
+            ),
+            TextButton(
+              onPressed: () => _proposeSettlement(balance),
+              child: const Text('Propose Settlement'),
+            ),
+          ],
+        ),
         subtitle: Text(
           isHolder
               ? 'You are holding these jugs, owed to $otherStationName'
               : '$otherStationName is holding these jugs, owed to you',
         ),
-        trailing: TextButton(
-          onPressed: () => _proposeSettlement(balance),
-          child: const Text('Propose Settlement'),
-        ),
+        children: entries.isEmpty
+            ? [const Padding(padding: EdgeInsets.fromLTRB(16, 0, 16, 12), child: Text('No entry history found.', style: TextStyle(color: Colors.grey, fontSize: 12)))]
+            : entries.map((e) => _buildLedgerEntryRow(e, isHolder: e.holderStationId == _stationId)).toList(),
+      ),
+    );
+  }
+
+  Widget _buildLedgerEntryRow(JugLedgerEntry entry, {required bool isHolder}) {
+    final date = DateFormat('MMM d, yyyy').format(entry.createdAt);
+    final source = entry.relatedOrderId != null
+        ? 'Delivery · order #${entry.relatedOrderId!.substring(0, 6).toUpperCase()}'
+        : 'Manual adjustment';
+    final direction = entry.quantity > 0 ? (isHolder ? 'received' : 'sent') : 'settled';
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text('$source · $date', style: const TextStyle(fontSize: 12.5)),
+          ),
+          Text('${entry.quantity > 0 ? '+' : ''}${entry.quantity} ($direction)', style: TextStyle(fontSize: 12.5, color: Colors.grey.shade700, fontWeight: FontWeight.w600)),
+        ],
       ),
     );
   }

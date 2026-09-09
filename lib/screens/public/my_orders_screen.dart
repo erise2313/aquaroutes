@@ -41,6 +41,7 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
   }
 
   Future<void> _load() async {
+    if (!mounted) return;
     setState(() {
       _isLoading = true;
       _error = null;
@@ -49,7 +50,7 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
       final userId = _supabase.auth.currentUser!.id;
       final rows = await _supabase
           .from('orders')
-          .select('id, station_id, status, jugs_ordered, water_type, total_amount, created_at, water_stations(station_name)')
+          .select('id, station_id, status, jugs_ordered, water_type, jug_type, total_amount, created_at, water_stations(station_name)')
           .eq('customer_profile_id', userId)
           .order('created_at', ascending: false);
       if (mounted) {
@@ -89,11 +90,11 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
     );
   }
 
-  Future<void> _cancelOrder(String orderId) async {
+  Future<void> _cancelOrder(String orderId, String stationName, double totalAmount) async {
     final confirmed = await showConfirmDialog(
       context,
       title: 'Cancel Order?',
-      message: 'This order will be cancelled. This cannot be undone.',
+      message: 'Your ${formatPeso(totalAmount)} order from $stationName will be cancelled. This cannot be undone.',
       confirmLabel: 'Cancel Order',
     );
     if (!confirmed) return;
@@ -109,6 +110,12 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not cancel order: $e')));
       }
     }
+  }
+
+  String _orderLineText(Map<String, dynamic> order) {
+    final label = jugTypeLabel(order['jug_type'] as String?);
+    final jugsWord = label == null ? 'jugs' : '$label jugs';
+    return '${order['jugs_ordered']} $jugsWord of ${order['water_type']}';
   }
 
   Widget _buildOrderCard(Map<String, dynamic> order) {
@@ -150,7 +157,7 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
                 ],
               ),
               const SizedBox(height: 8),
-              Text('${order['jugs_ordered']} jugs of ${order['water_type']}'),
+              Text(_orderLineText(order)),
               Text('Total: ${formatPeso(totalAmount)}'),
               const SizedBox(height: 4),
               Text('Placed ${DateFormat('MMM d, yyyy h:mm a').format(createdAt)}', style: TextStyle(color: Colors.grey.shade700, fontSize: 12)),
@@ -163,7 +170,7 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
                 Align(
                   alignment: Alignment.centerLeft,
                   child: TextButton.icon(
-                    onPressed: () => _cancelOrder(order['id'] as String),
+                    onPressed: () => _cancelOrder(order['id'] as String, stationName, totalAmount),
                     style: TextButton.styleFrom(foregroundColor: Colors.red),
                     icon: const Icon(Icons.cancel_outlined, size: 18),
                     label: const Text('Cancel Order'),
@@ -189,7 +196,7 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
   }
 
   Future<void> _showRatingDialog(String stationId, String stationName) async {
-    int rating = 5;
+    int rating = 0;
     final commentController = TextEditingController();
 
     await showDialog(
@@ -212,19 +219,21 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
           actions: [
             TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')),
             ElevatedButton(
-              onPressed: () async {
-                Navigator.pop(dialogContext);
-                try {
-                  await _reviewService.submitReview(
-                    stationId: stationId,
-                    rating: rating,
-                    comment: commentController.text.trim().isEmpty ? null : commentController.text.trim(),
-                  );
-                  if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Thanks for your review!')));
-                } catch (e) {
-                  if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not submit review: $e')));
-                }
-              },
+              onPressed: rating == 0
+                  ? null
+                  : () async {
+                      Navigator.pop(dialogContext);
+                      try {
+                        await _reviewService.submitReview(
+                          stationId: stationId,
+                          rating: rating,
+                          comment: commentController.text.trim().isEmpty ? null : commentController.text.trim(),
+                        );
+                        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Thanks for your review!')));
+                      } catch (e) {
+                        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not submit review: $e')));
+                      }
+                    },
               child: const Text('Submit'),
             ),
           ],

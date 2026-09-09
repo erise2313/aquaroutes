@@ -94,7 +94,15 @@ class _MerchantDashboardScreenState extends State<MerchantDashboardScreen> {
       }
     } catch (e) {
       debugPrint('Error fetching dashboard data: $e');
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() {
+          // Was previously left reading the initial "Loading..." placeholder
+          // forever on failure, with no indication anything went wrong or
+          // that pull-to-refresh (already wired below) would fix it.
+          _inviteCode = 'Could not load -- pull to refresh';
+          _isLoading = false;
+        });
+      }
     }
   }
 

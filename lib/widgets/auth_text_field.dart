@@ -57,7 +57,7 @@ class _AuthTextFieldState extends State<AuthTextField> {
               )
             : null,
         filled: true,
-        fillColor: WebTheme.foam,
+        fillColor: WebTheme.of(context).foam,
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
         enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
         focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: WebTheme.harborBlue, width: 2)),

@@ -20,6 +20,18 @@ class JugLedgerService {
     return rows.map((r) => JugBalance.fromMap(r)).toList();
   }
 
+  /// The individual entries behind a station's balances -- lets an owner
+  /// see exactly which deliveries (or manual adjustments) a balance is
+  /// made of, not just the net number.
+  Future<List<JugLedgerEntry>> fetchLedgerEntriesForStation(String stationId) async {
+    final rows = await _supabase.client
+        .from('jug_ledger_entries')
+        .select()
+        .or('holder_station_id.eq.$stationId,owner_station_id.eq.$stationId')
+        .order('created_at', ascending: false);
+    return rows.map((r) => JugLedgerEntry.fromMap(r)).toList();
+  }
+
   Future<List<JugSettlement>> fetchSettlementsForStation(String stationId) async {
     final rows = await _supabase.client
         .from('jug_settlements')

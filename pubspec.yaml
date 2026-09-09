@@ -38,6 +38,16 @@ dependencies:
   # keep using the default Material font.
   google_fonts: ^6.2.1
 
+  # Admin dashboard trend charts -- permit expiry runway, review throughput,
+  # accreditation mix. Admin-portal only; no app or public-website screen
+  # imports it.
+  fl_chart: ^1.2.0
+
+  # Real URLs for the public website only (/about, /stations/<id>, ...), so
+  # pages are shareable, bookmarkable and indexable. The mobile app and the
+  # admin portal keep imperative Navigator routing -- see lib/web_router.dart.
+  go_router: ^17.5.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

@@ -1,11 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../models/permit.dart';
+import '../../models/web_content.dart';
 import '../../services/permit_service.dart';
 import '../../services/station_service.dart';
 import '../../services/supabase_service.dart';
+import '../../constants/app_colors.dart';
+import '../../widgets/admin_status_pill.dart';
+import '../../widgets/confirm_dialog.dart';
+import '../../widgets/error_state.dart';
+import '../../widgets/skeleton_loader.dart';
 
 /// wasa_admin review of a single station's permit vault. Approving every
 /// required permit flips water_stations.is_accredited automatically via the
@@ -28,9 +35,14 @@ class _PermitReviewScreenState extends State<PermitReviewScreen> {
   final _supabase = Supabase.instance.client;
 
   bool _isLoading = true;
+  String? _error;
   List<Permit> _permits = [];
   bool _isColorumVerified = false;
   bool _isAccredited = false;
+  bool _isAccreditationOverridden = false;
+  String? _overriddenByName;
+  DateTime? _overriddenAt;
+  Map<PermitType, PermitTypeLabel> _labels = {};
 
   @override
   void initState() {
@@ -39,44 +51,83 @@ class _PermitReviewScreenState extends State<PermitReviewScreen> {
   }
 
   Future<void> _load() async {
-    setState(() => _isLoading = true);
-    final permits = await _permitService.fetchStationPermits(widget.stationId);
-    final station = await _supabase
-        .from('water_stations')
-        .select('is_colorum_verified, is_accredited')
-        .eq('id', widget.stationId)
-        .single();
+    if (!mounted) return;
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+    try {
+      final permits = await _permitService.fetchStationPermits(widget.stationId);
+      final labels = await _permitService.fetchPermitLabels();
+      final station = await _supabase
+          .from('water_stations')
+          .select('is_colorum_verified, is_accredited, accreditation_override_by, accreditation_override_at')
+          .eq('id', widget.stationId)
+          .single();
 
-    if (mounted) {
-      setState(() {
-        _permits = permits.where((p) => p.isRequired).toList();
-        _isColorumVerified = station['is_colorum_verified'] as bool? ?? false;
-        _isAccredited = station['is_accredited'] as bool? ?? false;
-        _isLoading = false;
-      });
+      final overriddenByProfileId = station['accreditation_override_by'] as String?;
+      String? overriddenByName;
+      if (overriddenByProfileId != null) {
+        final overriddenByProfile = await _supabase
+            .from('profiles')
+            .select('full_name')
+            .eq('id', overriddenByProfileId)
+            .maybeSingle();
+        overriddenByName = overriddenByProfile?['full_name'] as String?;
+      }
+
+      if (mounted) {
+        setState(() {
+          // Shows every permit, not just the currently-required ones --
+          // an admin who toggles one off (e.g. NWRB items for a station on
+          // public water supply) needs to still see it here to toggle it
+          // back on later, not have it vanish permanently.
+          _permits = [...permits]..sort((a, b) => (b.isRequired ? 1 : 0) - (a.isRequired ? 1 : 0));
+          _labels = {for (final l in labels) l.permitType: l};
+          _isColorumVerified = station['is_colorum_verified'] as bool? ?? false;
+          _isAccredited = station['is_accredited'] as bool? ?? false;
+          _isAccreditationOverridden = overriddenByProfileId != null;
+          _overriddenByName = overriddenByName;
+          _overriddenAt = station['accreditation_override_at'] == null
+              ? null
+              : DateTime.parse(station['accreditation_override_at'] as String);
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = 'Could not load this station\'s permits: $e';
+          _isLoading = false;
+        });
+      }
     }
   }
 
   Future<void> _review(Permit permit, bool approve) async {
-    if (!approve) {
-      final reason = await _promptRejectionReason();
-      if (reason == null) return;
-      await _permitService.reviewPermit(
-        permitId: permit.id,
-        approve: false,
-        reviewedByProfileId: _supabase.auth.currentUser!.id,
-        rejectionReason: reason,
-      );
-    } else {
-      final expiryDate = await _promptExpiryDate();
-      await _permitService.reviewPermit(
-        permitId: permit.id,
-        approve: true,
-        reviewedByProfileId: _supabase.auth.currentUser!.id,
-        expiryDate: expiryDate,
-      );
+    try {
+      if (!approve) {
+        final reason = await _promptRejectionReason();
+        if (reason == null) return;
+        await _permitService.reviewPermit(
+          permitId: permit.id,
+          approve: false,
+          reviewedByProfileId: _supabase.auth.currentUser!.id,
+          rejectionReason: reason,
+        );
+      } else {
+        final expiryDate = await _promptExpiryDate();
+        await _permitService.reviewPermit(
+          permitId: permit.id,
+          approve: true,
+          reviewedByProfileId: _supabase.auth.currentUser!.id,
+          expiryDate: expiryDate,
+        );
+      }
+      await _load();
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not review permit: $e')));
     }
-    await _load();
   }
 
   /// Optional -- not every permit type has a hard renewal date, so the
@@ -130,9 +181,37 @@ class _PermitReviewScreenState extends State<PermitReviewScreen> {
     }
   }
 
+  Future<void> _toggleAccreditationOverride(bool value) async {
+    if (value) {
+      final confirmed = await showConfirmDialog(
+        context,
+        title: 'Manually Certify This Station?',
+        message: 'This will mark ${widget.stationName} as accredited regardless of missing or rejected required permits, '
+            'and it will stay accredited even if a permit later expires or is rejected -- until you turn this off again.',
+        confirmLabel: 'Certify Anyway',
+      );
+      if (!confirmed) return;
+    }
+
+    try {
+      await _permitService.setAccreditationOverride(widget.stationId, value);
+      await _load();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not update accreditation override: $e')));
+      }
+    }
+  }
+
   Future<void> _toggleColorumVerified(bool value) async {
-    await _stationService.updateStation(widget.stationId, {'is_colorum_verified': value});
-    setState(() => _isColorumVerified = value);
+    try {
+      await _stationService.updateStation(widget.stationId, {'is_colorum_verified': value});
+      if (mounted) setState(() => _isColorumVerified = value);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not update verification: $e')));
+      }
+    }
   }
 
   @override
@@ -140,16 +219,37 @@ class _PermitReviewScreenState extends State<PermitReviewScreen> {
     return Scaffold(
       appBar: AppBar(title: Text(widget.stationName)),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? const Padding(padding: EdgeInsets.all(16), child: SkeletonList(count: 4))
+          : _error != null
+          ? ErrorState(message: _error!, onRetry: _load)
           : ListView(
               padding: const EdgeInsets.all(16),
               children: [
                 Card(
                   color: _isAccredited ? Colors.green.shade50 : Colors.grey.shade100,
                   child: ListTile(
-                    leading: Icon(_isAccredited ? Icons.verified : Icons.hourglass_top, color: _isAccredited ? Colors.green : Colors.grey),
+                    leading: Icon(_isAccredited ? Icons.verified : Icons.hourglass_top, color: _isAccredited ? AppColors.cleared : Colors.grey),
                     title: Text(_isAccredited ? 'Accredited' : 'Not yet accredited'),
-                    subtitle: const Text('Flips automatically once every required permit below is approved.'),
+                    subtitle: Text(
+                      _isAccreditationOverridden
+                          ? 'Manually certified by ${_overriddenByName ?? 'a WASA admin'}'
+                              '${_overriddenAt != null ? ' on ${DateFormat('MMM d, yyyy \'at\' h:mm a').format(_overriddenAt!)}' : ''} '
+                              '-- won\'t change automatically until the override below is cleared.'
+                          : 'Flips automatically once every required permit below is approved.',
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Card(
+                  color: _isAccreditationOverridden ? Colors.amber.shade50 : null,
+                  child: SwitchListTile(
+                    title: const Text('Manually Certify (Override)'),
+                    subtitle: const Text(
+                      'Accredit this station even with missing or rejected required permits. A future permit change won\'t undo this until you turn it back off.',
+                      style: TextStyle(fontSize: 12),
+                    ),
+                    value: _isAccreditationOverridden,
+                    onChanged: _toggleAccreditationOverride,
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -170,63 +270,99 @@ class _PermitReviewScreenState extends State<PermitReviewScreen> {
     );
   }
 
+  Future<void> _setRequired(Permit permit, bool value) async {
+    try {
+      await _permitService.setRequired(permit.id, value);
+      await _load();
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not update: $e')));
+    }
+  }
+
   Widget _buildPermitTile(Permit permit) {
     final (statusColor, statusLabel) = switch (permit.status) {
-      PermitStatus.approved => (Colors.green, 'Approved'),
-      PermitStatus.pendingReview => (Colors.orange, 'Pending Review'),
-      PermitStatus.rejected => (Colors.red, 'Rejected'),
+      PermitStatus.approved => (AppColors.cleared, 'Approved'),
+      PermitStatus.pendingReview => (AppColors.pendingClearance, 'Pending Review'),
+      PermitStatus.rejected => (AppColors.flagged, 'Rejected'),
       PermitStatus.missing => (Colors.grey, 'Not Uploaded'),
     };
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      child: ListTile(
-        title: Row(
+    final isPending = permit.isRequired && permit.status == PermitStatus.pendingReview;
+
+    return Opacity(
+      opacity: permit.isRequired ? 1.0 : 0.55,
+      child: Card(
+        margin: const EdgeInsets.only(bottom: 8),
+        child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Flexible(child: Text(_permitLabel(permit.permitType))),
-            if (permit.isRenewalDueSoon) ...[
-              const SizedBox(width: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(color: Colors.amber.shade100, borderRadius: BorderRadius.circular(6)),
-                child: const Text('Renewal due', style: TextStyle(color: Colors.orange, fontSize: 10, fontWeight: FontWeight.bold)),
+            ListTile(
+              title: Text(_labels[permit.permitType]?.label ?? permit.permitType.name, style: const TextStyle(fontWeight: FontWeight.w600)),
+              subtitle: Padding(
+                padding: const EdgeInsets.only(top: 6),
+                child: Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: [
+                    if (permit.isRequired)
+                      AdminStatusPill(label: statusLabel.toUpperCase(), color: statusColor)
+                    else
+                      const AdminStatusPill(label: 'NOT REQUIRED HERE', color: Colors.grey),
+                    if (permit.isRenewalDueSoon) const AdminStatusPill(label: 'RENEWAL DUE', color: AppColors.pendingClearance),
+                  ],
+                ),
               ),
-            ],
-          ],
-        ),
-        subtitle: Text(statusLabel, style: TextStyle(color: statusColor)),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (permit.storagePath != null)
-              IconButton(
-                icon: const Icon(Icons.visibility_outlined, color: Colors.blueGrey),
-                tooltip: 'View Document',
-                onPressed: () => _viewDocument(permit),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Tooltip(
+                    message: 'Required for this station',
+                    child: Switch(
+                      value: permit.isRequired,
+                      onChanged: (v) => _setRequired(permit, v),
+                    ),
+                  ),
+                  if (permit.storagePath != null)
+                    IconButton(
+                      icon: const Icon(Icons.visibility_outlined, color: Colors.blueGrey),
+                      tooltip: 'View Document',
+                      onPressed: () => _viewDocument(permit),
+                    ),
+                ],
               ),
-            if (permit.status == PermitStatus.pendingReview) ...[
-              IconButton(icon: const Icon(Icons.check_circle, color: Colors.green), onPressed: () => _review(permit, true)),
-              IconButton(icon: const Icon(Icons.cancel, color: Colors.red), onPressed: () => _review(permit, false)),
-            ],
+            ),
+            // Approve/Reject are labeled buttons, not bare icons -- these
+            // are consequential, permanent decisions, and a green check
+            // next to a red X says nothing on its own. Also matches how
+            // worker_clearance_screen.dart already renders the same
+            // approve/reject choice, so one action looks the same in both
+            // places.
+            if (isPending)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => _review(permit, false),
+                        style: OutlinedButton.styleFrom(foregroundColor: AppColors.flagged, side: const BorderSide(color: AppColors.flagged)),
+                        child: const Text('Reject'),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(backgroundColor: AppColors.cleared),
+                        onPressed: () => _review(permit, true),
+                        child: const Text('Approve', style: TextStyle(color: Colors.white)),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
           ],
         ),
       ),
     );
-  }
-
-  String _permitLabel(PermitType type) {
-    switch (type) {
-      case PermitType.businessPermit:
-        return "Mayor's Business Permit";
-      case PermitType.sanitaryPermit:
-        return 'Sanitary Permit';
-      case PermitType.fdaLicense:
-        return 'FDA License to Operate';
-      case PermitType.alkalineTechCert:
-        return 'Alkaline Machine Technical Certification';
-      case PermitType.alkalineWaterTest:
-        return 'Alkaline Water Quality Test Report';
-    }
   }
 }

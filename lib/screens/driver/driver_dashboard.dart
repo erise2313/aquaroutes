@@ -6,7 +6,9 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../constants/app_colors.dart';
+import '../../models/order.dart';
 import '../../models/permit.dart';
+import '../../services/jug_ledger_service.dart';
 import '../../services/location_service.dart';
 import '../../services/order_service.dart';
 import '../../services/route_optimization.dart';
@@ -31,6 +33,7 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
   final RouteOptimizationService _routeService = RouteOptimizationService();
   final _orderService = OrderService(SupabaseService.instance);
   final _credentialService = WorkerCredentialService(SupabaseService.instance);
+  final _jugService = JugLedgerService(SupabaseService.instance);
 
   bool _isLoading = true;
   bool _isOnDuty = false;
@@ -183,10 +186,11 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
     } else {
       await _locationService.stopTracking(_workerId!);
     }
-    setState(() => _isOnDuty = value);
+    if (mounted) setState(() => _isOnDuty = value);
   }
 
   Future<void> _fetchActiveDelivery() async {
+    if (!mounted) return;
     if (_stationId == null || _stationLocation == null) {
       setState(() => _isLoading = false);
       return;
@@ -217,7 +221,7 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
 
         final orderDetails = await supabase
             .from('orders')
-            .select('status, total_amount, guest_name, guest_phone, customer_phone, profiles(full_name, phone_number)')
+            .select('status, total_amount, guest_name, guest_phone, customer_phone, jug_exchange_origin_station_id, profiles(full_name, phone_number)')
             .eq('id', currentOrder['id'])
             .maybeSingle();
 
@@ -237,7 +241,11 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
         if (mounted) {
           setState(() {
             _orderedStops = List<Map<String, dynamic>>.from(activeOrders);
-            _currentActiveOrder = {...currentOrder, 'status': orderDetails?['status'] ?? 'assigned'};
+            _currentActiveOrder = {
+              ...currentOrder,
+              'status': orderDetails?['status'] ?? 'assigned',
+              'jug_exchange_origin_station_id': orderDetails?['jug_exchange_origin_station_id'],
+            };
             _destination = LatLng(
               double.parse(currentOrder['lat'].toString()),
               double.parse(currentOrder['lng'].toString()),
@@ -281,13 +289,31 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
     }
   }
 
-  void _showCompletionDialog() {
+  Future<void> _showCompletionDialog() async {
     if (_currentActiveOrder == null) return;
 
     final TextEditingController emptyJugsController = TextEditingController(text: '1');
     // Deliberately starts unset (null), not defaulted to true -- the driver
     // must explicitly confirm whether cash was actually collected.
     bool? paymentCollected;
+
+    // Only relevant if the customer declared a jug exchange at order time --
+    // the driver is the one actually looking at the jug, so they confirm or
+    // correct it here rather than trusting the order-time guess blindly.
+    final declaredOrigin = _currentActiveOrder!['jug_exchange_origin_station_id'] as String?;
+    List<Map<String, dynamic>> otherStations = [];
+    Map<String, String> otherStationNames = {};
+    String? jugOrigin = declaredOrigin;
+    bool noJugExchange = false;
+    if (declaredOrigin != null && _stationId != null) {
+      try {
+        otherStations = await _jugService.fetchOtherStations(_stationId!);
+        otherStationNames = {for (final s in otherStations) s['id'] as String: s['station_name'] as String};
+      } catch (e) {
+        debugPrint('Could not load other stations for jug-origin confirmation: $e');
+      }
+    }
+    if (!mounted) return;
 
     showDialog(
       context: context,
@@ -296,7 +322,8 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
           backgroundColor: AppColors.driverSurface,
           titleTextStyle: const TextStyle(color: AppColors.driverText, fontSize: 18, fontWeight: FontWeight.bold),
           title: const Text('Complete Delivery & Return'),
-          content: Column(
+          content: SingleChildScrollView(
+            child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -316,6 +343,41 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
                   isDense: true,
                 ),
               ),
+              if (declaredOrigin != null) ...[
+                const SizedBox(height: 16),
+                Text(
+                  'Customer said this jug is from ${otherStationNames[declaredOrigin] ?? 'another station'}. Confirm or correct:',
+                  style: TextStyle(fontSize: 12.5, color: AppColors.driverText.withValues(alpha: 0.7)),
+                ),
+                const SizedBox(height: 6),
+                CheckboxListTile(
+                  value: noJugExchange,
+                  onChanged: (v) => setDialogState(() => noJugExchange = v ?? false),
+                  controlAffinity: ListTileControlAffinity.leading,
+                  contentPadding: EdgeInsets.zero,
+                  dense: true,
+                  activeColor: AppColors.driverOnDuty,
+                  title: const Text('No jug was actually exchanged', style: TextStyle(color: AppColors.driverText, fontSize: 13)),
+                ),
+                if (!noJugExchange)
+                  DropdownButtonFormField<String>(
+                    initialValue: jugOrigin,
+                    isDense: true,
+                    dropdownColor: AppColors.driverSurface,
+                    style: const TextStyle(color: AppColors.driverText, fontSize: 14),
+                    decoration: const InputDecoration(
+                      labelText: "Jug's home station",
+                      border: OutlineInputBorder(),
+                      isDense: true,
+                    ),
+                    items: [
+                      if (jugOrigin != null && !otherStations.any((s) => s['id'] == jugOrigin))
+                        DropdownMenuItem(value: jugOrigin, child: Text(otherStationNames[jugOrigin] ?? 'Declared station')),
+                      ...otherStations.map((s) => DropdownMenuItem(value: s['id'] as String, child: Text(s['station_name'] as String))),
+                    ],
+                    onChanged: (v) => setDialogState(() => jugOrigin = v),
+                  ),
+              ],
               const SizedBox(height: 16),
               RadioGroup<bool>(
                 groupValue: paymentCollected,
@@ -338,6 +400,7 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
                 ),
               ),
             ],
+            ),
           ),
           actions: [
             TextButton(
@@ -351,7 +414,12 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
                   : () {
                       final int emptyJugs = int.tryParse(emptyJugsController.text) ?? 0;
                       Navigator.pop(context);
-                      _finalizeDelivery(emptyJugs, paymentCollected!);
+                      _finalizeDelivery(
+                        emptyJugs,
+                        paymentCollected!,
+                        jugExchangeOriginStationId: noJugExchange ? null : jugOrigin,
+                        noJugExchange: noJugExchange,
+                      );
                     },
               child: const Text('Confirm & Close', style: TextStyle(color: Colors.white)),
             ),
@@ -373,13 +441,20 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
     }
   }
 
-  Future<void> _finalizeDelivery(int emptyJugsCollected, bool paymentCollected) async {
+  Future<void> _finalizeDelivery(
+    int emptyJugsCollected,
+    bool paymentCollected, {
+    String? jugExchangeOriginStationId,
+    bool noJugExchange = false,
+  }) async {
     setState(() => _isLoading = true);
     try {
       await _orderService.completeDelivery(
         _currentActiveOrder!['id'] as String,
         emptyJugsReturned: emptyJugsCollected,
         paymentCollected: paymentCollected,
+        jugExchangeOriginStationId: jugExchangeOriginStationId,
+        noJugExchange: noJugExchange,
       );
 
       if (mounted) {
@@ -597,27 +672,40 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Order #$shortId', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.driverText)),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      Text('Deliver to: $_customerName', style: TextStyle(fontSize: 14, color: Colors.grey.shade700, fontWeight: FontWeight.bold)),
-                      const SizedBox(width: 8),
-                      InkWell(
-                        onTap: () => _makePhoneCall(_customerPhone, 'Customer'),
-                        child: const Icon(Icons.phone, size: 22, color: AppColors.driverOnDuty),
-                      ),
-                    ],
-                  ),
-                ],
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Order #$shortId', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.driverText)),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            'Deliver to: $_customerName',
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(fontSize: 14, color: Colors.grey.shade700, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        InkWell(
+                          onTap: () => _makePhoneCall(_customerPhone, 'Customer'),
+                          child: const Icon(Icons.phone, size: 22, color: AppColors.driverOnDuty),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
+              const SizedBox(width: 8),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
-                  color: isEnRoute ? Colors.indigo : Colors.orange.shade900,
+                  // Reuses the same status colors the customer-facing
+                  // screens already use for these exact statuses (blue =
+                  // "Driver Assigned", indigo = "Out for Delivery") instead
+                  // of introducing new ad hoc colors that don't match.
+                  color: isEnRoute ? Colors.indigo : Colors.blue,
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(isEnRoute ? 'EN ROUTE' : 'ASSIGNED', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
@@ -638,33 +726,51 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
             ],
           ),
           const SizedBox(height: 12),
-          _buildDetailRow(Icons.water_drop, 'Payload:', '${_currentActiveOrder!['jugs_ordered']} Jugs'),
+          _buildDetailRow(
+            Icons.water_drop,
+            'Payload:',
+            '${_currentActiveOrder!['jugs_ordered']} ${jugTypeLabel(_currentActiveOrder!['jug_type'] as String?) ?? ''} Jugs'.replaceAll('  ', ' '),
+          ),
           const SizedBox(height: 8),
           _buildDetailRow(Icons.payments, 'Collect:', formatPeso(_totalAmount)),
           const Spacer(),
+          // While still just ASSIGNED, Start Delivery is the filled/primary
+          // action and Complete Delivery is outlined/secondary -- a nudge
+          // toward the intended order without blocking a driver who skips
+          // straight to completing (still fully allowed server-side).
           if (!isEnRoute) ...[
-            OutlinedButton.icon(
+            ElevatedButton.icon(
               onPressed: _startDelivery,
-              icon: const Icon(Icons.local_shipping_outlined, color: AppColors.driverOnDuty),
-              label: const Text('START DELIVERY', style: TextStyle(color: AppColors.driverOnDuty, fontWeight: FontWeight.bold)),
-              style: OutlinedButton.styleFrom(
-                side: const BorderSide(color: AppColors.driverOnDuty),
-                padding: const EdgeInsets.symmetric(vertical: 16),
+              icon: const Icon(Icons.local_shipping_outlined, color: Colors.white),
+              label: const Text('START DELIVERY', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.driverOnDuty,
+                padding: const EdgeInsets.symmetric(vertical: 20),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
             ),
             const SizedBox(height: 12),
-          ],
-          ElevatedButton.icon(
-            onPressed: _showCompletionDialog,
-            icon: const Icon(Icons.check_circle, size: 32, color: Colors.white),
-            label: const Text('COMPLETE DELIVERY', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.green.shade600,
-              padding: const EdgeInsets.symmetric(vertical: 20),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            OutlinedButton.icon(
+              onPressed: _showCompletionDialog,
+              icon: const Icon(Icons.check_circle, size: 24, color: Colors.green),
+              label: const Text('COMPLETE DELIVERY', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.green)),
+              style: OutlinedButton.styleFrom(
+                side: const BorderSide(color: Colors.green),
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
             ),
-          ),
+          ] else
+            ElevatedButton.icon(
+              onPressed: _showCompletionDialog,
+              icon: const Icon(Icons.check_circle, size: 32, color: Colors.white),
+              label: const Text('COMPLETE DELIVERY', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green.shade600,
+                padding: const EdgeInsets.symmetric(vertical: 20),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
         ],
       ),
     );

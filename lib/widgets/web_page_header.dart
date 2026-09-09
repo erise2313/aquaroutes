@@ -21,7 +21,7 @@ class WebPageHeader extends StatelessWidget {
       children: [
         Container(
           width: double.infinity,
-          color: WebTheme.foam,
+          color: WebTheme.of(context).foam,
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
           child: Center(
             child: ConstrainedBox(
@@ -36,14 +36,14 @@ class WebPageHeader extends StatelessWidget {
                   Text(title, style: WebTheme.display(fontSize: 32)),
                   if (subtitle != null) ...[
                     const SizedBox(height: 10),
-                    Text(subtitle!, style: const TextStyle(fontSize: 16, height: 1.5, color: WebTheme.inkNavy)),
+                    Text(subtitle!, style: TextStyle(fontSize: 16, height: 1.5, color: WebTheme.of(context).ink)),
                   ],
                 ],
               ),
             ),
           ),
         ),
-        const WaveDivider(topColor: WebTheme.foam, bottomColor: WebTheme.paper, height: 32),
+        WaveDivider(topColor: WebTheme.of(context).foam, bottomColor: WebTheme.of(context).paper, height: 32),
       ],
     );
   }

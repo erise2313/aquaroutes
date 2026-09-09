@@ -54,6 +54,7 @@ class _BulletinFeedState extends ConsumerState<BulletinFeed> {
   }
 
   Future<void> _load() async {
+    if (!mounted) return;
     setState(() {
       _isLoading = true;
       _error = null;

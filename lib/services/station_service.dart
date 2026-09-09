@@ -28,4 +28,14 @@ class StationService {
     final rows = await _supabase.client.from('public_stations').select();
     return rows.map((r) => PublicStation.fromMap(r)).toList();
   }
+
+  /// One station for its public page (`/stations/<id>`). Returns null when the
+  /// id doesn't match a publicly visible station -- a deactivated station or
+  /// a made-up id both land here, and the page shows a "not found" state
+  /// rather than an error, since a stale shared link is a normal thing to
+  /// happen rather than a fault.
+  Future<PublicStation?> fetchPublicStation(String id) async {
+    final row = await _supabase.client.from('public_stations').select().eq('id', id).maybeSingle();
+    return row == null ? null : PublicStation.fromMap(row);
+  }
 }

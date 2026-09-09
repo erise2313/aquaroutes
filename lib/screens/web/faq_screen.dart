@@ -2,52 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../constants/web_theme.dart';
+import '../../models/web_content.dart';
 import '../../providers/web_locale_provider.dart';
+import '../../services/supabase_service.dart';
+import '../../services/web_content_service.dart';
 import '../../web_strings.dart';
 import '../../widgets/back_to_top_button.dart';
+import '../../widgets/error_state.dart';
 import '../../widgets/fade_slide_in.dart';
+import '../../widgets/skeleton_loader.dart';
 import '../../widgets/web_footer.dart';
 import '../../widgets/web_nav_bar.dart';
 import '../../widgets/web_page_header.dart';
-
-/// Content-only accordion FAQ, modeled on the real CCWRSPO (UP Manila)
-/// water refilling station operator FAQ structure -- questions an actual
-/// station owner or resident would ask, answered from the real
-/// accreditation/ordering mechanics already built (not invented policy).
-const _faqs = [
-  (
-    'Who can order water through GENTRI WASA?',
-    'Anyone can browse the station directory and community bulletin without an account. Placing an order requires a free customer account, so deliveries are tied to a real, trackable identity rather than anonymous device state.',
-  ),
-  (
-    'How do I know a station is legitimate?',
-    'Look for the green "WASA Verified" seal on the station directory and map. It only appears once every required permit has been reviewed and approved by a WASA admin -- a station cannot grant itself this seal.',
-  ),
-  (
-    'What permits does a station need to get accredited?',
-    'A Mayor\'s Business Permit, a Sanitary Permit, and an FDA License to Operate are required for every station. Stations offering alkaline water also need an Alkaline Machine Technical Certification and an Alkaline Water Quality Test Report.',
-  ),
-  (
-    'How long does accreditation review take?',
-    'There\'s no fixed timeline -- a WASA admin reviews each uploaded document individually and either approves it or rejects it with a stated reason, so an owner always knows exactly what to fix and can re-upload immediately.',
-  ),
-  (
-    'Can I schedule a delivery instead of ordering ASAP?',
-    'Yes -- the order form has an ASAP/Scheduled toggle. Choosing Scheduled lets you pick a future date and time for delivery instead of requesting the soonest available driver.',
-  ),
-  (
-    'How do I pay?',
-    'Cash on delivery. The total (jugs × price, plus delivery fee) is shown before you confirm the order and again when the driver arrives.',
-  ),
-  (
-    'What is the floor price, and why does it exist?',
-    'WASA sets a minimum price per water type across all member stations, so no station can undercut competitors to the point of predatory pricing. Every station\'s price must stay at or above this floor.',
-  ),
-  (
-    'What happens if I have a problem with a driver or station?',
-    'Station owners can file a security incident against a worker through the shared clearance registry, which follows that worker even if they move to another member station. Residents can reach the association directly through the Contact page.',
-  ),
-];
 
 class FaqScreen extends ConsumerStatefulWidget {
   const FaqScreen({super.key});
@@ -57,12 +23,36 @@ class FaqScreen extends ConsumerStatefulWidget {
 }
 
 class _FaqScreenState extends ConsumerState<FaqScreen> {
+  final _webContentService = WebContentService(SupabaseService.instance);
   final _scrollController = ScrollController();
+
+  bool _isLoading = true;
+  String? _error;
+  List<WebFaqEntry> _faqs = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
 
   @override
   void dispose() {
     _scrollController.dispose();
     super.dispose();
+  }
+
+  Future<void> _load() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+    try {
+      final faqs = await _webContentService.fetchFaqs();
+      if (mounted) setState(() { _faqs = faqs; _isLoading = false; });
+    } catch (e) {
+      if (mounted) setState(() { _error = 'Could not load the FAQ: $e'; _isLoading = false; });
+    }
   }
 
   @override
@@ -71,7 +61,7 @@ class _FaqScreenState extends ConsumerState<FaqScreen> {
     String t(String key) => WebStrings.t(locale, key);
 
     return Scaffold(
-      backgroundColor: WebTheme.paper,
+      backgroundColor: WebTheme.of(context).paper,
       appBar: const WebNavBar(currentPage: WebPage.faq),
       body: Stack(
         children: [
@@ -85,10 +75,14 @@ class _FaqScreenState extends ConsumerState<FaqScreen> {
                     constraints: const BoxConstraints(maxWidth: 800),
                     child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
-                      child: Column(
+                      child: _isLoading
+                          ? const SkeletonList(count: 6, cardHeight: 52)
+                          : _error != null
+                              ? ErrorState(message: _error!, onRetry: _load)
+                              : Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          for (final faq in _faqs) _buildFaqTile(faq.$1, faq.$2),
+                          for (final faq in _faqs) _buildFaqTile(faq.question, faq.answer),
                         ],
                       ),
                     ),
@@ -107,9 +101,9 @@ class _FaqScreenState extends ConsumerState<FaqScreen> {
   Widget _buildFaqTile(String question, String answer) {
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
-      decoration: BoxDecoration(color: WebTheme.foam, borderRadius: BorderRadius.circular(10)),
+      decoration: BoxDecoration(color: WebTheme.of(context).foam, borderRadius: BorderRadius.circular(10)),
       child: ExpansionTile(
-        title: Text(question, style: const TextStyle(fontWeight: FontWeight.w600, color: WebTheme.inkNavy)),
+        title: Text(question, style: TextStyle(fontWeight: FontWeight.w600, color: WebTheme.of(context).ink)),
         iconColor: WebTheme.harborBlue,
         collapsedIconColor: WebTheme.harborBlue,
         childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),

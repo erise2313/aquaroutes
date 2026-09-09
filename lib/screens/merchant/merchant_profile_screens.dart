@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../services/photo_service.dart';
 import '../../services/supabase_service.dart';
+import '../public/info/about_wasa_hub_screen.dart';
 
 /// Builds the `profiles` table update payload (trimmed). Split from
 /// [buildStationPayload] since profile identity and station business data
@@ -49,6 +50,10 @@ class _MerchantProfileScreenState extends State<MerchantProfileScreen> {
   bool _isAcceptingOrders = true;
   final Set<String> _offeredJugTypes = {};
   bool _offersJugExchange = false;
+  final Set<String> _offeredWaterTypes = {};
+  final Set<int> _operatingDays = {1, 2, 3, 4, 5, 6, 7};
+  TimeOfDay? _opensAt;
+  TimeOfDay? _closesAt;
 
   final TextEditingController _fullNameController = TextEditingController();
   final TextEditingController _stationNameController = TextEditingController();
@@ -96,6 +101,21 @@ class _MerchantProfileScreenState extends State<MerchantProfileScreen> {
     }
   }
 
+  TimeOfDay? _timeOfDayFromString(String? time) {
+    if (time == null) return null;
+    final parts = time.split(':');
+    if (parts.length < 2) return null;
+    final hour = int.tryParse(parts[0]);
+    final minute = int.tryParse(parts[1]);
+    if (hour == null || minute == null) return null;
+    return TimeOfDay(hour: hour, minute: minute);
+  }
+
+  String? _timeOfDayToString(TimeOfDay? time) {
+    if (time == null) return null;
+    return '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}:00';
+  }
+
   Future<void> _fetchProfileData() async {
     try {
       final userId = supabase.auth.currentUser?.id;
@@ -123,6 +143,15 @@ class _MerchantProfileScreenState extends State<MerchantProfileScreen> {
             ..clear()
             ..addAll(List<String>.from(station?['offered_jug_types'] as List? ?? const []));
           _offersJugExchange = station?['offers_jug_exchange'] as bool? ?? false;
+          _offeredWaterTypes
+            ..clear()
+            ..addAll(List<String>.from(station?['offered_water_types'] as List? ?? const []));
+          final operatingDaysRaw = station?['operating_days'] as List?;
+          _operatingDays
+            ..clear()
+            ..addAll(operatingDaysRaw != null ? operatingDaysRaw.map((d) => (d as num).toInt()) : const [1, 2, 3, 4, 5, 6, 7]);
+          _opensAt = _timeOfDayFromString(station?['opens_at'] as String?);
+          _closesAt = _timeOfDayFromString(station?['closes_at'] as String?);
           _isLoading = false;
         });
       }
@@ -230,6 +259,13 @@ class _MerchantProfileScreenState extends State<MerchantProfileScreen> {
       stationPayload['accepts_new_orders'] = _isAcceptingOrders;
       stationPayload['offered_jug_types'] = _offeredJugTypes.toList();
       stationPayload['offers_jug_exchange'] = _offersJugExchange;
+      stationPayload['offered_water_types'] = _offeredWaterTypes.toList();
+      // All 7 days selected is treated as "no restriction" (same as never
+      // having set a schedule) rather than storing a literal every-day
+      // array -- keeps the common case simple for isOpenNow to interpret.
+      stationPayload['operating_days'] = _operatingDays.length == 7 ? null : _operatingDays.toList();
+      stationPayload['opens_at'] = _timeOfDayToString(_opensAt);
+      stationPayload['closes_at'] = _timeOfDayToString(_closesAt);
 
       await supabase.from('water_stations').update(stationPayload).eq('id', _stationId!);
 
@@ -387,6 +423,16 @@ class _MerchantProfileScreenState extends State<MerchantProfileScreen> {
                   ],
                 ),
               ),
+            ),
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const AboutWasaHubScreen())),
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              icon: const Icon(Icons.info_outline),
+              label: const Text('WASA Resources'),
             ),
             const SizedBox(height: 16),
             OutlinedButton.icon(
@@ -619,6 +665,41 @@ class _MerchantProfileScreenState extends State<MerchantProfileScreen> {
               subtitle: const Text('Turn off when closed -- customers will see this station as closed and can\'t order.', style: TextStyle(fontSize: 12)),
             ),
             const Divider(),
+            const Align(alignment: Alignment.centerLeft, child: Text('Water Types Offered', style: TextStyle(fontWeight: FontWeight.w600))),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              children: [
+                FilterChip(
+                  label: const Text('Purified'),
+                  selected: _offeredWaterTypes.contains('purified'),
+                  onSelected: (v) => setState(() => v ? _offeredWaterTypes.add('purified') : _offeredWaterTypes.remove('purified')),
+                ),
+                FilterChip(
+                  label: const Text('Mineral'),
+                  selected: _offeredWaterTypes.contains('mineral'),
+                  onSelected: (v) => setState(() => v ? _offeredWaterTypes.add('mineral') : _offeredWaterTypes.remove('mineral')),
+                ),
+                FilterChip(
+                  label: const Text('Alkaline'),
+                  selected: _offeredWaterTypes.contains('alkaline'),
+                  onSelected: (v) => setState(() => v ? _offeredWaterTypes.add('alkaline') : _offeredWaterTypes.remove('alkaline')),
+                ),
+                FilterChip(
+                  label: const Text('Distilled'),
+                  selected: _offeredWaterTypes.contains('distilled'),
+                  onSelected: (v) => setState(() => v ? _offeredWaterTypes.add('distilled') : _offeredWaterTypes.remove('distilled')),
+                ),
+              ],
+            ),
+            const Padding(
+              padding: EdgeInsets.only(top: 4),
+              child: Text(
+                'Checking Alkaline will require two extra permits before you\'re accredited for it.',
+                style: TextStyle(fontSize: 12, color: Colors.grey),
+              ),
+            ),
+            const Divider(),
             const Align(alignment: Alignment.centerLeft, child: Text('Container Options', style: TextStyle(fontWeight: FontWeight.w600))),
             const SizedBox(height: 8),
             Wrap(
@@ -642,6 +723,60 @@ class _MerchantProfileScreenState extends State<MerchantProfileScreen> {
               onChanged: (v) => setState(() => _offersJugExchange = v),
               title: const Text('Accepts Jug Exchange', style: TextStyle(fontWeight: FontWeight.w600)),
               subtitle: const Text('Customers can bring an empty jug of any brand and swap it for a full one.', style: TextStyle(fontSize: 12)),
+            ),
+            const Divider(),
+            const Align(alignment: Alignment.centerLeft, child: Text('Operating Hours', style: TextStyle(fontWeight: FontWeight.w600))),
+            const SizedBox(height: 4),
+            const Text(
+              'Leave every day checked with no times set to stay always-open (today\'s default behavior).',
+              style: TextStyle(fontSize: 12, color: Colors.grey),
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 6,
+              children: [
+                for (final entry in const {1: 'Mon', 2: 'Tue', 3: 'Wed', 4: 'Thu', 5: 'Fri', 6: 'Sat', 7: 'Sun'}.entries)
+                  FilterChip(
+                    label: Text(entry.value),
+                    selected: _operatingDays.contains(entry.key),
+                    onSelected: (v) => setState(() => v ? _operatingDays.add(entry.key) : _operatingDays.remove(entry.key)),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () async {
+                      final picked = await showTimePicker(context: context, initialTime: _opensAt ?? const TimeOfDay(hour: 7, minute: 0));
+                      if (picked != null) setState(() => _opensAt = picked);
+                    },
+                    icon: const Icon(Icons.schedule, size: 18),
+                    label: Text(_opensAt == null ? 'Opens...' : 'Opens ${_opensAt!.format(context)}'),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () async {
+                      final picked = await showTimePicker(context: context, initialTime: _closesAt ?? const TimeOfDay(hour: 19, minute: 0));
+                      if (picked != null) setState(() => _closesAt = picked);
+                    },
+                    icon: const Icon(Icons.schedule, size: 18),
+                    label: Text(_closesAt == null ? 'Closes...' : 'Closes ${_closesAt!.format(context)}'),
+                  ),
+                ),
+                if (_opensAt != null || _closesAt != null)
+                  IconButton(
+                    tooltip: 'Clear hours',
+                    icon: const Icon(Icons.close),
+                    onPressed: () => setState(() {
+                      _opensAt = null;
+                      _closesAt = null;
+                    }),
+                  ),
+              ],
             ),
             const SizedBox(height: 16),
             Align(

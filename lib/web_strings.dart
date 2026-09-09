@@ -13,13 +13,23 @@ class WebStrings {
     // Nav
     'nav_home': {WebLocale.en: 'Home', WebLocale.tl: 'Home'},
     'nav_about': {WebLocale.en: 'About', WebLocale.tl: 'Tungkol Sa Amin'},
-    'nav_how_it_works': {WebLocale.en: 'How Accreditation Works', WebLocale.tl: 'Proseso ng Akreditasyon'},
-    'nav_for_owners': {WebLocale.en: 'For Station Owners', WebLocale.tl: 'Para sa May-ari ng Istasyon'},
+    // Nav labels are wayfinding, not page titles -- the full headings
+    // ("How Accreditation Works", "For Station Owners") still open at the top
+    // of their own pages. At full length these two alone ate ~40% of the link
+    // row and pushed the last three links off the bar entirely.
+    'nav_how_it_works': {WebLocale.en: 'Accreditation', WebLocale.tl: 'Akreditasyon'},
+    'nav_for_owners': {WebLocale.en: 'For Owners', WebLocale.tl: 'Para sa May-ari'},
     'nav_news': {WebLocale.en: 'News', WebLocale.tl: 'Balita'},
     'nav_stations': {WebLocale.en: 'Stations', WebLocale.tl: 'Mga Istasyon'},
     'nav_contact': {WebLocale.en: 'Contact', WebLocale.tl: 'Makipag-ugnayan'},
     'nav_login': {WebLocale.en: 'Login', WebLocale.tl: 'Mag-login'},
     'nav_register': {WebLocale.en: 'Register a Station', WebLocale.tl: 'Magparehistro ng Istasyon'},
+    'nav_menu_tooltip': {WebLocale.en: 'Open menu', WebLocale.tl: 'Buksan ang menu'},
+    // Always names the language you'd switch TO, so the toggle says what it
+    // does rather than just showing two codes with no indication of which is
+    // currently active.
+    'nav_switch_to_tl': {WebLocale.en: 'Switch to Tagalog', WebLocale.tl: 'Lumipat sa Tagalog'},
+    'nav_switch_to_en': {WebLocale.en: 'Switch to English', WebLocale.tl: 'Lumipat sa Ingles'},
 
     // Hero
     'hero_title': {WebLocale.en: 'Every jug, certified.', WebLocale.tl: 'Bawat galong, sertipikado.'},
@@ -30,7 +40,7 @@ class WebStrings {
           'Sinusuri at inaakredita ng GENTRI WASA ang bawat water refilling station sa General Trias, Cavite -- para may kahulugan ang selyo sa istasyon bago ka pa mag-order.',
     },
     'hero_register_cta': {WebLocale.en: 'Register Your Station', WebLocale.tl: 'Irehistro ang Iyong Istasyon'},
-    'hero_admin_login_cta': {WebLocale.en: 'WASA Admin Login', WebLocale.tl: 'WASA Admin Login'},
+    'hero_find_station_cta': {WebLocale.en: 'Find a Station', WebLocale.tl: 'Humanap ng Istasyon'},
 
     // Stats
     'stats_accredited_stations': {WebLocale.en: 'Accredited Stations', WebLocale.tl: 'Akreditadong Istasyon'},

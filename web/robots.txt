@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://gentri-wasa.web.app/sitemap.xml

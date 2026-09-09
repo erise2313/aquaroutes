@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../constants/web_theme.dart';
+import '../web_router.dart';
 import '../providers/web_locale_provider.dart';
 import '../screens/web/about_screen.dart';
 import '../screens/web/contact_screen.dart';
@@ -71,10 +73,10 @@ class WebFooter extends ConsumerWidget {
                       children: [
                         Text(t('footer_quick_links'), style: WebTheme.eyebrow.copyWith(fontSize: 11)),
                         const SizedBox(height: 12),
-                        _FooterLink(label: t('nav_about'), onTap: () => _push(context, const AboutScreen())),
-                        _FooterLink(label: t('nav_stations'), onTap: () => _push(context, const StationsDirectoryScreen())),
-                        _FooterLink(label: t('nav_news'), onTap: () => _push(context, const NewsScreen())),
-                        _FooterLink(label: t('nav_contact'), onTap: () => _push(context, const ContactScreen())),
+                        _FooterLink(label: t('nav_about'), onTap: () => _push(context, const AboutScreen(), WebRoutes.about)),
+                        _FooterLink(label: t('nav_stations'), onTap: () => _push(context, const StationsDirectoryScreen(), WebRoutes.stations)),
+                        _FooterLink(label: t('nav_news'), onTap: () => _push(context, const NewsScreen(), WebRoutes.news)),
+                        _FooterLink(label: t('nav_contact'), onTap: () => _push(context, const ContactScreen(), WebRoutes.contact)),
                       ],
                     ),
                   ),
@@ -85,11 +87,11 @@ class WebFooter extends ConsumerWidget {
                       children: [
                         Text(t('footer_resources'), style: WebTheme.eyebrow.copyWith(fontSize: 11)),
                         const SizedBox(height: 12),
-                        _FooterLink(label: t('faq_title'), onTap: () => _push(context, const FaqScreen())),
-                        _FooterLink(label: t('verify_title'), onTap: () => _push(context, const VerifyAccreditationScreen())),
-                        _FooterLink(label: t('jug_clearinghouse_title'), onTap: () => _push(context, const JugClearinghouseExplainerScreen())),
-                        _FooterLink(label: t('resources_title'), onTap: () => _push(context, const ResourcesScreen())),
-                        _FooterLink(label: t('events_title'), onTap: () => _push(context, const EventsScreen())),
+                        _FooterLink(label: t('faq_title'), onTap: () => _push(context, const FaqScreen(), WebRoutes.faq)),
+                        _FooterLink(label: t('verify_title'), onTap: () => _push(context, const VerifyAccreditationScreen(), WebRoutes.verify)),
+                        _FooterLink(label: t('jug_clearinghouse_title'), onTap: () => _push(context, const JugClearinghouseExplainerScreen(), WebRoutes.jugClearinghouse)),
+                        _FooterLink(label: t('resources_title'), onTap: () => _push(context, const ResourcesScreen(), WebRoutes.resources)),
+                        _FooterLink(label: t('events_title'), onTap: () => _push(context, const EventsScreen(), WebRoutes.events)),
                       ],
                     ),
                   ),
@@ -124,8 +126,16 @@ class WebFooter extends ConsumerWidget {
     );
   }
 
-  void _push(BuildContext context, Widget screen) {
-    Navigator.pushReplacement(context, webPageRoute(screen));
+  /// Navigates by URL where a router is present, so footer links are
+  /// shareable like every other page. [screen] remains the fallback for the
+  /// non-routed builds that reuse this footer.
+  void _push(BuildContext context, Widget screen, String path) {
+    if (GoRouter.maybeOf(context) != null) {
+      context.go(path);
+      return;
+    }
+    Navigator.of(context).popUntil((route) => route.isFirst);
+    Navigator.of(context).push(webPageRoute(screen));
   }
 }
 

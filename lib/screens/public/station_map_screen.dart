@@ -15,9 +15,11 @@ import '../../widgets/star_rating.dart';
 /// Public, no-login interactive map/list of every WASA-verified station.
 /// Alkaline stations get the animated glowing pulse pin (spec 4D); all pins
 /// carry the colorum-verification seal so residents can tell licensed
-/// stations apart from unregistered ("colorum") ones at a glance. Closed
-/// stations still show (dimmed) instead of vanishing, and a best-effort
-/// "near me" sort is applied when location is available.
+/// stations apart from unregistered ("colorum") ones at a glance. A station
+/// that's temporarily not accepting orders or outside its declared hours
+/// still shows (dimmed) instead of vanishing; an admin-deactivated station
+/// doesn't appear here at all (filtered server-side by public_stations). A
+/// best-effort "near me" sort is applied when location is available.
 class StationMapScreen extends StatefulWidget {
   const StationMapScreen({super.key, this.waterTypeFilter});
 
@@ -244,21 +246,37 @@ class _StationMapScreenState extends State<StationMapScreen> {
               ],
             ),
             const SizedBox(height: 8),
-            if (!station.isOrderable) ...[
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                decoration: BoxDecoration(color: Colors.red.shade50, borderRadius: BorderRadius.circular(8)),
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.info_outline, color: Colors.redAccent, size: 16),
-                    SizedBox(width: 6),
-                    Text('Currently closed -- not accepting orders', style: TextStyle(color: Colors.redAccent, fontSize: 12, fontWeight: FontWeight.bold)),
-                  ],
+            Builder(builder: (context) {
+              final status = stationAvailabilityStatus(acceptsNewOrders: station.acceptsNewOrders, isOpenNow: station.isOpenNow);
+              final hoursText = formatStationHours(operatingDays: station.operatingDays, opensAt: station.opensAt, closesAt: station.closesAt);
+              if (status.isOpen && hoursText == null) return const SizedBox.shrink();
+              final color = status.isOpen ? Colors.green : Colors.redAccent;
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(color: status.isOpen ? Colors.green.shade50 : Colors.red.shade50, borderRadius: BorderRadius.circular(8)),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(status.isOpen ? Icons.schedule : Icons.info_outline, color: color, size: 16),
+                      const SizedBox(width: 6),
+                      Text(status.label, style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.bold)),
+                      if (hoursText != null) ...[
+                        const SizedBox(width: 6),
+                        Flexible(
+                          child: Text(
+                            hoursText,
+                            style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
                 ),
-              ),
-              const SizedBox(height: 8),
-            ],
+              );
+            }),
             Text(
               station.stationAddress + (_userLat != null && _userLng != null ? ' · ${_nearbyService.formatDistance(_nearbyService.distanceKm(_userLat!, _userLng!, station))} away' : ''),
               style: TextStyle(color: Colors.grey.shade700),

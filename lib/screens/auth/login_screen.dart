@@ -103,7 +103,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: WebTheme.paper,
+      backgroundColor: WebTheme.of(context).paper,
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24.0),
@@ -195,7 +195,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
                     TextButton.icon(
                       onPressed: () => Navigator.of(context).popUntil((route) => route.isFirst),
-                      style: TextButton.styleFrom(foregroundColor: WebTheme.inkNavy),
+                      style: TextButton.styleFrom(foregroundColor: WebTheme.of(context).ink),
                       icon: const Icon(Icons.arrow_back, size: 16),
                       label: const Text("Continue browsing as guest"),
                     ),

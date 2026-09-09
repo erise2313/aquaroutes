@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../models/permit.dart';
+import '../models/web_content.dart';
 import 'supabase_service.dart';
 
 /// Permit Vault: Supabase Storage upload + `permits` table CRUD
@@ -83,6 +84,64 @@ class PermitService {
         return 'alkaline_tech_cert';
       case PermitType.alkalineWaterTest:
         return 'alkaline_water_test';
+      case PermitType.fireSafetyCertificate:
+        return 'fire_safety_certificate';
+      case PermitType.nwrbWaterPermit:
+        return 'nwrb_water_permit';
+      case PermitType.nwrbCertificateOfPublicConvenience:
+        return 'nwrb_certificate_of_public_convenience';
+      case PermitType.waterQualityTestReport:
+        return 'water_quality_test_report';
+      case PermitType.operatorTrainingCertificate:
+        return 'operator_training_certificate';
     }
+  }
+
+  /// wasa_admin only (enforced by RLS): mark a specific station's permit as
+  /// required or not -- e.g. the NWRB Water Permit/CPC only actually apply
+  /// to stations that draw their own groundwater, which the app doesn't
+  /// track as a station field, so the admin decides per station instead.
+  Future<void> setRequired(String permitId, bool isRequired) {
+    return _supabase.client.from('permits').update({'is_required': isRequired}).eq('id', permitId);
+  }
+
+  /// wasa_admin only (also enforced server-side): manually certify a
+  /// station as accredited even if it has missing/rejected required
+  /// permits, or clear that override to let the normal automatic
+  /// permit-based computation take over again. The RPC (not a raw table
+  /// update) is what makes this actually stick -- see
+  /// supabase/patch_admin_accreditation_override.sql.
+  Future<void> setAccreditationOverride(String stationId, bool enable) {
+    return _supabase.client.rpc('set_accreditation_override', params: {
+      'p_station_id': stationId,
+      'p_enable': enable,
+    });
+  }
+
+  /// The single shared source for a permit type's display name and
+  /// requirement note -- read by the Permit Vault, Permit Review, and the
+  /// "How Accreditation Works" website/app page, so all three can no
+  /// longer drift out of sync the way their previous independent
+  /// hardcoded copies did (supabase/patch_website_content_cms.sql).
+  Future<List<PermitTypeLabel>> fetchPermitLabels() async {
+    final rows = await _supabase.client.from('permit_type_labels').select().order('sort_order');
+    return rows.map((r) => PermitTypeLabel.fromMap(r)).toList();
+  }
+
+  /// wasa_admin only (enforced by RLS). The row set is fixed by the
+  /// permit_type enum -- this only ever updates an existing row, never
+  /// inserts/deletes.
+  Future<void> updatePermitLabel({
+    required PermitType permitType,
+    required String label,
+    required String conditionNote,
+    required String updatedByProfileId,
+  }) {
+    return _supabase.client.from('permit_type_labels').update({
+      'label': label,
+      'condition_note': conditionNote,
+      'updated_by': updatedByProfileId,
+      'updated_at': DateTime.now().toIso8601String(),
+    }).eq('permit_type', permitTypeToString(permitType));
   }
 }

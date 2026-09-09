@@ -13,6 +13,19 @@ OrderStatus orderStatusFromString(String value) {
   );
 }
 
+/// "Slim 5-gal"/"Round 5-gal" for display, or null if unset (older orders
+/// placed before jug_type existed, or a station with no declared shapes).
+String? jugTypeLabel(String? jugType) {
+  switch (jugType) {
+    case 'slim_5gal':
+      return 'Slim 5-gal';
+    case 'round_5gal':
+      return 'Round 5-gal';
+    default:
+      return null;
+  }
+}
+
 class Order {
   final String id;
   final String stationId;
@@ -24,6 +37,7 @@ class Order {
   final double deliveryLng;
   final int jugsOrdered;
   final String waterType;
+  final String? jugType;
   final OrderStatus status;
   final String paymentMethod;
   final double subtotal;
@@ -45,6 +59,7 @@ class Order {
     required this.deliveryLng,
     required this.jugsOrdered,
     required this.waterType,
+    this.jugType,
     required this.status,
     required this.paymentMethod,
     required this.subtotal,
@@ -70,6 +85,7 @@ class Order {
       deliveryLng: (map['delivery_lng'] as num?)?.toDouble() ?? 0,
       jugsOrdered: map['jugs_ordered'] as int,
       waterType: map['water_type'] as String? ?? 'purified',
+      jugType: map['jug_type'] as String?,
       status: orderStatusFromString(map['status'] as String? ?? 'pending'),
       paymentMethod: map['payment_method'] as String? ?? 'cash',
       subtotal: (map['subtotal'] as num).toDouble(),
@@ -93,6 +109,7 @@ class GuestOrderStatus {
   final OrderStatus status;
   final int jugsOrdered;
   final String waterType;
+  final String? jugType;
   final double totalAmount;
   final DateTime createdAt;
 
@@ -102,6 +119,7 @@ class GuestOrderStatus {
     required this.status,
     required this.jugsOrdered,
     required this.waterType,
+    this.jugType,
     required this.totalAmount,
     required this.createdAt,
   });
@@ -113,6 +131,7 @@ class GuestOrderStatus {
       status: orderStatusFromString(map['status'] as String? ?? 'pending'),
       jugsOrdered: map['jugs_ordered'] as int,
       waterType: map['water_type'] as String? ?? 'purified',
+      jugType: map['jug_type'] as String?,
       totalAmount: (map['total_amount'] as num).toDouble(),
       createdAt: DateTime.parse(map['created_at'] as String),
     );

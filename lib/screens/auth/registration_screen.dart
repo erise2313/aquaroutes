@@ -213,11 +213,11 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: WebTheme.paper,
+      backgroundColor: WebTheme.of(context).paper,
       appBar: AppBar(
-        backgroundColor: WebTheme.paper,
+        backgroundColor: WebTheme.of(context).paper,
         elevation: 0,
-        iconTheme: const IconThemeData(color: WebTheme.inkNavy),
+        iconTheme: IconThemeData(color: WebTheme.of(context).ink),
       ),
       body: Center(
         child: SingleChildScrollView(
@@ -356,7 +356,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
         labelText: "Account Type",
         prefixIcon: const Icon(Icons.badge_outlined, color: WebTheme.harborBlue),
         filled: true,
-        fillColor: WebTheme.foam,
+        fillColor: WebTheme.of(context).foam,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
           borderSide: BorderSide.none,
@@ -422,10 +422,10 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
             children: [
               const Icon(Icons.warning_amber_rounded, color: WebTheme.sealGold),
               const SizedBox(width: 12),
-              const Expanded(
+              Expanded(
                 child: Text(
                   "Business Permit / KYC upload will be required after successful registration.",
-                  style: TextStyle(fontSize: 12, color: WebTheme.inkNavy),
+                  style: TextStyle(fontSize: 12, color: WebTheme.of(context).ink),
                 ),
               ),
             ],
@@ -450,17 +450,17 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
         Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: WebTheme.foam,
+            color: WebTheme.of(context).foam,
             borderRadius: BorderRadius.circular(10),
           ),
-          child: const Row(
+          child: Row(
             children: [
               Icon(Icons.info_outline, color: WebTheme.harborBlue),
               SizedBox(width: 12),
               Expanded(
                 child: Text(
                   "Use this to place water orders and track your order history. Browsing the Bulletin Board and station map never requires an account.",
-                  style: TextStyle(fontSize: 12, color: WebTheme.inkNavy),
+                  style: TextStyle(fontSize: 12, color: WebTheme.of(context).ink),
                 ),
               ),
             ],
@@ -485,7 +485,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
         Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: WebTheme.foam,
+            color: WebTheme.of(context).foam,
             borderRadius: BorderRadius.circular(10),
           ),
           child: Column(

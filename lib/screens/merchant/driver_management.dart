@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -28,14 +30,39 @@ class _DriverManagementScreenState extends State<DriverManagementScreen> {
   bool _isLoading = true;
   int _idleThresholdMinutes = 5;
 
+  // Cached per-worker so the FutureBuilder in _buildDriverCard doesn't
+  // create (and await) a brand new future on every rebuild -- previously
+  // any change to any driver's row re-emitted the whole watchStationWorkers
+  // stream, rebuilding every card and snapping every driver's status back
+  // to a blank/loading state simultaneously while the futures re-resolved.
+  final Map<String, Future<Map<String, dynamic>?>> _driverStateFutures = {};
+  Timer? _refreshTimer;
+
   @override
   void initState() {
     super.initState();
     _resolveStation();
+    // driver_states changes far more often than the workers table (a GPS
+    // ping every ~10m moved) but isn't itself streamed here -- a periodic
+    // clear-and-refetch keeps ON DUTY/idle status reasonably fresh without
+    // re-fetching (and flickering) on every unrelated workers-row change.
+    _refreshTimer = Timer.periodic(const Duration(seconds: 15), (_) {
+      if (mounted) setState(() => _driverStateFutures.clear());
+    });
+  }
+
+  @override
+  void dispose() {
+    _refreshTimer?.cancel();
+    super.dispose();
   }
 
   Future<void> _resolveStation() async {
-    final userId = _supabase.auth.currentUser!.id;
+    final userId = _supabase.auth.currentUser?.id;
+    if (userId == null) {
+      if (mounted) setState(() => _isLoading = false);
+      return;
+    }
     final station = await _supabase.from('water_stations').select('id').eq('owner_profile_id', userId).maybeSingle();
     if (mounted) {
       setState(() {
@@ -104,7 +131,7 @@ class _DriverManagementScreenState extends State<DriverManagementScreen> {
     };
 
     return FutureBuilder<Map<String, dynamic>?>(
-      future: _workerService.fetchDriverState(worker.id),
+      future: _driverStateFutures.putIfAbsent(worker.id, () => _workerService.fetchDriverState(worker.id)),
       builder: (context, snapshot) {
         final driverState = snapshot.data;
         final bool isActive = driverState?['is_active'] as bool? ?? false;
@@ -130,7 +157,7 @@ class _DriverManagementScreenState extends State<DriverManagementScreen> {
             ),
             title: Row(
               children: [
-                Text(worker.fullName),
+                Expanded(child: Text(worker.fullName, overflow: TextOverflow.ellipsis)),
                 const SizedBox(width: 8),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),

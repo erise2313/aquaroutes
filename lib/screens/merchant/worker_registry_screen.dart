@@ -10,6 +10,7 @@ import '../../services/supabase_service.dart';
 import '../../services/worker_service.dart';
 import '../../utils/formatters.dart';
 import '../../widgets/confirm_dialog.dart';
+import '../../widgets/error_state.dart';
 
 /// Station-owner side of the Worker Security Registry: share the station's
 /// invite code so a worker can self-register as a driver, and file
@@ -66,8 +67,10 @@ class _WorkerRegistryScreenState extends State<WorkerRegistryScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'Give this code to a new worker so they can register themselves as a driver at your station. '
-              'This creates their own account, which they need to upload their Government ID and Driver\'s License for WASA clearance.',
+              'Workers now join by registering themselves with this code instead of being added directly, so they get '
+              'their own account -- give this code to a new worker so they can register themselves as a driver at your '
+              'station. This creates their own account, which they need to upload their Government ID and Driver\'s '
+              'License for WASA clearance.',
             ),
             const SizedBox(height: 16),
             Center(
@@ -100,7 +103,8 @@ class _WorkerRegistryScreenState extends State<WorkerRegistryScreen> {
     final confirmed = await showConfirmDialog(
       context,
       title: 'Remove from Roster',
-      message: 'Remove ${worker.fullName} from your station? Their clearance/incident history is preserved -- they can be re-linked by a station anytime.',
+      message: 'Remove ${worker.fullName} from your station? Any deliveries currently assigned to them will go back to the pending queue for reassignment. '
+          'Their clearance/incident history is preserved -- they can be re-linked by a station anytime.',
       confirmLabel: 'Remove',
     );
     if (!confirmed) return;
@@ -134,6 +138,11 @@ class _WorkerRegistryScreenState extends State<WorkerRegistryScreen> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  Text(
+                    'Submitting this will immediately move ${worker.fullName} back to Pending Clearance until WASA reviews it.',
+                    style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
+                  ),
+                  const SizedBox(height: 12),
                   DropdownButtonFormField<String>(
                     initialValue: incidentType,
                     decoration: const InputDecoration(labelText: 'Incident Type'),
@@ -169,14 +178,20 @@ class _WorkerRegistryScreenState extends State<WorkerRegistryScreen> {
               style: ElevatedButton.styleFrom(backgroundColor: AppColors.flagged),
               onPressed: () async {
                 if (!_incidentFormKey.currentState!.validate()) return;
-                await _workerService.fileIncident(
-                  workerId: worker.id,
-                  reportedByProfileId: _supabase.auth.currentUser!.id,
-                  incidentType: incidentType,
-                  description: descriptionController.text.trim(),
-                  amountInvolved: double.tryParse(amountController.text.trim()),
-                );
-                if (context.mounted) Navigator.pop(context);
+                try {
+                  await _workerService.fileIncident(
+                    workerId: worker.id,
+                    reportedByProfileId: _supabase.auth.currentUser!.id,
+                    incidentType: incidentType,
+                    description: descriptionController.text.trim(),
+                    amountInvolved: double.tryParse(amountController.text.trim()),
+                  );
+                  if (context.mounted) Navigator.pop(context);
+                } catch (e) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not file incident: $e')));
+                  }
+                }
               },
               child: const Text('Submit to WASA', style: TextStyle(color: Colors.white)),
             ),
@@ -187,6 +202,12 @@ class _WorkerRegistryScreenState extends State<WorkerRegistryScreen> {
   }
 
   void _showIncidentHistory(Worker worker) {
+    // Declared here, outside the rebuilding closures below, so a retry's
+    // reassignment actually sticks -- redeclaring `future` inside the
+    // StatefulBuilder's own `builder` (as this used to) gets re-run on
+    // every setSheetState, silently discarding the retry's new future and
+    // firing a second, redundant fetch instead.
+    var future = _workerService.fetchIncidentsForWorker(worker.id);
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -195,29 +216,41 @@ class _WorkerRegistryScreenState extends State<WorkerRegistryScreen> {
         minChildSize: 0.3,
         maxChildSize: 0.9,
         expand: false,
-        builder: (context, scrollController) => FutureBuilder<List<WorkerIncident>>(
-          future: _workerService.fetchIncidentsForWorker(worker.id),
-          builder: (context, snapshot) {
-            if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
-            final incidents = snapshot.data!;
-            return Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Incident History: ${worker.fullName}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 12),
-                  Expanded(
-                    child: incidents.isEmpty
-                        ? Center(child: Text('No incidents filed against this worker.', style: TextStyle(color: Colors.grey.shade700)))
-                        : ListView.builder(
-                            controller: scrollController,
-                            itemCount: incidents.length,
-                            itemBuilder: (context, index) => _buildIncidentHistoryCard(incidents[index]),
-                          ),
+        builder: (context, scrollController) => StatefulBuilder(
+          builder: (context, setSheetState) {
+            return FutureBuilder<List<WorkerIncident>>(
+              future: future,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                if (snapshot.hasError) {
+                  return ErrorState(
+                    message: 'Could not load incident history: ${snapshot.error}',
+                    onRetry: () => setSheetState(() => future = _workerService.fetchIncidentsForWorker(worker.id)),
+                  );
+                }
+                final incidents = snapshot.data ?? [];
+                return Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Incident History: ${worker.fullName}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 12),
+                      Expanded(
+                        child: incidents.isEmpty
+                            ? Center(child: Text('No incidents filed against this worker.', style: TextStyle(color: Colors.grey.shade700)))
+                            : ListView.builder(
+                                controller: scrollController,
+                                itemCount: incidents.length,
+                                itemBuilder: (context, index) => _buildIncidentHistoryCard(incidents[index]),
+                              ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
+                );
+              },
             );
           },
         ),

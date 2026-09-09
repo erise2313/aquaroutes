@@ -2,17 +2,32 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../constants/web_theme.dart';
+import '../../models/web_content.dart';
 import '../../providers/web_locale_provider.dart';
+import '../../services/supabase_service.dart';
+import '../../services/web_content_service.dart';
 import '../../web_strings.dart';
 import '../../widgets/back_to_top_button.dart';
+import '../../widgets/error_state.dart';
 import '../../widgets/fade_slide_in.dart';
 import '../../widgets/hover_scale.dart';
+import '../../widgets/skeleton_loader.dart';
 import '../../widgets/web_footer.dart';
 import '../../widgets/web_nav_bar.dart';
 import '../../widgets/web_page_header.dart';
 import '../../widgets/web_page_route.dart';
 import '../auth/registration_screen.dart';
 import 'how_accreditation_works_screen.dart';
+
+/// IconData is not persistable, so `web_content_items.icon` for this page's
+/// benefit cards stores a short string key (see patch_website_content_cms.sql's
+/// seed) resolved back to an actual icon here.
+const _benefitIcons = {
+  'verified': Icons.verified,
+  'security': Icons.security,
+  'price_change': Icons.price_change,
+  'swap_horiz': Icons.swap_horiz,
+};
 
 class ForStationOwnersScreen extends ConsumerStatefulWidget {
   const ForStationOwnersScreen({super.key});
@@ -22,12 +37,47 @@ class ForStationOwnersScreen extends ConsumerStatefulWidget {
 }
 
 class _ForStationOwnersScreenState extends ConsumerState<ForStationOwnersScreen> {
+  final _webContentService = WebContentService(SupabaseService.instance);
   final _scrollController = ScrollController();
+
+  bool _isLoading = true;
+  String? _error;
+  List<WebContentItem> _benefits = [];
+  String _requirementsSummary = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
 
   @override
   void dispose() {
     _scrollController.dispose();
     super.dispose();
+  }
+
+  Future<void> _load() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+    try {
+      final benefits = await _webContentService.fetchItems('for_station_owners', 'benefits');
+      final sections = await _webContentService.fetchSections('for_station_owners');
+      if (mounted) {
+        setState(() {
+          _benefits = benefits;
+          _requirementsSummary = sections.firstWhere(
+            (s) => s.sectionKey == 'requirements_summary',
+            orElse: () => const WebPageSection(id: '', pageKey: 'for_station_owners', sectionKey: 'requirements_summary', body: '', sortOrder: 0),
+          ).body;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() { _error = 'Could not load this page: $e'; _isLoading = false; });
+    }
   }
 
   @override
@@ -36,7 +86,7 @@ class _ForStationOwnersScreenState extends ConsumerState<ForStationOwnersScreen>
     String t(String key) => WebStrings.t(locale, key);
 
     return Scaffold(
-      backgroundColor: WebTheme.paper,
+      backgroundColor: WebTheme.of(context).paper,
       appBar: const WebNavBar(currentPage: WebPage.forOwners),
       body: Stack(
         children: [
@@ -50,7 +100,11 @@ class _ForStationOwnersScreenState extends ConsumerState<ForStationOwnersScreen>
                     constraints: const BoxConstraints(maxWidth: 900),
                     child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
-                      child: Column(
+                      child: _isLoading
+                          ? const SkeletonList(count: 4, cardHeight: 60)
+                          : _error != null
+                              ? ErrorState(message: _error!, onRetry: _load)
+                              : Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text('Why Join', style: WebTheme.display(fontSize: 22)),
@@ -58,19 +112,26 @@ class _ForStationOwnersScreenState extends ConsumerState<ForStationOwnersScreen>
                           Wrap(
                             spacing: 16,
                             runSpacing: 16,
-                            children: const [
-                              _BenefitCard(icon: Icons.verified, title: 'Official Recognition', body: 'Accredited stations get the WASA verification seal on the public directory and map.'),
-                              _BenefitCard(icon: Icons.security, title: 'Worker Accountability', body: 'Screen prospective drivers/helpers against the shared cross-station clearance registry before hiring.'),
-                              _BenefitCard(icon: Icons.price_change, title: 'Fair Pricing Protection', body: 'Association-wide floor prices protect member stations from predatory undercutting.'),
-                              _BenefitCard(icon: Icons.swap_horiz, title: 'Jug Clearinghouse', body: 'Settle Slim/Round 5-gallon jug balances with other stations through one shared ledger.'),
+                            children: [
+                              for (final b in _benefits)
+                                _BenefitCard(icon: _benefitIcons[b.icon] ?? Icons.check_circle, title: b.title, body: b.body),
                             ],
                           ),
                           const SizedBox(height: 40),
                           Text('What You\'ll Need', style: WebTheme.display(fontSize: 22)),
                           const SizedBox(height: 8),
-                          const Text(
-                            'Business Permit, Sanitary Permit, and FDA License to Operate at minimum -- plus two additional certifications if you offer alkaline water.',
-                            style: TextStyle(color: Colors.grey, height: 1.4),
+                          // An empty CMS row rendered as a blank gap under a
+                          // visible heading, which reads as a broken page
+                          // rather than as missing content.
+                          Text(
+                            _requirementsSummary.trim().isEmpty
+                                ? 'The requirements summary has not been published yet. See the full accreditation process below for what you\'ll need.'
+                                : _requirementsSummary,
+                            style: TextStyle(
+                              color: WebTheme.of(context).inkMuted,
+                              height: 1.4,
+                              fontStyle: _requirementsSummary.trim().isEmpty ? FontStyle.italic : FontStyle.normal,
+                            ),
                           ),
                           TextButton(
                             onPressed: () => Navigator.push(context, webPageRoute(const HowAccreditationWorksScreen())),
@@ -131,7 +192,7 @@ class _BenefitCardState extends State<_BenefitCard> {
           width: 260,
           child: Container(
             decoration: BoxDecoration(
-              color: WebTheme.foam,
+              color: WebTheme.of(context).foam,
               borderRadius: BorderRadius.circular(10),
               boxShadow: _hovering ? [BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 14, offset: const Offset(0, 4))] : null,
             ),
@@ -142,7 +203,7 @@ class _BenefitCardState extends State<_BenefitCard> {
                 children: [
                   Icon(widget.icon, color: WebTheme.harborBlue, size: 26),
                   const SizedBox(height: 14),
-                  Text(widget.title, style: const TextStyle(fontWeight: FontWeight.bold, color: WebTheme.inkNavy)),
+                  Text(widget.title, style: TextStyle(fontWeight: FontWeight.bold, color: WebTheme.of(context).ink)),
                   const SizedBox(height: 6),
                   Text(widget.body, style: const TextStyle(color: Colors.black54, fontSize: 13, height: 1.4)),
                 ],

@@ -46,6 +46,44 @@ class JugBalance {
   }
 }
 
+/// One row of `jug_ledger_entries` -- the individual events (automatic,
+/// order-linked, or manual) that sum to a [JugBalance]. `relatedOrderId`
+/// is set when this entry was written automatically by set_order_status()
+/// at delivery completion (supabase/patch_jug_provenance.sql); null means
+/// it came from the manual "Record a Jug Transfer" dialog or a
+/// settlement's offsetting entry.
+class JugLedgerEntry {
+  final String id;
+  final String holderStationId;
+  final String ownerStationId;
+  final JugType jugType;
+  final int quantity;
+  final String? relatedOrderId;
+  final DateTime createdAt;
+
+  const JugLedgerEntry({
+    required this.id,
+    required this.holderStationId,
+    required this.ownerStationId,
+    required this.jugType,
+    required this.quantity,
+    this.relatedOrderId,
+    required this.createdAt,
+  });
+
+  factory JugLedgerEntry.fromMap(Map<String, dynamic> map) {
+    return JugLedgerEntry(
+      id: map['id'] as String,
+      holderStationId: map['holder_station_id'] as String,
+      ownerStationId: map['owner_station_id'] as String,
+      jugType: jugTypeFromString(map['jug_type'] as String),
+      quantity: map['quantity'] as int,
+      relatedOrderId: map['related_order_id'] as String?,
+      createdAt: DateTime.parse(map['created_at'] as String),
+    );
+  }
+}
+
 class JugSettlement {
   final String id;
   final String holderStationId;

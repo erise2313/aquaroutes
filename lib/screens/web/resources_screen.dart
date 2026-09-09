@@ -68,7 +68,7 @@ class _ResourcesScreenState extends ConsumerState<ResourcesScreen> {
     String t(String key) => WebStrings.t(locale, key);
 
     return Scaffold(
-      backgroundColor: WebTheme.paper,
+      backgroundColor: WebTheme.of(context).paper,
       appBar: const WebNavBar(currentPage: WebPage.resources),
       body: Stack(
         children: [
@@ -113,10 +113,10 @@ class _ResourcesScreenState extends ConsumerState<ResourcesScreen> {
       scale: 1.01,
       child: Container(
         margin: const EdgeInsets.only(bottom: 10),
-        decoration: BoxDecoration(color: WebTheme.foam, borderRadius: BorderRadius.circular(10)),
+        decoration: BoxDecoration(color: WebTheme.of(context).foam, borderRadius: BorderRadius.circular(10)),
         child: ListTile(
           leading: const Icon(Icons.picture_as_pdf_outlined, color: Colors.red, size: 32),
-          title: Text(resource.title, style: const TextStyle(fontWeight: FontWeight.bold, color: WebTheme.inkNavy)),
+          title: Text(resource.title, style: TextStyle(fontWeight: FontWeight.bold, color: WebTheme.of(context).ink)),
           subtitle: Text('${resource.category} · Added ${DateFormat('MMM d, yyyy').format(resource.createdAt)}'),
           trailing: const Icon(Icons.download, color: WebTheme.harborBlue),
           onTap: () => launchUrl(Uri.parse(resource.fileUrl)),

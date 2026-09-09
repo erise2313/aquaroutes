@@ -2,10 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../constants/web_theme.dart';
+import '../../models/web_content.dart';
 import '../../providers/web_locale_provider.dart';
+import '../../services/supabase_service.dart';
+import '../../services/web_content_service.dart';
 import '../../web_strings.dart';
 import '../../widgets/back_to_top_button.dart';
+import '../../widgets/error_state.dart';
 import '../../widgets/fade_slide_in.dart';
+import '../../widgets/skeleton_loader.dart';
 import '../../widgets/web_footer.dart';
 import '../../widgets/web_nav_bar.dart';
 import '../../widgets/web_page_header.dart';
@@ -15,6 +20,8 @@ import '../../widgets/web_page_header.dart';
 /// its own page. Mechanics described here are pulled from the real
 /// implementation (jug_ledger_service.dart / jug_ledger_entries /
 /// jug_balances / propose-confirm-reject settlement RPCs), not invented.
+/// Content is admin-editable (web_page_sections/web_content_items,
+/// page_key 'jug_clearinghouse') rather than hardcoded here.
 class JugClearinghouseExplainerScreen extends ConsumerStatefulWidget {
   const JugClearinghouseExplainerScreen({super.key});
 
@@ -23,7 +30,19 @@ class JugClearinghouseExplainerScreen extends ConsumerStatefulWidget {
 }
 
 class _JugClearinghouseExplainerScreenState extends ConsumerState<JugClearinghouseExplainerScreen> {
+  final _webContentService = WebContentService(SupabaseService.instance);
   final _scrollController = ScrollController();
+
+  bool _isLoading = true;
+  String? _error;
+  String _intro = '';
+  List<WebContentItem> _steps = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
 
   @override
   void dispose() {
@@ -31,20 +50,36 @@ class _JugClearinghouseExplainerScreenState extends ConsumerState<JugClearinghou
     super.dispose();
   }
 
+  Future<void> _load() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+    try {
+      final sections = await _webContentService.fetchSections('jug_clearinghouse');
+      final steps = await _webContentService.fetchItems('jug_clearinghouse', 'steps');
+      if (mounted) {
+        setState(() {
+          _intro = sections.firstWhere(
+            (s) => s.sectionKey == 'intro',
+            orElse: () => const WebPageSection(id: '', pageKey: 'jug_clearinghouse', sectionKey: 'intro', body: '', sortOrder: 0),
+          ).body;
+          _steps = steps;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() { _error = 'Could not load this page: $e'; _isLoading = false; });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final locale = ref.watch(webLocaleProvider);
     String t(String key) => WebStrings.t(locale, key);
 
-    final steps = [
-      ('A jug crosses station lines', 'When a driver picks up a customer\'s empty 5-gallon jug that actually belongs to a different member station\'s brand (Slim or Round), that transfer gets recorded.'),
-      ('The ledger tracks who holds what', 'Every cross-station transfer is logged as a ledger entry -- which station now holds the jug, and which station originally owns it.'),
-      ('Balances net out automatically', 'Instead of settling jug-by-jug, the system nets all transfers between two stations into a single running balance per jug type.'),
-      ('Stations propose and confirm settlement', 'A holder station proposes a settlement to clear its balance; the owner station confirms or rejects it. Confirming atomically posts the offsetting ledger entry, so the balance can\'t drift or be double-counted.'),
-    ];
-
     return Scaffold(
-      backgroundColor: WebTheme.paper,
+      backgroundColor: WebTheme.of(context).paper,
       appBar: const WebNavBar(currentPage: WebPage.jugClearinghouse),
       body: Stack(
         children: [
@@ -58,19 +93,33 @@ class _JugClearinghouseExplainerScreenState extends ConsumerState<JugClearinghou
                     constraints: const BoxConstraints(maxWidth: 800),
                     child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
-                      child: Column(
+                      child: _isLoading
+                          ? const SkeletonList(count: 4, cardHeight: 60)
+                          : _error != null
+                              ? ErrorState(message: _error!, onRetry: _load)
+                              : Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Container(
-                            padding: const EdgeInsets.all(18),
-                            decoration: BoxDecoration(color: WebTheme.foam, borderRadius: BorderRadius.circular(10), border: Border(left: BorderSide(color: WebTheme.sealGold, width: 4))),
-                            child: const Text(
-                              'Reusable Slim and Round 5-gallon jugs regularly end up at a different station than the one that owns them -- a driver delivers water in one station\'s jug, and picks up an empty jug bearing a competitor\'s brand. Without a shared system, that jug is effectively lost to its owner. The clearinghouse makes those swaps fair and auditable across the whole association.',
-                              style: TextStyle(height: 1.5, color: WebTheme.inkNavy),
+                          // Skipped entirely when unset: an empty gold callout
+                          // box is a more obvious defect than simply not
+                          // showing an intro that hasn't been written.
+                          if (_intro.trim().isNotEmpty) ...[
+                            Container(
+                              padding: const EdgeInsets.all(18),
+                              decoration: BoxDecoration(color: WebTheme.of(context).foam, borderRadius: BorderRadius.circular(10), border: Border(left: BorderSide(color: WebTheme.sealGold, width: 4))),
+                              child: Text(
+                                _intro,
+                                style: TextStyle(height: 1.5, color: WebTheme.of(context).ink),
+                              ),
                             ),
-                          ),
-                          const SizedBox(height: 32),
-                          for (var i = 0; i < steps.length; i++) _buildStep(i + 1, steps[i].$1, steps[i].$2),
+                            const SizedBox(height: 32),
+                          ],
+                          if (_steps.isEmpty)
+                            Text(
+                              'The step-by-step explainer has not been published yet.',
+                              style: TextStyle(color: WebTheme.of(context).inkMuted, fontStyle: FontStyle.italic),
+                            ),
+                          for (var i = 0; i < _steps.length; i++) _buildStep(i + 1, _steps[i].title, _steps[i].body),
                         ],
                       ),
                     ),
@@ -98,7 +147,7 @@ class _JugClearinghouseExplainerScreenState extends ConsumerState<JugClearinghou
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: WebTheme.inkNavy)),
+                Text(title, style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: WebTheme.of(context).ink)),
                 const SizedBox(height: 4),
                 Text(description, style: const TextStyle(color: Colors.grey, height: 1.4)),
               ],

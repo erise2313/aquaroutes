@@ -30,6 +30,24 @@ class EventService {
     });
   }
 
+  /// Editing an event previously wasn't possible at all -- a typo in a title
+  /// or a rescheduled assembly meant deleting and re-creating it, which loses
+  /// the row (and its id) from anything referencing it.
+  Future<void> updateEvent({
+    required String eventId,
+    required String title,
+    String? description,
+    required DateTime eventDate,
+    String? location,
+  }) {
+    return _supabase.client.from('events').update({
+      'title': title,
+      'description': description,
+      'event_date': eventDate.toIso8601String(),
+      'location': location,
+    }).eq('id', eventId);
+  }
+
   Future<void> deleteEvent(String eventId) {
     return _supabase.client.from('events').delete().eq('id', eventId);
   }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../utils/formatters.dart';
@@ -59,6 +60,27 @@ class _OrderConfirmationScreenState extends State<OrderConfirmationScreen> {
               Text('${widget.stationName} has received your order.', textAlign: TextAlign.center),
               const SizedBox(height: 8),
               Text('Total due on delivery: ${formatPeso(widget.totalAmount)}', style: const TextStyle(fontWeight: FontWeight.bold)),
+              const SizedBox(height: 20),
+              // The short code above is just a friendly label -- Track My
+              // Order needs this full ID. Without it displayed somewhere,
+              // a guest who loses this screen (different device, cleared
+              // app data) has no way to ever look their order up again.
+              const Text('Save this Order ID to track your order later:', style: TextStyle(fontSize: 12, color: Colors.grey)),
+              const SizedBox(height: 4),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Flexible(child: SelectableText(widget.orderId, style: const TextStyle(fontSize: 13, fontFamily: 'monospace'))),
+                  IconButton(
+                    icon: const Icon(Icons.copy, size: 18),
+                    tooltip: 'Copy Order ID',
+                    onPressed: () {
+                      Clipboard.setData(ClipboardData(text: widget.orderId));
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Order ID copied to clipboard.')));
+                    },
+                  ),
+                ],
+              ),
               const SizedBox(height: 24),
               ElevatedButton(
                 onPressed: () => Navigator.of(context).pushAndRemoveUntil(

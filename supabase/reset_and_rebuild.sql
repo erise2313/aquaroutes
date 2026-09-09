@@ -185,6 +185,11 @@ create table water_stations (
   accreditation_status text not null default 'pending'
     check (accreditation_status in ('pending','under_review','accredited','rejected','suspended')),
   is_active boolean not null default true,
+  operating_days smallint[],
+  opens_at time,
+  closes_at time,
+  accreditation_override_by uuid references profiles(id),
+  accreditation_override_at timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -297,7 +302,12 @@ create type permit_type as enum (
   'sanitary_permit',
   'fda_license',
   'alkaline_tech_cert',
-  'alkaline_water_test'
+  'alkaline_water_test',
+  'fire_safety_certificate',
+  'nwrb_water_permit',
+  'nwrb_certificate_of_public_convenience',
+  'water_quality_test_report',
+  'operator_training_certificate'
 );
 
 create type permit_status as enum ('missing', 'pending_review', 'approved', 'rejected');
@@ -326,7 +336,13 @@ begin
   insert into permits (station_id, permit_type, is_required)
     values
       (new.id, 'business_permit', true),
-      (new.id, 'sanitary_permit', true)
+      (new.id, 'sanitary_permit', true),
+      (new.id, 'fda_license', true),
+      (new.id, 'fire_safety_certificate', true),
+      (new.id, 'nwrb_water_permit', true),
+      (new.id, 'nwrb_certificate_of_public_convenience', true),
+      (new.id, 'water_quality_test_report', true),
+      (new.id, 'operator_training_certificate', true)
     on conflict (station_id, permit_type) do nothing;
 
   if 'alkaline' = any(new.offered_water_types) then
@@ -352,7 +368,17 @@ create trigger trg_sync_required_permits
 create or replace function recompute_accreditation() returns trigger as $$
 declare
   all_ok boolean;
+  v_override_active boolean;
 begin
+  select (accreditation_override_by is not null) into v_override_active
+    from water_stations where id = new.station_id;
+
+  if v_override_active then
+    -- A WASA admin has manually certified this station regardless of
+    -- permit status -- don't let a later permit change silently undo it.
+    return new;
+  end if;
+
   select not exists (
     select 1 from permits
     where station_id = new.station_id
@@ -377,6 +403,42 @@ $$ language plpgsql security definer set search_path = public;
 create trigger trg_recompute_accreditation
   after update of status on permits
   for each row execute function recompute_accreditation();
+
+-- wasa_admin only: manually certify a station as accredited despite
+-- missing/rejected required permits, or clear that override and let the
+-- normal automatic computation (above) take over again.
+create or replace function set_accreditation_override(p_station_id uuid, p_enable boolean) returns void as $$
+declare
+  v_all_ok boolean;
+begin
+  if not auth_has_role('wasa_admin') then
+    raise exception 'Only WASA admin may override a station''s accreditation.';
+  end if;
+
+  if p_enable then
+    update water_stations
+      set is_accredited = true,
+          accreditation_status = 'accredited',
+          accreditation_override_by = auth.uid(),
+          accreditation_override_at = now(),
+          updated_at = now()
+      where id = p_station_id;
+  else
+    select not exists (
+      select 1 from permits
+      where station_id = p_station_id and is_required = true and status <> 'approved'
+    ) into v_all_ok;
+
+    update water_stations
+      set accreditation_override_by = null,
+          accreditation_override_at = null,
+          is_accredited = v_all_ok,
+          accreditation_status = case when v_all_ok then 'accredited' else 'under_review' end,
+          updated_at = now()
+      where id = p_station_id;
+  end if;
+end;
+$$ language plpgsql security definer set search_path = public;
 
 create or replace function prevent_owner_self_accreditation() returns trigger as $$
 begin
@@ -771,6 +833,7 @@ create table orders (
   delivery_location geography(point, 4326) not null,
   jugs_ordered int not null check (jugs_ordered > 0),
   water_type text not null default 'purified',
+  jug_type text,
   status order_status not null default 'pending',
   payment_method text not null default 'cash',
   subtotal numeric(10,2) not null,
@@ -802,11 +865,13 @@ create table driver_states (
 create index driver_states_station_idx on driver_states (station_id);
 
 create or replace function get_active_orders(p_station_id uuid)
-returns table (id uuid, lat double precision, lng double precision, jugs_ordered int) as $$
+returns table (id uuid, lat double precision, lng double precision, jugs_ordered int, water_type text, jug_type text) as $$
   select o.id,
          st_y(o.delivery_location::geometry) as lat,
          st_x(o.delivery_location::geometry) as lng,
-         o.jugs_ordered
+         o.jugs_ordered,
+         o.water_type,
+         o.jug_type
   from orders o
   where o.station_id = p_station_id
     and o.status in ('assigned', 'active');
@@ -824,7 +889,8 @@ create or replace function insert_quick_order(
   p_guest_name text default null,
   p_guest_phone text default null,
   p_client_request_id text default null,
-  p_scheduled_for timestamptz default null
+  p_scheduled_for timestamptz default null,
+  p_jug_type text default null
 ) returns uuid as $$
 declare
   new_order_id uuid;
@@ -852,7 +918,7 @@ begin
 
   insert into orders (
     station_id, customer_profile_id, guest_name, guest_phone,
-    delivery_location, jugs_ordered, water_type,
+    delivery_location, jugs_ordered, water_type, jug_type,
     subtotal, delivery_fee, total_amount, customer_phone, client_request_id, scheduled_for
   ) values (
     p_station_id,
@@ -860,7 +926,7 @@ begin
     case when auth.uid() is null then p_guest_name else null end,
     case when auth.uid() is null then p_guest_phone else null end,
     st_setsrid(st_makepoint(p_lng, p_lat), 4326)::geography,
-    p_jugs_ordered, p_water_type,
+    p_jugs_ordered, p_water_type, p_jug_type,
     p_subtotal, p_delivery_fee, p_total_amount,
     p_guest_phone, p_client_request_id, p_scheduled_for
   ) returning id into new_order_id;
@@ -1234,11 +1300,11 @@ create trigger trg_enforce_floor_price
 create or replace function lookup_guest_order(p_order_id uuid, p_guest_phone text)
 returns table (
   id uuid, station_name text, status order_status, jugs_ordered int,
-  water_type text, total_amount numeric, created_at timestamptz
+  water_type text, jug_type text, total_amount numeric, created_at timestamptz
 ) as $$
 begin
   return query
-    select o.id, s.station_name, o.status, o.jugs_ordered, o.water_type, o.total_amount, o.created_at
+    select o.id, s.station_name, o.status, o.jugs_ordered, o.water_type, o.jug_type, o.total_amount, o.created_at
     from orders o
     join water_stations s on s.id = o.station_id
     where o.id = p_order_id and o.guest_phone = p_guest_phone;
@@ -1370,6 +1436,7 @@ create view public_stations as
          ws.price_per_jug, ws.delivery_fee, ws.offered_water_types, ws.photo_url,
          ws.is_colorum_verified, ws.is_accredited, ws.is_active,
          ws.offered_jug_types, ws.offers_jug_exchange, ws.accepts_new_orders,
+         ws.operating_days, ws.opens_at, ws.closes_at,
          b.name as barangay_name,
          coalesce(r.avg_rating, 0) as avg_rating,
          coalesce(r.review_count, 0) as review_count

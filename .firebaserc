@@ -1,5 +1,18 @@
 {
   "projects": {
     "default": "gentri-wasa"
-  }
+  },
+  "targets": {
+    "gentri-wasa": {
+      "hosting": {
+        "main": [
+          "gentri-wasa"
+        ],
+        "admin": [
+          "gentri-wasa-admin"
+        ]
+      }
+    }
+  },
+  "etags": {}
 }

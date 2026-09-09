@@ -7,7 +7,18 @@ class NavShellDestination {
   final IconData? selectedIcon;
   final String label;
 
-  const NavShellDestination({required this.icon, this.selectedIcon, required this.label});
+  /// Pending-work count shown as a badge on the tab. Null (or 0) draws no
+  /// badge at all -- so a portal that doesn't track backlogs is unaffected.
+  /// Without this an admin only learns a queue has items by opening the tab
+  /// and reading it.
+  final int? badgeCount;
+
+  const NavShellDestination({
+    required this.icon,
+    this.selectedIcon,
+    required this.label,
+    this.badgeCount,
+  });
 }
 
 /// Shared responsive navigation shell for MerchantNavigation and
@@ -25,6 +36,7 @@ class ResponsiveNavShell extends StatefulWidget {
     required this.pages,
     this.selectedItemColor,
     this.wideBreakpoint = 800,
+    this.maxContentWidth = 1000,
   });
 
   final PreferredSizeWidget? appBar;
@@ -33,12 +45,27 @@ class ResponsiveNavShell extends StatefulWidget {
   final Color? selectedItemColor;
   final double wideBreakpoint;
 
+  /// Width the page content is clamped to on a wide window. 1000 suits the
+  /// phone-shaped forms the merchant portal is built from; admin passes a
+  /// wider measure because its screens are lists, maps and charts that were
+  /// being squeezed into a phone column with the right half of the monitor
+  /// left empty.
+  final double maxContentWidth;
+
   @override
   State<ResponsiveNavShell> createState() => _ResponsiveNavShellState();
 }
 
 class _ResponsiveNavShellState extends State<ResponsiveNavShell> {
   int _currentIndex = 0;
+
+  /// Wraps a destination icon in a count badge, or returns it untouched when
+  /// there's nothing pending -- a badge showing "0" would be worse than none.
+  Widget _badged(NavShellDestination d, Widget icon) {
+    final count = d.badgeCount ?? 0;
+    if (count <= 0) return icon;
+    return Badge.count(count: count, child: icon);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -58,8 +85,8 @@ class _ResponsiveNavShellState extends State<ResponsiveNavShell> {
                   selectedIconTheme: IconThemeData(color: widget.selectedItemColor),
                   destinations: widget.destinations
                       .map((d) => NavigationRailDestination(
-                            icon: Icon(d.icon),
-                            selectedIcon: Icon(d.selectedIcon ?? d.icon),
+                            icon: _badged(d, Icon(d.icon)),
+                            selectedIcon: _badged(d, Icon(d.selectedIcon ?? d.icon)),
                             label: Text(d.label),
                           ))
                       .toList(),
@@ -71,7 +98,7 @@ class _ResponsiveNavShellState extends State<ResponsiveNavShell> {
                 Expanded(
                   child: Center(
                     child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 1000),
+                      constraints: BoxConstraints(maxWidth: widget.maxContentWidth),
                       child: IndexedStack(index: _currentIndex, children: widget.pages),
                     ),
                   ),
@@ -91,7 +118,11 @@ class _ResponsiveNavShellState extends State<ResponsiveNavShell> {
             selectedItemColor: widget.selectedItemColor,
             unselectedItemColor: Colors.grey,
             items: widget.destinations
-                .map((d) => BottomNavigationBarItem(icon: Icon(d.icon), activeIcon: Icon(d.selectedIcon ?? d.icon), label: d.label))
+                .map((d) => BottomNavigationBarItem(
+                      icon: _badged(d, Icon(d.icon)),
+                      activeIcon: _badged(d, Icon(d.selectedIcon ?? d.icon)),
+                      label: d.label,
+                    ))
                 .toList(),
           ),
         );

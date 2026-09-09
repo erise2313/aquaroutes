@@ -1,11 +1,11 @@
 {
-    "name": "aquaroutecapstone",
-    "short_name": "aquaroutecapstone",
+    "name": "GenTri WASA",
+    "short_name": "GenTri WASA",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#0B2545",
+    "theme_color": "#0B2545",
+    "description": "The Water Station Association of General Trias, Cavite -- accredited water refilling stations, association news, and delivery tracking.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

@@ -2,28 +2,22 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../constants/web_theme.dart';
+import '../../models/web_content.dart';
 import '../../providers/web_locale_provider.dart';
+import '../../services/permit_service.dart';
+import '../../services/supabase_service.dart';
+import '../../services/web_content_service.dart';
 import '../../web_strings.dart';
 import '../../widgets/back_to_top_button.dart';
+import '../../widgets/error_state.dart';
 import '../../widgets/fade_slide_in.dart';
 import '../../widgets/hover_scale.dart';
+import '../../widgets/skeleton_loader.dart';
 import '../../widgets/web_footer.dart';
 import '../../widgets/web_nav_bar.dart';
 import '../../widgets/web_page_header.dart';
 import '../../widgets/web_page_route.dart';
 import '../auth/registration_screen.dart';
-
-/// Mirrors the real permit_type enum (supabase/migrations/0004_permits.sql)
-/// so this explainer can't silently drift out of sync with what the system
-/// actually requires -- if a permit type is ever added/removed there, this
-/// list is the one place to update.
-const _requiredPermits = [
-  ("Mayor's Business Permit", 'Required for every station.'),
-  ('Sanitary Permit', 'Required for every station.'),
-  ('FDA License to Operate', 'Required for every station.'),
-  ('Alkaline Machine Technical Certification', 'Only required if the station offers alkaline water.'),
-  ('Alkaline Water Quality Test Report', 'Only required if the station offers alkaline water.'),
-];
 
 class HowAccreditationWorksScreen extends ConsumerStatefulWidget {
   const HowAccreditationWorksScreen({super.key});
@@ -33,7 +27,20 @@ class HowAccreditationWorksScreen extends ConsumerStatefulWidget {
 }
 
 class _HowAccreditationWorksScreenState extends ConsumerState<HowAccreditationWorksScreen> {
+  final _webContentService = WebContentService(SupabaseService.instance);
+  final _permitService = PermitService(SupabaseService.instance);
   final _scrollController = ScrollController();
+
+  bool _isLoading = true;
+  String? _error;
+  List<WebContentItem> _steps = [];
+  List<PermitTypeLabel> _permitLabels = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
 
   @override
   void dispose() {
@@ -41,21 +48,33 @@ class _HowAccreditationWorksScreenState extends ConsumerState<HowAccreditationWo
     super.dispose();
   }
 
+  Future<void> _load() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+    try {
+      final steps = await _webContentService.fetchItems('how_accreditation_works', 'steps');
+      final labels = await _permitService.fetchPermitLabels();
+      if (mounted) {
+        setState(() {
+          _steps = steps;
+          _permitLabels = labels;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() { _error = 'Could not load this page: $e'; _isLoading = false; });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final locale = ref.watch(webLocaleProvider);
     String t(String key) => WebStrings.t(locale, key);
 
-    final steps = [
-      ('Register the station', 'The owner creates an account and registers their station with basic details (name, address, offered water types).'),
-      ('Upload required documents', 'Every station uploads its Business Permit, Sanitary Permit, and FDA License. Stations offering alkaline water also upload two additional certifications.'),
-      ('WASA reviews each document', 'A WASA admin reviews every uploaded document individually -- approving, or rejecting with a stated reason so the owner knows exactly what to fix.'),
-      ('Accreditation is automatic once complete', 'The moment every required document is approved, the station is automatically marked accredited -- no separate manual step, and no way for a station to grant itself accreditation.'),
-      ('The colorum-verification seal appears', 'Accredited, WASA-verified stations get the verification seal on the public station directory, so residents can tell a legitimate operator from an unlicensed one at a glance.'),
-    ];
-
     return Scaffold(
-      backgroundColor: WebTheme.paper,
+      backgroundColor: WebTheme.of(context).paper,
       appBar: const WebNavBar(currentPage: WebPage.howItWorks),
       body: Stack(
         children: [
@@ -69,21 +88,25 @@ class _HowAccreditationWorksScreenState extends ConsumerState<HowAccreditationWo
                     constraints: const BoxConstraints(maxWidth: 900),
                     child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
-                      child: Column(
+                      child: _isLoading
+                          ? const SkeletonList(count: 5, cardHeight: 60)
+                          : _error != null
+                              ? ErrorState(message: _error!, onRetry: _load)
+                              : Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          for (var i = 0; i < steps.length; i++) _stepTile(i + 1, steps[i].$1, steps[i].$2),
+                          for (var i = 0; i < _steps.length; i++) _stepTile(i + 1, _steps[i].title, _steps[i].body),
                           const SizedBox(height: 24),
                           Text('Required Documents', style: WebTheme.display(fontSize: 22)),
                           const SizedBox(height: 12),
-                          ..._requiredPermits.map(
+                          ..._permitLabels.map(
                             (p) => Container(
                               margin: const EdgeInsets.only(bottom: 8),
-                              decoration: BoxDecoration(color: WebTheme.foam, borderRadius: BorderRadius.circular(10)),
+                              decoration: BoxDecoration(color: WebTheme.of(context).foam, borderRadius: BorderRadius.circular(10)),
                               child: ListTile(
                                 leading: const Icon(Icons.description_outlined, color: WebTheme.harborBlue),
-                                title: Text(p.$1, style: const TextStyle(color: WebTheme.inkNavy, fontWeight: FontWeight.w600)),
-                                subtitle: Text(p.$2),
+                                title: Text(p.label, style: TextStyle(color: WebTheme.of(context).ink, fontWeight: FontWeight.w600)),
+                                subtitle: Text(p.conditionNote),
                               ),
                             ),
                           ),
@@ -130,7 +153,7 @@ class _HowAccreditationWorksScreenState extends ConsumerState<HowAccreditationWo
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: WebTheme.inkNavy)),
+                Text(title, style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: WebTheme.of(context).ink)),
                 const SizedBox(height: 4),
                 Text(description, style: const TextStyle(color: Colors.grey, height: 1.4)),
               ],

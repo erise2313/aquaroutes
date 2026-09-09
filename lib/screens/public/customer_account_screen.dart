@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../providers/app_state.dart';
+import '../../widgets/error_state.dart';
 import 'my_orders_screen.dart';
 
 /// Account screen for a signed-in customer (public_consumer membership) --
@@ -24,6 +25,7 @@ class _CustomerAccountScreenState extends ConsumerState<CustomerAccountScreen> {
 
   bool _isLoading = true;
   bool _isSaving = false;
+  String? _error;
 
   @override
   void initState() {
@@ -39,14 +41,27 @@ class _CustomerAccountScreenState extends ConsumerState<CustomerAccountScreen> {
   }
 
   Future<void> _load() async {
-    final userId = _supabase.auth.currentUser!.id;
-    final row = await _supabase.from('profiles').select('full_name, phone_number').eq('id', userId).maybeSingle();
-    if (mounted) {
-      setState(() {
-        _fullNameController.text = row?['full_name'] as String? ?? '';
-        _phoneController.text = row?['phone_number'] as String? ?? '';
-        _isLoading = false;
-      });
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+    try {
+      final userId = _supabase.auth.currentUser!.id;
+      final row = await _supabase.from('profiles').select('full_name, phone_number').eq('id', userId).maybeSingle();
+      if (mounted) {
+        setState(() {
+          _fullNameController.text = row?['full_name'] as String? ?? '';
+          _phoneController.text = row?['phone_number'] as String? ?? '';
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = 'Could not load your account: $e';
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -76,6 +91,8 @@ class _CustomerAccountScreenState extends ConsumerState<CustomerAccountScreen> {
       appBar: AppBar(title: const Text('My Account')),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
+          : _error != null
+          ? ErrorState(message: _error!, onRetry: _load)
           : ListView(
               padding: const EdgeInsets.all(16),
               children: [

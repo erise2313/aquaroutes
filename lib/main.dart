@@ -3,7 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:go_router/go_router.dart';
+
+import 'constants/web_theme.dart';
+import 'providers/web_theme_provider.dart';
 import 'screens/auth/auth_gate.dart';
+import 'web_router.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -41,22 +46,49 @@ Future<void> main() async {
   runApp(const ProviderScope(child: MyApp()));
 }
 
-class MyApp extends StatelessWidget {
+/// True only for the public website build. The admin portal
+/// (--dart-define=PORTAL=admin) and the mobile app are deliberately excluded
+/// from URL routing: admin having shareable, indexable URLs works against
+/// keeping it hidden, and the app has no address bar to benefit.
+const _isPublicWebsite = kIsWeb && String.fromEnvironment('PORTAL') != 'admin';
+
+class MyApp extends ConsumerStatefulWidget {
   const MyApp({super.key});
 
   @override
+  ConsumerState<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends ConsumerState<MyApp> {
+  // Built once and held: rebuilding a GoRouter on every theme toggle would
+  // reset the navigation stack.
+  final GoRouter? _router = _isPublicWebsite ? buildWebRouter() : null;
+
+  @override
   Widget build(BuildContext context) {
+    final webMode = ref.watch(webThemeProvider);
+
+    if (_router != null) {
+      return MaterialApp.router(
+        title: 'GenTri: WASA',
+        theme: WebTheme.light,
+        darkTheme: WebTheme.dark,
+        themeMode: webMode.material,
+        routerConfig: _router,
+      );
+    }
+
     return MaterialApp(
       title: 'GenTri: WASA',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blueAccent),
-        useMaterial3: true,
-      ),
-      darkTheme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blueAccent, brightness: Brightness.dark),
-        useMaterial3: true,
-      ),
-      themeMode: ThemeMode.system,
+      theme: WebTheme.light,
+      darkTheme: WebTheme.dark,
+      // Never ThemeMode.system. Every surface in this product paints its own
+      // colours, so inheriting the visitor's OS preference produced dark
+      // Material text on the site's light backgrounds rather than a designed
+      // dark mode. The website's toggle owns this now, and the mobile portals
+      // and admin (which wraps itself in AdminTheme) are unaffected because
+      // they never followed anything but light in practice.
+      themeMode: webMode.material,
       home: const AuthGate(),
     );
   }

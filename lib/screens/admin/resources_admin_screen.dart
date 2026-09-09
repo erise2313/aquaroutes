@@ -2,11 +2,14 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import '../../constants/admin_theme.dart';
 import '../../models/resource.dart';
 import '../../services/resource_service.dart';
 import '../../services/supabase_service.dart';
+import '../../widgets/admin_page_header.dart';
 import '../../widgets/confirm_dialog.dart';
 import '../../widgets/error_state.dart';
+import '../../widgets/skeleton_loader.dart';
 
 /// WASA admin upload/manage screen for the public resources library
 /// (permit checklists, floor-price schedule, etc.) -- reuses the same
@@ -112,30 +115,63 @@ class _ResourcesAdminScreenState extends State<ResourcesAdminScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Resources Library')),
       floatingActionButton: FloatingActionButton.extended(onPressed: _uploadFlow, icon: const Icon(Icons.upload_file), label: const Text('Upload')),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _error != null
-          ? ErrorState(message: _error!, onRetry: _load)
-          : _resources.isEmpty
-          ? Center(child: Text('No resources uploaded yet.', style: TextStyle(color: Colors.grey.shade700)))
-          : ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: _resources.length,
-              itemBuilder: (context, index) {
-                final r = _resources[index];
-                return Card(
-                  margin: const EdgeInsets.only(bottom: 8),
-                  child: ListTile(
-                    leading: const Icon(Icons.picture_as_pdf_outlined, color: Colors.red),
-                    title: Text(r.title),
-                    subtitle: Text('${r.category} · ${DateFormat('MMM d, yyyy').format(r.createdAt)}'),
-                    trailing: IconButton(icon: const Icon(Icons.delete_outline, color: Colors.red), tooltip: 'Delete resource', onPressed: () => _delete(r)),
+      // AdminPageHeader rather than a plain AppBar: this screen and Events
+      // were the only two in the portal wearing Material's default bar, so
+      // opening them from the dashboard dropped you out of the navy/gold
+      // portal into a generic one. The header supplies its own back button.
+      body: Column(
+        children: [
+          const AdminPageHeader(title: 'Resources Library', subtitle: 'Downloads published on the public website'),
+          Expanded(
+            child: _isLoading
+                ? const Padding(padding: EdgeInsets.all(16), child: SkeletonList(count: 4))
+                : _error != null
+                ? ErrorState(message: _error!, onRetry: _load)
+                : _resources.isEmpty
+                ? _emptyState()
+                : ListView.builder(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: _resources.length,
+                    itemBuilder: (context, index) {
+                      final r = _resources[index];
+                      return Card(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        child: ListTile(
+                          leading: const Icon(Icons.picture_as_pdf_outlined, color: Colors.red),
+                          title: Text(r.title),
+                          subtitle: Text('${r.category} · ${DateFormat('MMM d, yyyy').format(r.createdAt)}'),
+                          trailing: IconButton(icon: const Icon(Icons.delete_outline, color: Colors.red), tooltip: 'Delete resource', onPressed: () => _delete(r)),
+                        ),
+                      );
+                    },
                   ),
-                );
-              },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _emptyState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.folder_open_outlined, size: 56, color: AdminTheme.inkNavy.withValues(alpha: 0.25)),
+            const SizedBox(height: 16),
+            const Text('No resources uploaded yet',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: AdminTheme.inkNavy)),
+            const SizedBox(height: 8),
+            Text(
+              'Anything you upload here appears on the public website\'s Resources page for members to download.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: AdminTheme.inkNavy.withValues(alpha: 0.6)),
             ),
+          ],
+        ),
+      ),
     );
   }
 }

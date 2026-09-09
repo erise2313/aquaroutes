@@ -194,7 +194,7 @@ class _NewsScreenState extends ConsumerState<NewsScreen> {
     final rest = filtered.where((b) => !featured.contains(b)).toList();
 
     return Scaffold(
-      backgroundColor: WebTheme.paper,
+      backgroundColor: WebTheme.of(context).paper,
       appBar: const WebNavBar(currentPage: WebPage.news),
       body: Stack(
         children: [
@@ -275,8 +275,8 @@ class _NewsScreenState extends ConsumerState<NewsScreen> {
       selected: selected,
       onSelected: (_) => setState(() => _filter = category),
       selectedColor: WebTheme.harborBlue,
-      labelStyle: TextStyle(color: selected ? Colors.white : WebTheme.inkNavy),
-      backgroundColor: WebTheme.foam,
+      labelStyle: TextStyle(color: selected ? Colors.white : WebTheme.of(context).ink),
+      backgroundColor: WebTheme.of(context).foam,
       side: BorderSide.none,
     );
   }
@@ -294,7 +294,7 @@ class _NewsScreenState extends ConsumerState<NewsScreen> {
             const SizedBox(height: 10),
             Text(bulletin.title, style: WebTheme.display(fontSize: 22)),
             const SizedBox(height: 10),
-            Text(bulletin.body, style: const TextStyle(fontSize: 15, height: 1.5, color: WebTheme.inkNavy)),
+            Text(bulletin.body, style: TextStyle(fontSize: 15, height: 1.5, color: WebTheme.of(context).ink)),
             if (bulletin.imageUrl != null) ...[
               const SizedBox(height: 14),
               ClipRRect(
@@ -307,7 +307,7 @@ class _NewsScreenState extends ConsumerState<NewsScreen> {
                   errorBuilder: (context, error, stackTrace) => Container(
                     height: 240,
                     width: double.infinity,
-                    color: Colors.grey.shade200,
+                    color: WebTheme.of(context).border,
                     child: const Icon(Icons.image_not_supported_outlined, color: Colors.grey, size: 32),
                   ),
                 ),
@@ -336,7 +336,7 @@ class _NewsScreenState extends ConsumerState<NewsScreen> {
       scale: 1.005,
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
-        decoration: BoxDecoration(color: WebTheme.foam, borderRadius: BorderRadius.circular(10)),
+        decoration: BoxDecoration(color: WebTheme.of(context).foam, borderRadius: BorderRadius.circular(10)),
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(
@@ -363,7 +363,7 @@ class _NewsScreenState extends ConsumerState<NewsScreen> {
                     errorBuilder: (context, error, stackTrace) => Container(
                       height: 200,
                       width: double.infinity,
-                      color: Colors.grey.shade200,
+                      color: WebTheme.of(context).border,
                       child: const Icon(Icons.image_not_supported_outlined, color: Colors.grey, size: 32),
                     ),
                   ),
@@ -396,9 +396,9 @@ class _NewsScreenState extends ConsumerState<NewsScreen> {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(reacted ? Icons.favorite : Icons.favorite_border, size: 18, color: reacted ? Colors.redAccent : Colors.grey.shade600),
+                Icon(reacted ? Icons.favorite : Icons.favorite_border, size: 18, color: reacted ? Colors.redAccent : WebTheme.of(context).inkMuted),
                 const SizedBox(width: 6),
-                Text('$count', style: TextStyle(color: reacted ? Colors.redAccent : Colors.grey.shade600, fontSize: 13, fontWeight: FontWeight.w600)),
+                Text('$count', style: TextStyle(color: reacted ? Colors.redAccent : WebTheme.of(context).inkMuted, fontSize: 13, fontWeight: FontWeight.w600)),
               ],
             ),
           ),
@@ -412,9 +412,9 @@ class _NewsScreenState extends ConsumerState<NewsScreen> {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.mode_comment_outlined, size: 17, color: Colors.grey.shade600),
+                Icon(Icons.mode_comment_outlined, size: 17, color: WebTheme.of(context).inkMuted),
                 const SizedBox(width: 6),
-                Text(commentCount != null ? '$commentCount' : 'Comments', style: TextStyle(color: Colors.grey.shade600, fontSize: 13, fontWeight: FontWeight.w600)),
+                Text(commentCount != null ? '$commentCount' : 'Comments', style: TextStyle(color: WebTheme.of(context).inkMuted, fontSize: 13, fontWeight: FontWeight.w600)),
               ],
             ),
           ),
@@ -433,7 +433,7 @@ class _NewsScreenState extends ConsumerState<NewsScreen> {
       padding: const EdgeInsets.only(top: 14),
       child: Container(
         padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8)),
+        decoration: BoxDecoration(color: WebTheme.of(context).card, borderRadius: BorderRadius.circular(8)),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -450,7 +450,7 @@ class _NewsScreenState extends ConsumerState<NewsScreen> {
                     children: [
                       Row(
                         children: [
-                          Text(c.authorName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: WebTheme.inkNavy)),
+                          Text(c.authorName, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: WebTheme.of(context).ink)),
                           const SizedBox(width: 8),
                           Text(DateFormat('MMM d, h:mm a').format(c.createdAt), style: const TextStyle(color: Colors.grey, fontSize: 11)),
                         ],

@@ -70,7 +70,7 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
     final past = _events.where((e) => e.isPast).toList();
 
     return Scaffold(
-      backgroundColor: WebTheme.paper,
+      backgroundColor: WebTheme.of(context).paper,
       appBar: const WebNavBar(currentPage: WebPage.events),
       body: Stack(
         children: [
@@ -122,7 +122,7 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
       scale: isPast ? 1.0 : 1.01,
       child: Container(
         margin: const EdgeInsets.only(bottom: 10),
-        decoration: BoxDecoration(color: isPast ? Colors.grey.shade100 : WebTheme.foam, borderRadius: BorderRadius.circular(10)),
+        decoration: BoxDecoration(color: isPast ? WebTheme.of(context).foam : WebTheme.of(context).foam, borderRadius: BorderRadius.circular(10)),
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Row(
@@ -131,11 +131,11 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
               Container(
                 width: 56,
                 padding: const EdgeInsets.symmetric(vertical: 8),
-                decoration: BoxDecoration(color: isPast ? Colors.grey.shade300 : WebTheme.harborBlue.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
+                decoration: BoxDecoration(color: isPast ? WebTheme.of(context).border : WebTheme.harborBlue.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
                 child: Column(
                   children: [
-                    Text(DateFormat('MMM').format(event.eventDate).toUpperCase(), style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: isPast ? Colors.grey.shade700 : WebTheme.harborBlue)),
-                    Text('${event.eventDate.day}', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: isPast ? Colors.grey.shade700 : WebTheme.harborBlue)),
+                    Text(DateFormat('MMM').format(event.eventDate).toUpperCase(), style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: isPast ? WebTheme.of(context).inkMuted : WebTheme.harborBlue)),
+                    Text('${event.eventDate.day}', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: isPast ? WebTheme.of(context).inkMuted : WebTheme.harborBlue)),
                   ],
                 ),
               ),
@@ -144,7 +144,7 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(event.title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: WebTheme.inkNavy)),
+                    Text(event.title, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: WebTheme.of(context).ink)),
                     const SizedBox(height: 4),
                     Text(DateFormat('MMM d, yyyy · h:mm a').format(event.eventDate), style: const TextStyle(color: Colors.grey, fontSize: 12)),
                     if (event.location != null) Text(event.location!, style: const TextStyle(color: Colors.grey, fontSize: 12)),

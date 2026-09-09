@@ -2,7 +2,18 @@
 /// `alkaline_tech_cert`/`alkaline_water_test` are only `isRequired` when the
 /// owning station's `offered_water_types` includes 'alkaline' -- enforced by
 /// a Postgres trigger, not client logic.
-enum PermitType { businessPermit, sanitaryPermit, fdaLicense, alkalineTechCert, alkalineWaterTest }
+enum PermitType {
+  businessPermit,
+  sanitaryPermit,
+  fdaLicense,
+  alkalineTechCert,
+  alkalineWaterTest,
+  fireSafetyCertificate,
+  nwrbWaterPermit,
+  nwrbCertificateOfPublicConvenience,
+  waterQualityTestReport,
+  operatorTrainingCertificate,
+}
 
 enum PermitStatus { missing, pendingReview, approved, rejected }
 
@@ -12,6 +23,11 @@ PermitType permitTypeFromString(String value) {
     orElse: () => PermitType.businessPermit,
   );
 }
+
+/// Public wrapper around [_permitTypeToString] -- needed by permit_service.dart
+/// to address a specific permit_type_labels row (its primary key is the DB
+/// string, not the Dart enum).
+String permitTypeToString(PermitType type) => _permitTypeToString(type);
 
 String _permitTypeToString(PermitType type) {
   switch (type) {
@@ -25,6 +41,16 @@ String _permitTypeToString(PermitType type) {
       return 'alkaline_tech_cert';
     case PermitType.alkalineWaterTest:
       return 'alkaline_water_test';
+    case PermitType.fireSafetyCertificate:
+      return 'fire_safety_certificate';
+    case PermitType.nwrbWaterPermit:
+      return 'nwrb_water_permit';
+    case PermitType.nwrbCertificateOfPublicConvenience:
+      return 'nwrb_certificate_of_public_convenience';
+    case PermitType.waterQualityTestReport:
+      return 'water_quality_test_report';
+    case PermitType.operatorTrainingCertificate:
+      return 'operator_training_certificate';
   }
 }
 

@@ -30,4 +30,4 @@ if ($LASTEXITCODE -ne 0) {
     exit 1
 }
 
-firebase deploy --only hosting
+firebase deploy --only hosting:main

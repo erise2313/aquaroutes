@@ -79,7 +79,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: WebTheme.paper,
+      backgroundColor: WebTheme.of(context).paper,
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24.0),

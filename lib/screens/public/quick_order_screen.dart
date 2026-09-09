@@ -49,7 +49,10 @@ class _QuickOrderScreenState extends ConsumerState<QuickOrderScreen> {
 
   LatLng? _selectedLocation;
   String? _waterTypeFilter;
+  String? _selectedJugType;
   DateTime? _scheduledFor;
+  bool _isJugExchange = false;
+  String? _jugExchangeOriginStationId;
 
   bool _isLoading = false;
   bool _isFetchingStations = true;
@@ -111,13 +114,18 @@ class _QuickOrderScreenState extends ConsumerState<QuickOrderScreen> {
   Future<void> _prefillContactPhone() async {
     final userId = Supabase.instance.client.auth.currentUser?.id;
     if (userId == null) return;
-    final row = await Supabase.instance.client.from('profiles').select('phone_number').eq('id', userId).maybeSingle();
-    final phone = row?['phone_number'] as String?;
-    // Only prefill if the field is still untouched -- this fetch is async,
-    // so without this check it could clobber a phone number the customer
-    // already started typing while it was in flight.
-    if (phone != null && phone.isNotEmpty && mounted && _phoneController.text.isEmpty) {
-      setState(() => _phoneController.text = phone);
+    try {
+      final row = await Supabase.instance.client.from('profiles').select('phone_number').eq('id', userId).maybeSingle();
+      final phone = row?['phone_number'] as String?;
+      // Only prefill if the field is still untouched -- this fetch is async,
+      // so without this check it could clobber a phone number the customer
+      // already started typing while it was in flight.
+      if (phone != null && phone.isNotEmpty && mounted && _phoneController.text.isEmpty) {
+        setState(() => _phoneController.text = phone);
+      }
+    } catch (_) {
+      // Best-effort convenience prefill -- silently skip on failure rather
+      // than surfacing an error for a non-critical field.
     }
   }
 
@@ -219,6 +227,12 @@ class _QuickOrderScreenState extends ConsumerState<QuickOrderScreen> {
       // station doesn't actually offer. Fall back to whatever the station
       // does offer instead.
       final waterType = _waterTypeFilter ?? (station.offeredWaterTypes.isNotEmpty ? station.offeredWaterTypes.first : 'purified');
+      // Same fallback pattern as waterType above -- don't submit a jug type
+      // the currently-selected station doesn't actually offer, and don't
+      // require a choice at all if the station hasn't declared any shapes.
+      final jugType = station.offeredJugTypes.isEmpty
+          ? null
+          : (station.offeredJugTypes.contains(_selectedJugType) ? _selectedJugType : station.offeredJugTypes.first);
 
       final orderId = await _orderService.insertQuickOrder(
         stationId: station.id,
@@ -232,6 +246,8 @@ class _QuickOrderScreenState extends ConsumerState<QuickOrderScreen> {
         guestPhone: _phoneController.text.trim(),
         clientRequestId: _clientRequestId,
         scheduledFor: _scheduledFor,
+        jugType: jugType,
+        jugExchangeOriginStationId: _isJugExchange ? _jugExchangeOriginStationId : null,
       );
 
       if (mounted) {
@@ -340,7 +356,14 @@ class _QuickOrderScreenState extends ConsumerState<QuickOrderScreen> {
                           ],
                           onChanged: (val) => setState(() {
                             _waterTypeFilter = val;
-                            if (_filteredStations.isNotEmpty && !_filteredStations.any((s) => s.id == _selectedStationId)) {
+                            // Previously left _selectedStationId pointing at
+                            // a station no longer in _filteredStations when
+                            // the new filter matched zero stations -- the
+                            // dropdown below then had a non-null value with
+                            // no matching item, which throws at runtime.
+                            if (_filteredStations.isEmpty) {
+                              _selectedStationId = null;
+                            } else if (!_filteredStations.any((s) => s.id == _selectedStationId)) {
                               _selectedStationId = _filteredStations.first.id;
                             }
                           }),
@@ -379,7 +402,12 @@ class _QuickOrderScreenState extends ConsumerState<QuickOrderScreen> {
                               ),
                             );
                           }).toList(),
-                          onChanged: (val) => setState(() => _selectedStationId = val),
+                          onChanged: (val) => setState(() {
+                            _selectedStationId = val;
+                            _selectedJugType = null;
+                            _isJugExchange = false;
+                            _jugExchangeOriginStationId = null;
+                          }),
                         ),
                         if (station != null) ...[
                           const SizedBox(height: 8),
@@ -400,16 +428,20 @@ class _QuickOrderScreenState extends ConsumerState<QuickOrderScreen> {
                                 ),
                             ],
                           ),
-                          if (station.offeredJugTypes.isNotEmpty || station.offersJugExchange) ...[
-                            const SizedBox(height: 6),
+                          if (station.offeredJugTypes.isNotEmpty) ...[
+                            const SizedBox(height: 8),
+                            const Text('Container', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                            const SizedBox(height: 4),
                             Wrap(
                               spacing: 6,
                               runSpacing: 4,
                               children: [
                                 for (final jugType in station.offeredJugTypes)
-                                  Chip(
+                                  ChoiceChip(
                                     visualDensity: VisualDensity.compact,
                                     label: Text(jugType == 'slim_5gal' ? 'Slim 5-gal' : 'Round 5-gal', style: const TextStyle(fontSize: 11)),
+                                    selected: (_selectedJugType ?? station.offeredJugTypes.first) == jugType,
+                                    onSelected: (_) => setState(() => _selectedJugType = jugType),
                                   ),
                                 if (station.offersJugExchange)
                                   const Chip(
@@ -419,6 +451,48 @@ class _QuickOrderScreenState extends ConsumerState<QuickOrderScreen> {
                                   ),
                               ],
                             ),
+                          ] else if (station.offersJugExchange) ...[
+                            const SizedBox(height: 6),
+                            const Chip(
+                              visualDensity: VisualDensity.compact,
+                              avatar: Icon(Icons.swap_horiz, size: 14),
+                              label: Text('Jug exchange accepted', style: TextStyle(fontSize: 11)),
+                            ),
+                          ],
+                          if (station.offersJugExchange) ...[
+                            const SizedBox(height: 4),
+                            CheckboxListTile(
+                              value: _isJugExchange,
+                              onChanged: (v) => setState(() {
+                                _isJugExchange = v ?? false;
+                                if (!_isJugExchange) _jugExchangeOriginStationId = null;
+                              }),
+                              controlAffinity: ListTileControlAffinity.leading,
+                              contentPadding: EdgeInsets.zero,
+                              dense: true,
+                              title: const Text("I'm returning an empty jug for exchange", style: TextStyle(fontSize: 13)),
+                            ),
+                            if (_isJugExchange) ...[
+                              const Text('Whose station is the empty jug from?', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                              const SizedBox(height: 4),
+                              DropdownButtonFormField<String?>(
+                                initialValue: _jugExchangeOriginStationId,
+                                isDense: true,
+                                decoration: const InputDecoration(
+                                  labelText: "Jug's home station",
+                                  border: OutlineInputBorder(),
+                                  isDense: true,
+                                  contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                ),
+                                items: [
+                                  DropdownMenuItem(value: null, child: Text('${station.stationName} (this station)')),
+                                  ..._availableStations
+                                      .where((s) => s.id != station.id)
+                                      .map((s) => DropdownMenuItem(value: s.id, child: Text(s.stationName, overflow: TextOverflow.ellipsis))),
+                                ],
+                                onChanged: (v) => setState(() => _jugExchangeOriginStationId = v),
+                              ),
+                            ],
                           ],
                           if (!station.isOrderable) ...[
                             const SizedBox(height: 8),

@@ -77,7 +77,7 @@ class _VerifyAccreditationScreenState extends ConsumerState<VerifyAccreditationS
     final matches = _matches;
 
     return Scaffold(
-      backgroundColor: WebTheme.paper,
+      backgroundColor: WebTheme.of(context).paper,
       appBar: const WebNavBar(currentPage: WebPage.verifyAccreditation),
       body: Stack(
         children: [
@@ -131,7 +131,7 @@ class _VerifyAccreditationScreenState extends ConsumerState<VerifyAccreditationS
       decoration: BoxDecoration(color: WebTheme.sealGold.withValues(alpha: 0.10), borderRadius: BorderRadius.circular(10), border: Border.all(color: WebTheme.sealGold.withValues(alpha: 0.3))),
       child: ListTile(
         leading: const WebSeal(size: 36),
-        title: Text(station.stationName, style: const TextStyle(fontWeight: FontWeight.bold, color: WebTheme.inkNavy)),
+        title: Text(station.stationName, style: TextStyle(fontWeight: FontWeight.bold, color: WebTheme.of(context).ink)),
         subtitle: Text('${station.barangayName ?? station.stationAddress} · WASA-accredited and verified'),
       ),
     );
@@ -140,9 +140,9 @@ class _VerifyAccreditationScreenState extends ConsumerState<VerifyAccreditationS
   Widget _buildNotFoundCard() {
     return Container(
       decoration: BoxDecoration(color: Colors.red.shade50, borderRadius: BorderRadius.circular(10)),
-      child: const ListTile(
+      child: ListTile(
         leading: Icon(Icons.error_outline, color: Colors.red, size: 32),
-        title: Text('No accredited station found by that name', style: TextStyle(fontWeight: FontWeight.bold, color: WebTheme.inkNavy)),
+        title: Text('No accredited station found by that name', style: TextStyle(fontWeight: FontWeight.bold, color: WebTheme.of(context).ink)),
         subtitle: Text('Double-check the spelling, or the station may not be WASA-accredited.'),
       ),
     );
