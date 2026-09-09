@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../utils/formatters.dart';
 import '../auth/auth_gate.dart';
+import '../app_route.dart';
 
 /// Post-submit confirmation for a guest quick-order. Persists the order id
 /// + phone locally (SharedPreferences) so TrackOrderScreen can offer "use my
@@ -84,7 +85,7 @@ class _OrderConfirmationScreenState extends State<OrderConfirmationScreen> {
               const SizedBox(height: 24),
               ElevatedButton(
                 onPressed: () => Navigator.of(context).pushAndRemoveUntil(
-                  MaterialPageRoute(builder: (context) => const AuthGate()),
+                  appRoute(const AuthGate()),
                   (route) => false,
                 ),
                 child: const Text('Back to Home'),

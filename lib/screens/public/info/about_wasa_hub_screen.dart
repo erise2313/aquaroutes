@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../constants/app_colors.dart';
+import '../../app_route.dart';
 import 'about_info_screen.dart';
 import 'contact_info_screen.dart';
 import 'faq_info_screen.dart';
@@ -37,11 +39,13 @@ class AboutWasaHubScreen extends StatelessWidget {
           final (icon, title, subtitle, builder) = entries[index];
           return Card(
             child: ListTile(
-              leading: Icon(icon, color: Colors.blue.shade700),
+              leading: Icon(icon, color: AppColors.primary),
               title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
               subtitle: Text(subtitle),
               trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-              onTap: () => Navigator.push(context, MaterialPageRoute(builder: builder)),
+              // The destination comes from `entries` as a WidgetBuilder, so
+              // it's built here and handed to appRoute like any other screen.
+              onTap: () => Navigator.push(context, appRoute(Builder(builder: builder))),
             ),
           );
         },

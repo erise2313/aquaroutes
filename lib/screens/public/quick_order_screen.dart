@@ -20,6 +20,7 @@ import '../auth/login_screen.dart';
 import '../auth/registration_screen.dart';
 import 'order_confirmation_screen.dart';
 import 'track_order_screen.dart';
+import '../app_route.dart';
 
 /// Quick-order form for the Public Consumer Portal. Placing an order
 /// requires a signed-in customer account (public_consumer membership,
@@ -253,8 +254,7 @@ class _QuickOrderScreenState extends ConsumerState<QuickOrderScreen> {
       if (mounted) {
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(
-            builder: (context) => OrderConfirmationScreen(
+          appRoute(OrderConfirmationScreen(
               orderId: orderId,
               stationName: station.stationName,
               totalAmount: total,
@@ -616,18 +616,18 @@ class _OrderLoginGate extends StatelessWidget {
               ),
               const SizedBox(height: 24),
               ElevatedButton(
-                onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const LoginScreen())),
+                onPressed: () => Navigator.push(context, appRoute(const LoginScreen())),
                 style: ElevatedButton.styleFrom(backgroundColor: Colors.blue.shade700, padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 14)),
                 child: const Text('Login', style: TextStyle(color: Colors.white)),
               ),
               const SizedBox(height: 8),
               OutlinedButton(
-                onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const RegistrationScreen())),
+                onPressed: () => Navigator.push(context, appRoute(const RegistrationScreen())),
                 child: const Text('Create Account'),
               ),
               const SizedBox(height: 16),
               TextButton(
-                onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const TrackOrderScreen())),
+                onPressed: () => Navigator.push(context, appRoute(const TrackOrderScreen())),
                 child: const Text('Track a past guest order'),
               ),
             ],

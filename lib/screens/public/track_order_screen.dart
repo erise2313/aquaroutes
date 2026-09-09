@@ -8,6 +8,7 @@ import '../../services/supabase_service.dart';
 import '../../utils/formatters.dart';
 import '../../widgets/confirm_dialog.dart';
 import 'order_tracking_screen.dart';
+import '../app_route.dart';
 
 /// Guest order tracking. No account exists for a guest order, so the phone
 /// number doubles as the access credential (lookup_guest_order() RPC,
@@ -207,8 +208,7 @@ class _TrackOrderScreenState extends State<TrackOrderScreen> {
               OutlinedButton.icon(
                 onPressed: () => Navigator.push(
                   context,
-                  MaterialPageRoute(
-                    builder: (context) => OrderTrackingScreen(
+                  appRoute(OrderTrackingScreen(
                       orderId: result.id,
                       stationName: result.stationName,
                       status: result.status,

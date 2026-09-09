@@ -18,6 +18,7 @@ import '../../widgets/confirm_dialog.dart';
 import '../../widgets/error_state.dart';
 import '../auth/login_screen.dart';
 import '../auth/registration_screen.dart';
+import '../app_route.dart';
 
 /// Reusable feed body (not a full Scaffold) shared by the guest home
 /// (screens/public/public_home_screen.dart) and the authenticated
@@ -100,14 +101,14 @@ class _BulletinFeedState extends ConsumerState<BulletinFeed> {
           TextButton(
             onPressed: () {
               Navigator.pop(context);
-              Navigator.push(context, MaterialPageRoute(builder: (context) => const RegistrationScreen()));
+              Navigator.push(context, ambientRoute(context, const RegistrationScreen()));
             },
             child: const Text('Register'),
           ),
           ElevatedButton(
             onPressed: () {
               Navigator.pop(context);
-              Navigator.push(context, MaterialPageRoute(builder: (context) => const LoginScreen()));
+              Navigator.push(context, ambientRoute(context, const LoginScreen()));
             },
             child: const Text('Login'),
           ),

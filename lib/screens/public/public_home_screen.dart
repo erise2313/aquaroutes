@@ -8,6 +8,8 @@ import '../../widgets/wasa_shield_logo.dart';
 import '../auth/login_screen.dart';
 import '../auth/registration_screen.dart';
 import 'bulletin_feed.dart';
+import '../../constants/app_theme.dart';
+import '../app_route.dart';
 import 'customer_account_screen.dart';
 import 'info/about_wasa_hub_screen.dart';
 import 'orders_tab_screen.dart';
@@ -43,8 +45,16 @@ class _PublicHomeScreenState extends ConsumerState<PublicHomeScreen> {
     final membership = ref.watch(currentMembershipProvider).value;
     final isSignedInCustomer = membership?.role == AppRole.publicConsumer;
 
-    final onSurface = Theme.of(context).colorScheme.onSurface;
-    return Scaffold(
+    // Pinned to the app's light theme rather than inheriting the root one --
+    // main.dart drives that from the website's dark-mode toggle, and these
+    // screens are written for a light background. Screens pushed from here
+    // need appRoute() (screens/app_route.dart) to keep it, since a
+    // MaterialPageRoute builds above this Theme, not under it.
+    return Theme(
+      data: AppTheme.light,
+      child: Builder(builder: (context) {
+        final onSurface = Theme.of(context).colorScheme.onSurface;
+        return Scaffold(
       appBar: AppBar(
         titleSpacing: 12,
         title: Row(
@@ -60,24 +70,24 @@ class _PublicHomeScreenState extends ConsumerState<PublicHomeScreen> {
           IconButton(
             tooltip: 'About WASA',
             icon: Icon(Icons.info_outline, color: onSurface),
-            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const AboutWasaHubScreen())),
+            onPressed: () => Navigator.push(context, appRoute(const AboutWasaHubScreen())),
           ),
           ...isSignedInCustomer
             ? [
                 IconButton(
                   tooltip: 'My Account',
                   icon: Icon(Icons.account_circle_outlined, color: onSurface),
-                  onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const CustomerAccountScreen())),
+                  onPressed: () => Navigator.push(context, appRoute(const CustomerAccountScreen())),
                 ),
                 const SizedBox(width: 8),
               ]
             : [
                 TextButton(
-                  onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const LoginScreen())),
+                  onPressed: () => Navigator.push(context, appRoute(const LoginScreen())),
                   child: const Text('Login'),
                 ),
                 TextButton(
-                  onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const RegistrationScreen())),
+                  onPressed: () => Navigator.push(context, appRoute(const RegistrationScreen())),
                   child: const Text('Register'),
                 ),
                 const SizedBox(width: 8),
@@ -98,6 +108,8 @@ class _PublicHomeScreenState extends ConsumerState<PublicHomeScreen> {
           BottomNavigationBarItem(icon: Icon(Icons.receipt_long_outlined), activeIcon: Icon(Icons.receipt_long), label: 'Orders'),
         ],
       ),
+        );
+      }),
     );
   }
 }

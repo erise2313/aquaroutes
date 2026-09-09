@@ -6,6 +6,7 @@ import '../../providers/app_state.dart';
 import '../auth/login_screen.dart';
 import 'my_orders_screen.dart';
 import 'track_order_screen.dart';
+import '../app_route.dart';
 
 /// Front door for order tracking from the main bottom nav -- previously
 /// both MyOrdersScreen (logged-in) and TrackOrderScreen (guest) existed but
@@ -40,14 +41,14 @@ class OrdersTabScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 24),
               ElevatedButton.icon(
-                onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const TrackOrderScreen())),
+                onPressed: () => Navigator.push(context, appRoute(const TrackOrderScreen())),
                 style: ElevatedButton.styleFrom(backgroundColor: Colors.blue.shade700, padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14)),
                 icon: const Icon(Icons.search, color: Colors.white),
                 label: const Text('Track a Guest Order', style: TextStyle(color: Colors.white)),
               ),
               const SizedBox(height: 12),
               OutlinedButton(
-                onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const LoginScreen())),
+                onPressed: () => Navigator.push(context, appRoute(const LoginScreen())),
                 child: const Text('Log In to See Order History'),
               ),
             ],

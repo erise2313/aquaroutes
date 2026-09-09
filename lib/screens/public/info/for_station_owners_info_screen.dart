@@ -5,6 +5,7 @@ import '../../../services/supabase_service.dart';
 import '../../../services/web_content_service.dart';
 import '../../../widgets/error_state.dart';
 import '../../auth/registration_screen.dart';
+import '../../app_route.dart';
 
 const _benefitIcons = {
   'verified': Icons.verified,
@@ -85,7 +86,7 @@ class _ForStationOwnersInfoScreenState extends State<ForStationOwnersInfoScreen>
                     Text(_requirementsSummary, style: const TextStyle(color: Colors.grey, height: 1.4)),
                     const SizedBox(height: 20),
                     ElevatedButton(
-                      onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const RegistrationScreen())),
+                      onPressed: () => Navigator.push(context, appRoute(const RegistrationScreen())),
                       child: const Text('Register Your Station'),
                     ),
                   ],

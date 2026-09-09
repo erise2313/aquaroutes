@@ -8,6 +8,7 @@ import 'package:aquaroute/screens/merchant/permit_vault_screen.dart';
 import 'package:aquaroute/screens/merchant/worker_registry_screen.dart';
 import 'package:aquaroute/services/permit_service.dart';
 import 'package:aquaroute/services/supabase_service.dart';
+import '../app_route.dart';
 
 /// 'assigned' rolls into "active" alongside 'active' (both mean a driver is
 /// on it, just not picked up yet vs. en route); 'done' is counted on its
@@ -148,7 +149,7 @@ class _MerchantDashboardScreenState extends State<MerchantDashboardScreen> {
                     color: Colors.teal,
                     title: 'Permit Vault',
                     subtitle: 'Upload business, sanitary, and (if alkaline) technical permits',
-                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const PermitVaultScreen())),
+                    onTap: () => Navigator.push(context, appRoute(const PermitVaultScreen())),
                   ),
                   const SizedBox(height: 8),
                   _buildNavCard(
@@ -156,7 +157,7 @@ class _MerchantDashboardScreenState extends State<MerchantDashboardScreen> {
                     color: Colors.indigo,
                     title: 'Worker Registry',
                     subtitle: 'Manage worker clearance and file security incidents',
-                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const WorkerRegistryScreen())),
+                    onTap: () => Navigator.push(context, appRoute(const WorkerRegistryScreen())),
                   ),
                   const SizedBox(height: 8),
                   _buildNavCard(
@@ -164,7 +165,7 @@ class _MerchantDashboardScreenState extends State<MerchantDashboardScreen> {
                     color: Colors.teal,
                     title: 'Hire Check',
                     subtitle: 'Search a worker\'s clearance history before hiring them',
-                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const HireCheckScreen())),
+                    onTap: () => Navigator.push(context, appRoute(const HireCheckScreen())),
                   ),
                   const SizedBox(height: 8),
                   _buildNavCard(
@@ -172,7 +173,7 @@ class _MerchantDashboardScreenState extends State<MerchantDashboardScreen> {
                     color: Colors.deepPurple,
                     title: 'Jug Clearinghouse',
                     subtitle: 'Settle Slim/Round 5-gal jug balances with other stations',
-                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const JugClearinghouseScreen())),
+                    onTap: () => Navigator.push(context, appRoute(const JugClearinghouseScreen())),
                   ),
                   const SizedBox(height: 24),
 
@@ -186,7 +187,7 @@ class _MerchantDashboardScreenState extends State<MerchantDashboardScreen> {
                     onTap: () {
                       Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (context) => const DriverManagementScreen()),
+                        appRoute(const DriverManagementScreen()),
                       ).then((_) => _fetchDashboardData());
                     },
                   ),
@@ -230,7 +231,7 @@ class _MerchantDashboardScreenState extends State<MerchantDashboardScreen> {
         ),
         subtitle: const Text('Expiring within 30 days, or already expired.'),
         trailing: Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey.shade700),
-        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const PermitVaultScreen())).then((_) => _fetchDashboardData()),
+        onTap: () => Navigator.push(context, appRoute(const PermitVaultScreen())).then((_) => _fetchDashboardData()),
       ),
     );
   }

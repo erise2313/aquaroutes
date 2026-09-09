@@ -7,6 +7,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../services/photo_service.dart';
 import '../../services/supabase_service.dart';
 import '../public/info/about_wasa_hub_screen.dart';
+import '../app_route.dart';
 
 /// Builds the `profiles` table update payload (trimmed). Split from
 /// [buildStationPayload] since profile identity and station business data
@@ -172,8 +173,7 @@ class _MerchantProfileScreenState extends State<MerchantProfileScreen> {
   Future<void> _openLocationPicker() async {
     final result = await Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (context) => LocationPickerScreen(
+      appRoute(LocationPickerScreen(
           initialLatitude: double.tryParse(_latitudeController.text) ?? 14.3868,
           initialLongitude: double.tryParse(_longitudeController.text) ?? 120.8817,
           initialStationName: _stationNameController.text,
@@ -426,7 +426,7 @@ class _MerchantProfileScreenState extends State<MerchantProfileScreen> {
             ),
             const SizedBox(height: 12),
             OutlinedButton.icon(
-              onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const AboutWasaHubScreen())),
+              onPressed: () => Navigator.push(context, appRoute(const AboutWasaHubScreen())),
               style: OutlinedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -524,7 +524,7 @@ class _MerchantProfileScreenState extends State<MerchantProfileScreen> {
           ),
           const SizedBox(height: 16),
           ElevatedButton.icon(
-            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const PermitVaultScreen())),
+            onPressed: () => Navigator.push(context, appRoute(const PermitVaultScreen())),
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.amber.shade600,
               foregroundColor: Colors.white,

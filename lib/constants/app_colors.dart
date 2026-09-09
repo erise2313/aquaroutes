@@ -15,6 +15,43 @@ class AppColors {
   static const Color alkalineGlowCyan = Color(0xFF00E5FF);
   static const Color alkalineGlowPurple = Color(0xFF9C27B0);
 
+  // -- Surfaces and text -------------------------------------------------
+  //
+  // Added because this file was only ever a *status* palette: primary,
+  // accent, three clearance states, driver colors. It had no surface or text
+  // tokens, so merchant and customer screens had nothing to reach for and
+  // fell back to Colors.grey.shade700 / Colors.white / Colors.blue ~260
+  // times between them. That absence is why those two surfaces look like
+  // stock Material while the website and admin portal look like a product.
+  //
+  // The values are the ones the website and admin already use (web_theme.dart
+  // and admin_theme.dart), so the app surfaces join the identity that exists
+  // rather than inventing a third one. Nothing above this line changed --
+  // adding tokens can't shift anything that already renders correctly.
+
+  /// Primary text. Same ink navy the website and admin portal use.
+  static const Color ink = Color(0xFF0B2545);
+
+  /// Secondary text -- captions, metadata, helper lines. Replaces the
+  /// Colors.grey.shade600/700 that carried this job by default.
+  static const Color inkMuted = Color(0xFF5A6675);
+
+  /// Page background. Warm paper rather than pure white, matching the site.
+  static const Color surface = Color(0xFFF7F5F0);
+
+  /// Tinted background for callouts and alternating blocks.
+  static const Color surfaceAlt = Color(0xFFEAF3F5);
+
+  /// Card and raised-surface fill.
+  static const Color card = Colors.white;
+
+  static const Color border = Color(0xFFE3DFD3);
+
+  /// The association's seal gold. Reserved for accreditation and
+  /// verification, exactly as on the website and in admin -- it should never
+  /// become a general-purpose accent, or it stops meaning anything.
+  static const Color seal = Color(0xFFC99A3B);
+
   /// High-contrast palette for the Driver/Helper portal (daylight-road
   /// readability -- large targets, strong contrast, not the default
   /// Material blue theme used by the owner/admin portals).

@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../providers/app_state.dart';
 import '../../widgets/error_state.dart';
 import 'my_orders_screen.dart';
+import '../app_route.dart';
 
 /// Account screen for a signed-in customer (public_consumer membership) --
 /// reachable from PublicHomeScreen's app bar once authenticated. Just a
@@ -118,7 +119,7 @@ class _CustomerAccountScreenState extends ConsumerState<CustomerAccountScreen> {
                   leading: const Icon(Icons.receipt_long_outlined),
                   title: const Text('My Orders'),
                   trailing: const Icon(Icons.arrow_forward_ios, size: 14),
-                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const MyOrdersScreen())),
+                  onTap: () => Navigator.push(context, appRoute(const MyOrdersScreen())),
                 ),
                 const Divider(),
                 ListTile(

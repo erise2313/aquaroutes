@@ -11,6 +11,7 @@ import '../../widgets/confirm_dialog.dart';
 import '../../widgets/error_state.dart';
 import '../../widgets/star_rating.dart';
 import 'order_tracking_screen.dart';
+import '../app_route.dart';
 
 /// Authenticated customer's persistent order history -- the real fix for
 /// "order tracking is device-local only": orders.customer_profile_id +
@@ -137,8 +138,7 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
       child: InkWell(
         onTap: () => Navigator.push(
           context,
-          MaterialPageRoute(
-            builder: (context) => OrderTrackingScreen(orderId: order['id'] as String, stationName: stationName, status: status),
+          appRoute(OrderTrackingScreen(orderId: order['id'] as String, stationName: stationName, status: status),
           ),
         ),
         child: Padding(
