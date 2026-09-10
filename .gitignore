@@ -55,3 +55,7 @@ supabase/.envgit
 
 # Firebase local cache (deploy history, hosting cache -- not config, safe to ignore)
 .firebase/
+# Codebase snapshot dumps — these have embedded credentials before now
+AI_SNAPSHOT.txt
+*_SNAPSHOT.txt
+*.bundle
