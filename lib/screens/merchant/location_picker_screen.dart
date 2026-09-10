@@ -5,6 +5,7 @@ import 'package:latlong2/latlong.dart';
 
 import '../../widgets/custom_map_marker.dart';
 import '../../widgets/permission_rationale_dialog.dart';
+import '../../widgets/app_map_tiles.dart';
 
 class LocationPickerScreen extends StatefulWidget {
   final double? initialLatitude;
@@ -126,10 +127,7 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
               onTap: (tapPosition, point) => _selectLocation(point),
             ),
             children: [
-              TileLayer(
-                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                userAgentPackageName: 'ph.gentriwasa.aquaroute',
-              ),
+              const AppMapTiles(),
               if (_selectedLocation != null)
                 MarkerLayer(markers: [
                   Marker(
@@ -139,6 +137,7 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
                     child: const MapPin(kind: MapPinKind.station),
                   ),
                 ]),
+              const AppMapAttribution(),
             ],
           ),
           Positioned(

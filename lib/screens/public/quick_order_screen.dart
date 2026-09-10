@@ -21,6 +21,7 @@ import '../auth/registration_screen.dart';
 import 'order_confirmation_screen.dart';
 import 'track_order_screen.dart';
 import '../app_route.dart';
+import '../../widgets/app_map_tiles.dart';
 
 /// Quick-order form for the Public Consumer Portal. Placing an order
 /// requires a signed-in customer account (public_consumer membership,
@@ -304,10 +305,7 @@ class _QuickOrderScreenState extends ConsumerState<QuickOrderScreen> {
                           onTap: (tapPosition, point) => setState(() => _selectedLocation = point),
                         ),
                         children: [
-                          TileLayer(
-                            urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                            userAgentPackageName: 'ph.gentriwasa.aquaroute',
-                          ),
+                          const AppMapTiles(),
                           if (_selectedLocation != null)
                             MarkerLayer(markers: [
                               Marker(
@@ -317,6 +315,7 @@ class _QuickOrderScreenState extends ConsumerState<QuickOrderScreen> {
                                 child: const MapPin(kind: MapPinKind.deliveryAddress),
                               ),
                             ]),
+                          const AppMapAttribution(),
                         ],
                       ),
                       Positioned(

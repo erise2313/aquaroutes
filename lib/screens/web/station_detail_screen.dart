@@ -15,6 +15,7 @@ import '../../widgets/star_rating.dart';
 import '../../widgets/web_footer.dart';
 import '../../widgets/web_nav_bar.dart';
 import '../../widgets/web_seal.dart';
+import '../../widgets/app_map_tiles.dart';
 
 /// A public page per station, at `/stations/<id>`.
 ///
@@ -362,10 +363,7 @@ class _StationDetailScreenState extends State<StationDetailScreen> {
                 interactionOptions: const InteractionOptions(flags: InteractiveFlag.all & ~InteractiveFlag.rotate),
               ),
               children: [
-                TileLayer(
-                  urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                  userAgentPackageName: 'ph.gentriwasa.aquaroute',
-                ),
+                const AppMapTiles(),
                 MarkerLayer(
                   markers: [
                     Marker(
@@ -386,6 +384,7 @@ class _StationDetailScreenState extends State<StationDetailScreen> {
                     ),
                   ],
                 ),
+                const AppMapAttribution(),
               ],
             ),
           ),

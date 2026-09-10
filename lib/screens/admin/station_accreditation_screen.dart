@@ -13,6 +13,7 @@ import '../../widgets/error_state.dart';
 import '../../widgets/skeleton_loader.dart';
 import 'admin_route.dart';
 import 'permit_review_screen.dart';
+import '../../widgets/app_map_tiles.dart';
 
 /// Narrows loaded station rows by name/address search and accreditation
 /// state. Top-level and pure so the matching rules are unit-testable.
@@ -399,10 +400,7 @@ class _StationAccreditationScreenState extends State<StationAccreditationScreen>
     return FlutterMap(
       options: const MapOptions(initialCenter: _generalTriasCenter, initialZoom: 13),
       children: [
-        TileLayer(
-          urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-          userAgentPackageName: 'ph.gentriwasa.aquaroute',
-        ),
+        const AppMapTiles(),
         MarkerLayer(
           markers: withLocation.map((station) {
             return Marker(
@@ -446,6 +444,7 @@ class _StationAccreditationScreenState extends State<StationAccreditationScreen>
             );
           }).toList(),
         ),
+        const AppMapAttribution(),
       ],
     );
   }

@@ -9,6 +9,7 @@ import '../../constants/app_colors.dart';
 import '../../models/order.dart';
 import '../../services/driver_tracking_service.dart';
 import '../../services/supabase_service.dart';
+import '../../widgets/app_map_tiles.dart';
 
 /// Per-order detail screen with a live driver map, shared by logged-in
 /// customers (my_orders_screen.dart, guestPhone omitted) and guests
@@ -131,10 +132,7 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
                       ? FlutterMap(
                           options: MapOptions(initialCenter: LatLng(_driver!.lat!, _driver!.lng!), initialZoom: 15),
                           children: [
-                            TileLayer(
-                              urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                              userAgentPackageName: 'ph.gentriwasa.aquaroute',
-                            ),
+                            const AppMapTiles(),
                             MarkerLayer(markers: [
                               Marker(
                                 point: LatLng(_driver!.lat!, _driver!.lng!),
@@ -143,6 +141,7 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
                                 child: const Icon(Icons.local_shipping, color: AppColors.primary, size: 36),
                               ),
                             ]),
+                            const AppMapAttribution(),
                           ],
                         )
                       : Center(

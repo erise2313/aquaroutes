@@ -21,9 +21,15 @@ if (-not $supabaseUrl -or -not $supabaseAnonKey) {
     exit 1
 }
 
+# Optional: the client organisation's MapTiler key. Without it the maps use
+# OpenStreetMap's tiles, which is fine for testing (lib/widgets/app_map_tiles.dart).
+$mapDefine = @()
+if ($envMap['MAPTILER_KEY']) { $mapDefine = @("--dart-define=MAPTILER_KEY=$($envMap['MAPTILER_KEY'])") }
+
 & "C:\flutter\flutter\bin\flutter.bat" build web --source-maps `
     --dart-define=SUPABASE_URL=$supabaseUrl `
-    --dart-define=SUPABASE_ANON_KEY=$supabaseAnonKey
+    --dart-define=SUPABASE_ANON_KEY=$supabaseAnonKey `
+    @mapDefine
 
 if ($LASTEXITCODE -ne 0) {
     Write-Error "flutter build web failed"

@@ -24,11 +24,16 @@ if (-not $supabaseUrl -or -not $supabaseAnonKey) {
 
 $outputDir = Join-Path (Get-Location).Path "build\web_admin"
 
+# Optional MapTiler key -- see deploy_web.ps1. Without it, OpenStreetMap tiles.
+$mapDefine = @()
+if ($envMap['MAPTILER_KEY']) { $mapDefine = @("--dart-define=MAPTILER_KEY=$($envMap['MAPTILER_KEY'])") }
+
 & "C:\flutter\flutter\bin\flutter.bat" build web --source-maps `
     --dart-define=SUPABASE_URL=$supabaseUrl `
     --dart-define=SUPABASE_ANON_KEY=$supabaseAnonKey `
     --dart-define=PORTAL=admin `
-    -o $outputDir
+    -o $outputDir `
+    @mapDefine
 
 if ($LASTEXITCODE -ne 0) {
     Write-Error "flutter build web failed"

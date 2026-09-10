@@ -23,6 +23,7 @@ import '../../widgets/web_footer.dart';
 import '../../widgets/web_nav_bar.dart';
 import '../../widgets/web_page_header.dart';
 import '../../widgets/web_seal.dart';
+import '../../widgets/app_map_tiles.dart';
 
 /// Full station directory for the website -- search + water-type + barangay
 /// filters alongside a map, reusing the same StationService.fetchPublicStations
@@ -173,10 +174,7 @@ class _StationsDirectoryScreenState extends ConsumerState<StationsDirectoryScree
                                     child: FlutterMap(
                                       options: const MapOptions(initialCenter: _generalTriasCenter, initialZoom: 13),
                                       children: [
-                                        TileLayer(
-                                          urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                                          userAgentPackageName: 'ph.gentriwasa.aquaroute',
-                                        ),
+                                        const AppMapTiles(),
                                         MarkerLayer(
                                           markers: filtered.map((s) {
                                             final pin = MapPin(
@@ -191,6 +189,7 @@ class _StationsDirectoryScreenState extends ConsumerState<StationsDirectoryScree
                                             );
                                           }).toList(),
                                         ),
+                                        const AppMapAttribution(),
                                       ],
                                     ),
                                   ),

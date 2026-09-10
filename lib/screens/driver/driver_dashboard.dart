@@ -15,6 +15,7 @@ import '../../services/route_optimization.dart';
 import '../../services/supabase_service.dart';
 import '../../services/worker_credential_service.dart';
 import '../../utils/formatters.dart';
+import '../../widgets/app_map_tiles.dart';
 import '../../widgets/permission_rationale_dialog.dart';
 import '../public/bulletin_board_screen.dart';
 import 'driver_profile_screen.dart';
@@ -52,6 +53,12 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
   LatLng? _destination;
 
   List<Map<String, dynamic>> _orderedStops = [];
+
+  /// The line drawn on the map: road geometry from the route-optimize Edge
+  /// Function, or a straight-line estimate that [_routeApproximate] flags.
+  List<LatLng> _routePoints = [];
+  bool _routeApproximate = false;
+  String? _routeSummary;
 
   @override
   void initState() {
@@ -205,16 +212,15 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
             .map((o) => {'lat': double.parse(o['lat'].toString()), 'lng': double.parse(o['lng'].toString())})
             .toList();
 
-        try {
-          final sequence = _routeService.computeStopSequence(
-            {'lat': _stationLocation!.latitude, 'lng': _stationLocation!.longitude},
-            stops,
-          );
-          if (sequence.length == activeOrders.length) {
-            activeOrders = sequence.map((index) => activeOrders[index]).toList();
-          }
-        } catch (e) {
-          debugPrint('Stop sequencing skipped: $e');
+        // Road-following order and geometry. Never throws: if the routing
+        // service is unreachable it returns a flagged straight-line estimate,
+        // which the map labels rather than passing off as a real route.
+        final plan = await _routeService.planRoute(
+          _stationLocation!,
+          [for (final s in stops) LatLng(s['lat']!, s['lng']!)],
+        );
+        if (plan.sequence.length == activeOrders.length) {
+          activeOrders = plan.sequence.map((index) => activeOrders[index]).toList();
         }
 
         final currentOrder = activeOrders.first;
@@ -241,6 +247,9 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
         if (mounted) {
           setState(() {
             _orderedStops = List<Map<String, dynamic>>.from(activeOrders);
+            _routePoints = plan.points;
+            _routeApproximate = plan.isApproximate;
+            _routeSummary = plan.summary;
             _currentActiveOrder = {
               ...currentOrder,
               'status': orderDetails?['status'] ?? 'assigned',
@@ -261,6 +270,7 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
           setState(() {
             _currentActiveOrder = null;
             _orderedStops = [];
+            _routePoints = [];
             _isLoading = false;
           });
         }
@@ -627,20 +637,20 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
     return FlutterMap(
       options: MapOptions(initialCenter: _destination!, initialZoom: 15),
       children: [
-        TileLayer(
-          urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-          userAgentPackageName: 'ph.gentriwasa.aquaroute',
-        ),
-        PolylineLayer(
-          polylines: [
-            Polyline(
-              points: [_stationLocation!, ...markers.skip(1).map((m) => m.point)],
-              color: Colors.blueAccent,
-              strokeWidth: 4,
-            ),
-          ],
-        ),
+        const AppMapTiles(),
+        if (_routePoints.length >= 2)
+          PolylineLayer(
+            polylines: [
+              Polyline(
+                points: _routePoints,
+                color: Colors.blueAccent,
+                strokeWidth: 4,
+              ),
+            ],
+          ),
         MarkerLayer(markers: markers),
+        RouteStatusBanner(isApproximate: _routeApproximate, summary: _routeSummary, onDark: true),
+        const AppMapAttribution(showRoutingCredit: true),
       ],
     );
   }

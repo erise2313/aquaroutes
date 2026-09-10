@@ -11,6 +11,7 @@ import '../../widgets/custom_map_marker.dart';
 import '../../widgets/error_state.dart';
 import '../../widgets/permission_rationale_dialog.dart';
 import '../../widgets/star_rating.dart';
+import '../../widgets/app_map_tiles.dart';
 
 /// Public, no-login interactive map/list of every WASA-verified station.
 /// Alkaline stations get the animated glowing pulse pin (spec 4D); all pins
@@ -136,10 +137,7 @@ class _StationMapScreenState extends State<StationMapScreen> {
                       : FlutterMap(
                           options: MapOptions(initialCenter: mapCenter, initialZoom: 13),
                           children: [
-                            TileLayer(
-                              urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                              userAgentPackageName: 'ph.gentriwasa.aquaroute',
-                            ),
+                            const AppMapTiles(),
                             MarkerLayer(
                               markers: filtered.map((station) {
                                 final pin = MapPin(
@@ -157,6 +155,7 @@ class _StationMapScreenState extends State<StationMapScreen> {
                                 );
                               }).toList(),
                             ),
+                            const AppMapAttribution(),
                           ],
                         ),
                 ),

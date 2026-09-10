@@ -4,6 +4,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../services/route_optimization.dart';
+import '../../widgets/app_map_tiles.dart';
 import '../../widgets/custom_map_marker.dart';
 
 class TrackingScreen extends StatefulWidget {
@@ -18,6 +19,13 @@ class _TrackingScreenState extends State<TrackingScreen> {
 
   LatLng _stationLocation = const LatLng(14.3868, 120.8817);
   List<LatLng> _stopPoints = [];
+
+  /// The line actually drawn: road geometry from the route-optimize Edge
+  /// Function, or -- when that's unreachable -- a straight-line estimate that
+  /// [_routeApproximate] flags so the map can say so.
+  List<LatLng> _routePoints = [];
+  bool _routeApproximate = false;
+  String? _routeSummary;
 
   final RouteOptimizationService _routeService = RouteOptimizationService();
   final supabase = Supabase.instance.client;
@@ -56,30 +64,20 @@ class _TrackingScreenState extends State<TrackingScreen> {
       final response = await supabase.rpc('get_active_orders', params: {'p_station_id': stationId});
       final List<dynamic> orders = List<dynamic>.from(response as List);
 
-      final stops = <Map<String, double>>[];
-      for (final o in orders) {
-        stops.add({'lat': double.parse(o['lat'].toString()), 'lng': double.parse(o['lng'].toString())});
-      }
+      final stops = <LatLng>[
+        for (final o in orders) LatLng(double.parse(o['lat'].toString()), double.parse(o['lng'].toString())),
+      ];
 
-      // Best-effort visiting order via straight-line distance -- see
-      // route_optimization.dart for why there's no real road polyline here.
-      var orderedStops = stops;
-      try {
-        final sequence = _routeService.computeStopSequence(
-          {'lat': dynamicStationLocation.latitude, 'lng': dynamicStationLocation.longitude},
-          stops,
-        );
-        if (sequence.length == stops.length) {
-          orderedStops = sequence.map((i) => stops[i]).toList();
-        }
-      } catch (e) {
-        debugPrint('Stop sequencing skipped: $e');
-      }
+      // Never throws -- falls back to a flagged straight-line estimate.
+      final plan = await _routeService.planRoute(dynamicStationLocation, stops);
 
       if (mounted) {
         setState(() {
           _stationLocation = dynamicStationLocation;
-          _stopPoints = orderedStops.map((s) => LatLng(s['lat']!, s['lng']!)).toList();
+          _stopPoints = [for (final i in plan.sequence) stops[i]];
+          _routePoints = plan.points;
+          _routeApproximate = plan.isApproximate;
+          _routeSummary = plan.summary;
         });
         _mapController.move(dynamicStationLocation, 14);
       }
@@ -100,15 +98,13 @@ class _TrackingScreenState extends State<TrackingScreen> {
         mapController: _mapController,
         options: MapOptions(initialCenter: _stationLocation, initialZoom: 14),
         children: [
-          TileLayer(
-            urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-            userAgentPackageName: 'ph.gentriwasa.aquaroute',
-          ),
-          PolylineLayer(
-            polylines: [
-              Polyline(points: [_stationLocation, ..._stopPoints], color: Colors.blueAccent, strokeWidth: 4),
-            ],
-          ),
+          const AppMapTiles(),
+          if (_routePoints.length >= 2)
+            PolylineLayer(
+              polylines: [
+                Polyline(points: _routePoints, color: Colors.blueAccent, strokeWidth: 4),
+              ],
+            ),
           MarkerLayer(
             markers: [
               Marker(point: _stationLocation, width: 44, height: 44, child: const MapPin(kind: MapPinKind.station)),
@@ -121,6 +117,8 @@ class _TrackingScreenState extends State<TrackingScreen> {
                 ),
             ],
           ),
+          if (_stopPoints.isNotEmpty) RouteStatusBanner(isApproximate: _routeApproximate, summary: _routeSummary),
+          const AppMapAttribution(showRoutingCredit: true),
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
