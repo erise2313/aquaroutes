@@ -59,3 +59,7 @@ supabase/.envgit
 AI_SNAPSHOT.txt
 *_SNAPSHOT.txt
 *.bundle
+
+# Supabase CLI local state (version cache, linked-branch info) -- machine-specific
+supabase/.temp/
+supabase/.branches/
