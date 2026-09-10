@@ -1712,3 +1712,758 @@ from (values
   ('Vibora (Poblacion 6)')
 ) as b(name)
 on conflict (association_id, name) do nothing;
+
+-- =====================================================================
+-- PATCHES APPLIED AFTER 2026-09-03
+--
+-- This file was last regenerated on 2026-09-03. Everything below was
+-- applied to the live database afterwards, and is appended verbatim in
+-- the order it was applied (supabase_migrations.schema_migrations), so a
+-- rebuild reproduces the live schema. Each patch is idempotent.
+--
+-- When adding a new patch, append it here as well -- mirroring only one
+-- piece into the body above is how this file fell five patches behind,
+-- and a partial mirror can reference columns a rebuild does not have.
+-- =====================================================================
+
+
+-- ---------------------------------------------------------------------
+-- supabase/patch_jug_provenance.sql  (live migration 20260907154654)
+-- ---------------------------------------------------------------------
+-- =====================================================================
+-- Jug provenance tracking: closes the gap where jug_ledger_entries was
+-- never actually populated by real deliveries -- only by a station
+-- owner manually typing a net quantity with no link to what caused it.
+-- A customer now declares which station's jug they're returning (if
+-- exchanging), the driver confirms/corrects it at delivery, and
+-- set_order_status automatically records the resulting inter-station
+-- debt, linked to the order that caused it (jug_ledger_entries.related_order_id,
+-- which existed but was never populated until now).
+-- Paste into the Supabase SQL Editor and run once. Safe to re-run.
+-- =====================================================================
+
+alter table orders add column if not exists jug_exchange_origin_station_id uuid references water_stations(id);
+
+-- ---- insert_quick_order: customer declares jug origin at order time ----
+-- Only stored when the ordering station actually offers jug exchange and
+-- the declared origin isn't the ordering station itself (returning your
+-- own station's jug needs no ledger entry) -- anything else is silently
+-- ignored rather than rejected, since the driver gets a chance to
+-- confirm/correct this at delivery anyway.
+
+create or replace function insert_quick_order(
+  p_station_id uuid,
+  p_lat double precision,
+  p_lng double precision,
+  p_jugs_ordered int,
+  p_water_type text,
+  p_subtotal numeric,
+  p_delivery_fee numeric,
+  p_total_amount numeric,
+  p_guest_name text default null,
+  p_guest_phone text default null,
+  p_client_request_id text default null,
+  p_scheduled_for timestamptz default null,
+  p_jug_type text default null,
+  p_jug_exchange_origin_station_id uuid default null
+) returns uuid as $$
+declare
+  new_order_id uuid;
+  v_is_active boolean;
+  v_accepts_new_orders boolean;
+  v_offers_jug_exchange boolean;
+  v_origin uuid;
+begin
+  if p_client_request_id is not null then
+    select id into new_order_id from orders where client_request_id = p_client_request_id;
+    if new_order_id is not null then
+      return new_order_id;
+    end if;
+  end if;
+
+  select is_active, accepts_new_orders, offers_jug_exchange
+    into v_is_active, v_accepts_new_orders, v_offers_jug_exchange
+    from water_stations where id = p_station_id;
+  if v_is_active is null or not v_is_active or not coalesce(v_accepts_new_orders, true) then
+    raise exception 'This station is not currently accepting orders.';
+  end if;
+
+  v_origin := case
+    when p_jug_exchange_origin_station_id is not null
+      and p_jug_exchange_origin_station_id <> p_station_id
+      and coalesce(v_offers_jug_exchange, false)
+    then p_jug_exchange_origin_station_id
+    else null
+  end;
+
+  insert into orders (
+    station_id, customer_profile_id, guest_name, guest_phone,
+    delivery_location, jugs_ordered, water_type, jug_type,
+    subtotal, delivery_fee, total_amount, customer_phone, client_request_id, scheduled_for,
+    jug_exchange_origin_station_id
+  ) values (
+    p_station_id,
+    case when auth.uid() is not null then auth.uid() else null end,
+    case when auth.uid() is null then p_guest_name else null end,
+    case when auth.uid() is null then p_guest_phone else null end,
+    st_setsrid(st_makepoint(p_lng, p_lat), 4326)::geography,
+    p_jugs_ordered, p_water_type, p_jug_type,
+    p_subtotal, p_delivery_fee, p_total_amount,
+    p_guest_phone, p_client_request_id, p_scheduled_for,
+    v_origin
+  ) returning id into new_order_id;
+
+  return new_order_id;
+end;
+$$ language plpgsql security definer set search_path = public;
+
+-- ---- set_order_status: driver confirms/corrects jug origin, and the ----
+-- ---- resulting jug_ledger_entries row is written automatically       ----
+-- Re-declared (not just CREATE OR REPLACE) with two new trailing params
+-- -- unlike insert_quick_order's history, existing callers of this
+-- function pass different SUBSETS of its named parameters (e.g.
+-- unassignOrder passes only p_order_id/p_new_status), so simply adding
+-- an overload would make every such call ambiguous between the old and
+-- new signatures ("could not choose the best candidate function").
+-- Dropping the old one first keeps there being exactly one candidate.
+
+drop function if exists set_order_status(uuid, order_status, uuid, text, int, boolean);
+
+create function set_order_status(
+  p_order_id uuid,
+  p_new_status order_status,
+  p_driver_worker_id uuid default null,
+  p_guest_phone text default null,
+  p_empty_jugs_returned int default null,
+  p_payment_collected boolean default null,
+  p_jug_exchange_origin_station_id uuid default null,
+  p_no_jug_exchange boolean default false
+) returns void as $$
+declare
+  o orders%rowtype;
+  v_caller_worker_id uuid;
+  v_is_owner_or_admin boolean;
+  v_new_driver_station_id uuid;
+  v_new_driver_clearance clearance_status;
+begin
+  select * into o from orders where id = p_order_id for update;
+  if not found then
+    raise exception 'Order not found.';
+  end if;
+
+  v_is_owner_or_admin := auth_has_role('wasa_admin')
+    or exists (select 1 from water_stations where id = o.station_id and owner_profile_id = auth.uid());
+
+  -- Customer / guest: cancel their own order only, before it's out for delivery.
+  if (auth.uid() is not null and o.customer_profile_id = auth.uid())
+     or (auth.uid() is null and p_guest_phone is not null and o.guest_phone = p_guest_phone) then
+    if o.status not in ('pending', 'assigned') or p_new_status <> 'cancelled' then
+      raise exception 'You can only cancel an order before it is out for delivery.';
+    end if;
+    update orders set status = 'cancelled' where id = p_order_id;
+    return;
+  end if;
+
+  -- Station owner / WASA admin: assign, cancel, unassign.
+  if v_is_owner_or_admin then
+    if o.status = 'pending' and p_new_status = 'assigned' then
+      if p_driver_worker_id is null then
+        raise exception 'A driver must be specified to assign this order.';
+      end if;
+      select station_id, clearance_status into v_new_driver_station_id, v_new_driver_clearance
+        from workers where id = p_driver_worker_id;
+      if v_new_driver_station_id is null or v_new_driver_station_id <> o.station_id then
+        raise exception 'That driver does not belong to this station.';
+      end if;
+      if v_new_driver_clearance = 'flagged' then
+        raise exception 'This driver is flagged and cannot be assigned deliveries.';
+      end if;
+      update orders set status = 'assigned', driver_worker_id = p_driver_worker_id where id = p_order_id;
+      return;
+    elsif o.status in ('pending', 'assigned') and p_new_status = 'cancelled' then
+      update orders set status = 'cancelled' where id = p_order_id;
+      return;
+    elsif o.status = 'assigned' and p_new_status = 'pending' then
+      update orders set status = 'pending', driver_worker_id = null where id = p_order_id;
+      return;
+    else
+      raise exception 'Not a valid status change for a station owner.';
+    end if;
+  end if;
+
+  -- Driver: start/complete their own assigned delivery only.
+  select id into v_caller_worker_id from workers where profile_id = auth.uid();
+  if v_caller_worker_id is not null and o.driver_worker_id = v_caller_worker_id then
+    if o.status = 'assigned' and p_new_status = 'active' then
+      update orders set status = 'active' where id = p_order_id;
+      return;
+    elsif o.status in ('assigned', 'active') and p_new_status = 'done' then
+      update orders set
+        status = 'done',
+        empty_jugs_returned = coalesce(p_empty_jugs_returned, empty_jugs_returned),
+        payment_collected = coalesce(p_payment_collected, payment_collected),
+        jug_exchange_origin_station_id = case
+          when p_no_jug_exchange then null
+          else coalesce(p_jug_exchange_origin_station_id, jug_exchange_origin_station_id)
+        end
+      where id = p_order_id
+      returning * into o;
+
+      -- Automatic jug-provenance capture: closes the gap where this table
+      -- was only ever populated by a manual, order-disconnected guess.
+      -- jug_type is guarded against anything other than the two known
+      -- container shapes since orders.jug_type is free text (mirrors
+      -- water_type's convention) while jug_ledger_entries.jug_type is the
+      -- enum -- an unexpected value here should never block completing a
+      -- delivery.
+      if o.jug_exchange_origin_station_id is not null
+         and o.jug_exchange_origin_station_id <> o.station_id
+         and o.jug_type in ('slim_5gal', 'round_5gal')
+         and coalesce(o.empty_jugs_returned, 0) > 0 then
+        insert into jug_ledger_entries (holder_station_id, owner_station_id, jug_type, quantity, related_order_id)
+          values (o.station_id, o.jug_exchange_origin_station_id, o.jug_type::jug_type, o.empty_jugs_returned, o.id);
+      end if;
+
+      return;
+    else
+      raise exception 'Not a valid status change for a driver.';
+    end if;
+  end if;
+
+  raise exception 'Not authorized to change this order.';
+end;
+$$ language plpgsql security definer set search_path = public;
+
+
+-- ---------------------------------------------------------------------
+-- supabase/patch_website_content_cms.sql  (live migration 20260907162616)
+-- ---------------------------------------------------------------------
+-- =====================================================================
+-- Website content management: admin-editable content for the six static
+-- website pages (About, FAQ, Contact, For Station Owners, How
+-- Accreditation Works, Jug Clearinghouse Explainer), which previously had
+-- no admin editor at all -- their copy was hardcoded directly in the
+-- Dart widget trees. Follows the exact pattern already proven by
+-- `bulletins` (public-read/admin-write RLS + a service + an admin
+-- editor screen).
+--
+-- Also fixes a real, already-drifting bug found while researching this:
+-- permit type display labels/condition notes were hardcoded
+-- independently in permit_vault_screen.dart, permit_review_screen.dart,
+-- and how_accreditation_works_screen.dart -- three separate copies kept
+-- in sync only by hand (a recently-added permit type required editing
+-- all three). `permit_type_labels` collapses these into one shared,
+-- admin-editable source that both the app and the website read.
+--
+-- Every table is seeded verbatim from the current hardcoded copy, so
+-- nothing visibly changes on first deploy -- admin can edit from there.
+-- Paste into the Supabase SQL Editor and run once. Safe to re-run.
+-- =====================================================================
+
+create table if not exists web_page_sections (
+  id uuid primary key default gen_random_uuid(),
+  page_key text not null,
+  section_key text not null,
+  title text,
+  body text not null,
+  sort_order int not null default 0,
+  updated_by uuid references profiles(id),
+  updated_at timestamptz not null default now(),
+  unique (page_key, section_key)
+);
+
+create table if not exists web_content_items (
+  id uuid primary key default gen_random_uuid(),
+  page_key text not null,
+  item_key text not null,
+  icon text,
+  title text not null,
+  body text not null,
+  sort_order int not null default 0,
+  updated_by uuid references profiles(id),
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists web_content_items_page_item_idx on web_content_items (page_key, item_key, sort_order);
+
+create table if not exists web_faq_entries (
+  id uuid primary key default gen_random_uuid(),
+  question text not null,
+  answer text not null,
+  sort_order int not null default 0,
+  updated_by uuid references profiles(id),
+  updated_at timestamptz not null default now()
+);
+
+-- One row per permit_type enum value (currently 10). Update-only for
+-- admin -- the row set is fixed by the enum, so there's no insert/delete
+-- policy, only select/update.
+create table if not exists permit_type_labels (
+  permit_type permit_type primary key,
+  label text not null,
+  condition_note text not null,
+  sort_order int not null default 0,
+  updated_by uuid references profiles(id),
+  updated_at timestamptz not null default now()
+);
+
+alter table web_page_sections enable row level security;
+alter table web_content_items enable row level security;
+alter table web_faq_entries enable row level security;
+alter table permit_type_labels enable row level security;
+
+create policy web_page_sections_public_read on web_page_sections for select using (true);
+create policy web_page_sections_admin_insert on web_page_sections for insert with check (auth_has_role('wasa_admin'));
+create policy web_page_sections_admin_update on web_page_sections for update using (auth_has_role('wasa_admin'));
+create policy web_page_sections_admin_delete on web_page_sections for delete using (auth_has_role('wasa_admin'));
+
+create policy web_content_items_public_read on web_content_items for select using (true);
+create policy web_content_items_admin_insert on web_content_items for insert with check (auth_has_role('wasa_admin'));
+create policy web_content_items_admin_update on web_content_items for update using (auth_has_role('wasa_admin'));
+create policy web_content_items_admin_delete on web_content_items for delete using (auth_has_role('wasa_admin'));
+
+create policy web_faq_entries_public_read on web_faq_entries for select using (true);
+create policy web_faq_entries_admin_insert on web_faq_entries for insert with check (auth_has_role('wasa_admin'));
+create policy web_faq_entries_admin_update on web_faq_entries for update using (auth_has_role('wasa_admin'));
+create policy web_faq_entries_admin_delete on web_faq_entries for delete using (auth_has_role('wasa_admin'));
+
+create policy permit_type_labels_public_read on permit_type_labels for select using (true);
+create policy permit_type_labels_admin_update on permit_type_labels for update using (auth_has_role('wasa_admin'));
+
+-- ---- Seed: About -- "What WASA Does" bullets ----
+insert into web_content_items (page_key, item_key, title, body, sort_order) values
+  ('about', 'what_wasa_does', '', 'Reviews and accredits refilling stations before they can display the WASA verification seal.', 0),
+  ('about', 'what_wasa_does', '', 'Maintains a shared worker security registry, so a driver flagged for an incident at one station can''t simply move to another unnoticed.', 1),
+  ('about', 'what_wasa_does', '', 'Sets and enforces minimum floor prices to prevent predatory undercutting between member stations.', 2),
+  ('about', 'what_wasa_does', '', 'Coordinates the inter-station jug clearinghouse, so reusable 5-gallon containers get settled fairly between stations.', 3)
+on conflict do nothing;
+
+-- ---- Seed: FAQ ----
+insert into web_faq_entries (question, answer, sort_order) values
+  ('Who can order water through GENTRI WASA?', 'Anyone can browse the station directory and community bulletin without an account. Placing an order requires a free customer account, so deliveries are tied to a real, trackable identity rather than anonymous device state.', 0),
+  ('How do I know a station is legitimate?', 'Look for the green "WASA Verified" seal on the station directory and map. It only appears once every required permit has been reviewed and approved by a WASA admin -- a station cannot grant itself this seal.', 1),
+  ('What permits does a station need to get accredited?', 'A Mayor''s Business Permit, a Sanitary Permit, and an FDA License to Operate are required for every station. Stations offering alkaline water also need an Alkaline Machine Technical Certification and an Alkaline Water Quality Test Report.', 2),
+  ('How long does accreditation review take?', 'There''s no fixed timeline -- a WASA admin reviews each uploaded document individually and either approves it or rejects it with a stated reason, so an owner always knows exactly what to fix and can re-upload immediately.', 3),
+  ('Can I schedule a delivery instead of ordering ASAP?', 'Yes -- the order form has an ASAP/Scheduled toggle. Choosing Scheduled lets you pick a future date and time for delivery instead of requesting the soonest available driver.', 4),
+  ('How do I pay?', 'Cash on delivery. The total (jugs x price, plus delivery fee) is shown before you confirm the order and again when the driver arrives.', 5),
+  ('What is the floor price, and why does it exist?', 'WASA sets a minimum price per water type across all member stations, so no station can undercut competitors to the point of predatory pricing. Every station''s price must stay at or above this floor.', 6),
+  ('What happens if I have a problem with a driver or station?', 'Station owners can file a security incident against a worker through the shared clearance registry, which follows that worker even if they move to another member station. Residents can reach the association directly through the Contact page.', 7)
+on conflict do nothing;
+
+-- ---- Seed: Contact ----
+insert into web_page_sections (page_key, section_key, body, sort_order) values
+  ('contact', 'address', '[Placeholder] Association Office Address, General Trias, Cavite', 0),
+  ('contact', 'hours', '[Placeholder] Office Hours: Monday-Friday, 8:00 AM - 5:00 PM', 1),
+  ('contact', 'email', 'contact@gentriwasa.example', 2)
+on conflict do nothing;
+
+-- ---- Seed: For Station Owners ----
+insert into web_content_items (page_key, item_key, icon, title, body, sort_order) values
+  ('for_station_owners', 'benefits', 'verified', 'Official Recognition', 'Accredited stations get the WASA verification seal on the public directory and map.', 0),
+  ('for_station_owners', 'benefits', 'security', 'Worker Accountability', 'Screen prospective drivers/helpers against the shared cross-station clearance registry before hiring.', 1),
+  ('for_station_owners', 'benefits', 'price_change', 'Fair Pricing Protection', 'Association-wide floor prices protect member stations from predatory undercutting.', 2),
+  ('for_station_owners', 'benefits', 'swap_horiz', 'Jug Clearinghouse', 'Settle Slim/Round 5-gallon jug balances with other stations through one shared ledger.', 3)
+on conflict do nothing;
+
+insert into web_page_sections (page_key, section_key, body, sort_order) values
+  ('for_station_owners', 'requirements_summary', 'Business Permit, Sanitary Permit, FDA License to Operate, a Fire Safety Inspection Certificate, a Water Quality Test Report, and an Operator Training Certificate at minimum -- plus additional certifications if you offer alkaline water or source your own well water.', 0)
+on conflict do nothing;
+
+-- ---- Seed: How Accreditation Works -- process steps ----
+insert into web_content_items (page_key, item_key, title, body, sort_order) values
+  ('how_accreditation_works', 'steps', 'Register the station', 'The owner creates an account and registers their station with basic details (name, address, offered water types).', 0),
+  ('how_accreditation_works', 'steps', 'Upload required documents', 'Every station uploads its Business Permit, Sanitary Permit, FDA License, Fire Safety Inspection Certificate, Water Quality Test Report, and Operator Training Certificate. Stations offering alkaline water also upload two additional certifications, and WASA may require the NWRB Water Permit/Certificate of Public Convenience for stations sourcing their own well water.', 1),
+  ('how_accreditation_works', 'steps', 'WASA reviews each document', 'A WASA admin reviews every uploaded document individually -- approving, or rejecting with a stated reason so the owner knows exactly what to fix.', 2),
+  ('how_accreditation_works', 'steps', 'Accreditation is automatic once complete', 'The moment every required document is approved, the station is automatically marked accredited -- no separate manual step, and no way for a station to grant itself accreditation.', 3),
+  ('how_accreditation_works', 'steps', 'The colorum-verification seal appears', 'Accredited, WASA-verified stations get the verification seal on the public station directory, so residents can tell a legitimate operator from an unlicensed one at a glance.', 4)
+on conflict do nothing;
+
+-- ---- Seed: Jug Clearinghouse Explainer ----
+-- Step 1's copy is corrected here (not just copied verbatim) -- it used
+-- to describe the old fully-manual recording flow; patch_jug_provenance.sql
+-- made this automatic at delivery completion, so the explainer should
+-- say that, not the outdated mechanism.
+insert into web_page_sections (page_key, section_key, body, sort_order) values
+  ('jug_clearinghouse', 'intro', 'Reusable Slim and Round 5-gallon jugs regularly end up at a different station than the one that owns them -- a driver delivers water in one station''s jug, and picks up an empty jug bearing a competitor''s brand. Without a shared system, that jug is effectively lost to its owner. The clearinghouse makes those swaps fair and auditable across the whole association.', 0)
+on conflict do nothing;
+
+insert into web_content_items (page_key, item_key, title, body, sort_order) values
+  ('jug_clearinghouse', 'steps', 'A jug crosses station lines', 'When a customer exchanges an empty jug at a different station than the one that owns it, the app automatically records who now holds the jug and who it belongs to as soon as the delivery is completed.', 0),
+  ('jug_clearinghouse', 'steps', 'The ledger tracks who holds what', 'Every cross-station transfer is logged as a ledger entry -- which station now holds the jug, and which station originally owns it.', 1),
+  ('jug_clearinghouse', 'steps', 'Balances net out automatically', 'Instead of settling jug-by-jug, the system nets all transfers between two stations into a single running balance per jug type.', 2),
+  ('jug_clearinghouse', 'steps', 'Stations propose and confirm settlement', 'A holder station proposes a settlement to clear its balance; the owner station confirms or rejects it. Confirming atomically posts the offsetting ledger entry, so the balance can''t drift or be double-counted.', 3)
+on conflict do nothing;
+
+-- ---- Seed: permit type labels (all 10 known values) ----
+insert into permit_type_labels (permit_type, label, condition_note, sort_order) values
+  ('business_permit', 'Mayor''s Business Permit', 'Required for every station.', 0),
+  ('sanitary_permit', 'Sanitary Permit', 'Required for every station.', 1),
+  ('fda_license', 'FDA License to Operate', 'Required for every station.', 2),
+  ('fire_safety_certificate', 'Fire Safety Inspection Certificate (BFP)', 'Required for every station.', 3),
+  ('water_quality_test_report', 'Water Quality Test Report (DOH)', 'Required for every station.', 4),
+  ('operator_training_certificate', 'Operator Training Certificate (CCWRSPO)', 'Required for every station.', 5),
+  ('alkaline_tech_cert', 'Alkaline Machine Technical Certification', 'Only required if the station offers alkaline water.', 6),
+  ('alkaline_water_test', 'Alkaline Water Quality Test Report', 'Only required if the station offers alkaline water.', 7),
+  ('nwrb_water_permit', 'NWRB Water Permit', 'Required only for stations sourcing their own well water; WASA confirms this per station.', 8),
+  ('nwrb_certificate_of_public_convenience', 'NWRB Certificate of Public Convenience', 'Required only for stations sourcing their own well water; WASA confirms this per station.', 9)
+on conflict (permit_type) do nothing;
+
+
+-- ---------------------------------------------------------------------
+-- supabase/patch_accredited_at.sql  (live migration 20260908111123)
+-- ---------------------------------------------------------------------
+-- Records WHEN a station became accredited, so the admin dashboard can chart
+-- accreditations over time.
+--
+-- Why this is needed: water_stations has created_at (registered),
+-- updated_at (last edited, for any reason) and accreditation_override_at
+-- (manual certification only). None of them answers "when did this station
+-- become accredited". Charting updated_at would silently mislabel "someone
+-- edited the phone number" as "accredited this month".
+--
+-- Why a trigger rather than editing the functions that grant accreditation:
+-- is_accredited is written from two places -- recompute_accreditation()
+-- (patch_admin_accreditation_override.sql) when a permit changes, and
+-- set_accreditation_override() when an admin manually certifies. A BEFORE
+-- UPDATE trigger on the transition catches both, plus any future path,
+-- without touching either function's logic.
+--
+-- Historical rows stay null on purpose: there is no honest way to backfill a
+-- date that was never recorded, so the dashboard labels its earliest bucket
+-- rather than inventing history. Idempotent -- safe to run more than once.
+
+alter table water_stations add column if not exists accredited_at timestamptz;
+
+comment on column water_stations.accredited_at is
+  'When is_accredited last became true. Null for stations accredited before this column existed, and cleared if accreditation is lost.';
+
+create or replace function stamp_accredited_at() returns trigger as $$
+begin
+  if new.is_accredited and not coalesce(old.is_accredited, false) then
+    -- false -> true: this is the moment of accreditation.
+    new.accredited_at := now();
+  elsif not new.is_accredited then
+    -- Lost (or never had) accreditation. Clearing means a station that is
+    -- re-accredited later gets the new date rather than a stale first one,
+    -- which is what "accredited this quarter" should count.
+    new.accredited_at := null;
+  end if;
+  return new;
+end;
+$$ language plpgsql;
+
+drop trigger if exists trg_stamp_accredited_at on water_stations;
+create trigger trg_stamp_accredited_at
+  before update on water_stations
+  for each row
+  when (old.is_accredited is distinct from new.is_accredited)
+  execute function stamp_accredited_at();
+
+-- A station inserted already accredited would otherwise never fire the
+-- update trigger.
+create or replace function stamp_accredited_at_insert() returns trigger as $$
+begin
+  if new.is_accredited then
+    new.accredited_at := coalesce(new.accredited_at, now());
+  end if;
+  return new;
+end;
+$$ language plpgsql;
+
+drop trigger if exists trg_stamp_accredited_at_insert on water_stations;
+create trigger trg_stamp_accredited_at_insert
+  before insert on water_stations
+  for each row
+  execute function stamp_accredited_at_insert();
+
+create index if not exists water_stations_accredited_at_idx
+  on water_stations (accredited_at)
+  where accredited_at is not null;
+
+
+-- ---------------------------------------------------------------------
+-- supabase/patch_admin_activity_view.sql  (live migration 20260908114008 + 20260908114423 (actor_name))
+-- ---------------------------------------------------------------------
+-- Read-only "who did what" feed for the WASA admin portal.
+--
+-- Every admin mutation in this schema already stamps an actor and a
+-- timestamp -- permits.reviewed_by/at, worker_incidents.resolved_by/at,
+-- worker_credentials.reviewed_by/at, water_stations.accreditation_override_
+-- by/at, and updated_by/at on all four CMS tables. Until now exactly one of
+-- those was ever read back (permit_review_screen.dart renders "manually
+-- certified by X"), so an admin could not answer "who suspended this
+-- account?" or "what did I approve last week?"
+--
+-- This is a view, not a new audit table: the data is already being written,
+-- so logging it a second time would add a write path that could disagree
+-- with the records it is supposed to describe. The trade-off is that it only
+-- shows the LATEST action per row -- re-reviewing a permit overwrites
+-- reviewed_at, so this is an activity feed, not a full history. A real
+-- append-only audit log would be a separate change.
+--
+-- security_invoker = on so the querying user's own RLS applies: admins
+-- already have read access to every underlying table and nobody else does,
+-- so this view cannot become a way around those policies.
+
+create or replace view admin_activity
+with (security_invoker = on) as
+select a.actor_id, a.occurred_at, a.category, a.action, a.subject,
+       coalesce(pr.full_name, 'Unknown') as actor_name
+from (
+  select
+    p.reviewed_by                              as actor_id,
+    p.reviewed_at                              as occurred_at,
+    'Permit'                                   as category,
+    case p.status::text
+      when 'approved' then 'Approved permit'
+      when 'rejected' then 'Rejected permit'
+      else 'Reviewed permit'
+    end                                        as action,
+    coalesce(ws.station_name, 'Unknown station') || ' - ' || p.permit_type::text as subject
+  from permits p
+  left join water_stations ws on ws.id = p.station_id
+  where p.reviewed_by is not null and p.reviewed_at is not null
+
+  union all
+
+  select
+    wi.resolved_by,
+    wi.resolved_at,
+    'Worker incident',
+    case wi.status::text
+      when 'confirmed_flag' then 'Confirmed flag on'
+      when 'dismissed' then 'Dismissed incident for'
+      else 'Resolved incident for'
+    end,
+    coalesce(w.full_name, 'Unknown worker')
+  from worker_incidents wi
+  left join workers w on w.id = wi.worker_id
+  where wi.resolved_by is not null and wi.resolved_at is not null
+
+  union all
+
+  select
+    wc.reviewed_by,
+    wc.reviewed_at,
+    'Worker credential',
+    case wc.status::text
+      when 'approved' then 'Approved credential for'
+      when 'rejected' then 'Rejected credential for'
+      else 'Reviewed credential for'
+    end,
+    coalesce(w.full_name, 'Unknown worker') || ' (' || wc.credential_type::text || ')'
+  from worker_credentials wc
+  left join workers w on w.id = wc.worker_id
+  where wc.reviewed_by is not null and wc.reviewed_at is not null
+
+  union all
+
+  select
+    ws.accreditation_override_by,
+    ws.accreditation_override_at,
+    'Accreditation',
+    'Manually certified',
+    ws.station_name
+  from water_stations ws
+  where ws.accreditation_override_by is not null and ws.accreditation_override_at is not null
+
+  union all
+
+  select s.updated_by, s.updated_at, 'Website content', 'Edited section', s.page_key || ' / ' || s.section_key
+  from web_page_sections s
+  where s.updated_by is not null
+
+  union all
+
+  select i.updated_by, i.updated_at, 'Website content', 'Edited item', i.page_key || ' / ' || i.item_key
+  from web_content_items i
+  where i.updated_by is not null
+
+  union all
+
+  select f.updated_by, f.updated_at, 'Website content', 'Edited FAQ', f.question
+  from web_faq_entries f
+  where f.updated_by is not null
+
+  union all
+
+  select l.updated_by, l.updated_at, 'Website content', 'Edited permit label', l.permit_type::text
+  from permit_type_labels l
+  where l.updated_by is not null
+) a
+left join profiles pr on pr.id = a.actor_id;
+
+comment on view admin_activity is
+  'Latest recorded admin action per row, unioned from the actor columns the app already writes. Activity feed, not an append-only audit log.';
+
+
+-- ---------------------------------------------------------------------
+-- supabase/patch_server_side_pricing.sql  (live migration 20260910204546)
+-- ---------------------------------------------------------------------
+-- =====================================================================
+-- Server-side order pricing (Phase 1 of the product-catalog work).
+--
+-- Before this patch, insert_quick_order stored p_subtotal, p_delivery_fee
+-- and p_total_amount exactly as the phone sent them. It runs SECURITY
+-- DEFINER and is executable by anon, so anyone -- no sign-in needed --
+-- could place an order at any price they liked; the driver would then
+-- collect whatever the order said. Quantity, water type and container were
+-- not validated either. (There were no orders in the live database when
+-- this was found, so nothing had been exploited.)
+--
+-- This patch:
+--   1. Drops two stale overloads left behind by earlier patches.
+--   2. Makes the server the only thing that decides what an order costs.
+--      The money parameters are kept purely so existing callers -- the
+--      current app and already-installed test APKs -- keep resolving to
+--      this function unchanged. Their values are ignored.
+--   3. Stops the floor-price trigger firing when nothing it checks changed.
+--      It was declared "UPDATE OF price_per_jug, offered_water_types",
+--      which fires whenever those columns are in the SET list -- and the
+--      station profile screen always sends offered_water_types -- so any
+--      profile save by a station priced under a floor failed, even a name
+--      change.
+--   4. Clears the test floor prices (purified 100 / mineral 380 /
+--      alkaline 55) until the association sets real ones.
+--
+-- Idempotent -- safe to run more than once.
+-- =====================================================================
+
+-- ---------------------------------------------------------------------
+-- 1. Stale overloads. The app always calls with all 14 named parameters
+--    (lib/services/order_service.dart), which resolves to the version
+--    replaced below; these two only existed as leftovers, and both skip
+--    the jug-exchange validation the current version does.
+-- ---------------------------------------------------------------------
+drop function if exists insert_quick_order(
+  uuid, double precision, double precision, integer, text,
+  numeric, numeric, numeric, text, text, text, timestamptz);
+drop function if exists insert_quick_order(
+  uuid, double precision, double precision, integer, text,
+  numeric, numeric, numeric, text, text, text, timestamptz, text);
+
+-- ---------------------------------------------------------------------
+-- 2. Server-computed money. Same argument list as before, so this is a
+--    true replacement rather than a new overload.
+-- ---------------------------------------------------------------------
+create or replace function insert_quick_order(
+  p_station_id uuid,
+  p_lat double precision,
+  p_lng double precision,
+  p_jugs_ordered integer,
+  p_water_type text,
+  p_subtotal numeric,        -- IGNORED: kept for caller compatibility
+  p_delivery_fee numeric,    -- IGNORED: kept for caller compatibility
+  p_total_amount numeric,    -- IGNORED: kept for caller compatibility
+  p_guest_name text default null,
+  p_guest_phone text default null,
+  p_client_request_id text default null,
+  p_scheduled_for timestamptz default null,
+  p_jug_type text default null,
+  p_jug_exchange_origin_station_id uuid default null
+) returns uuid as $$
+declare
+  new_order_id uuid;
+  s water_stations%rowtype;
+  v_origin uuid;
+  v_subtotal numeric(10,2);
+  -- Default ceiling per order; for the association to confirm.
+  v_max_jugs constant integer := 50;
+begin
+  -- Idempotent replay: a retried request returns the order it already made.
+  if p_client_request_id is not null then
+    select id into new_order_id from orders where client_request_id = p_client_request_id;
+    if new_order_id is not null then
+      return new_order_id;
+    end if;
+  end if;
+
+  select * into s from water_stations where id = p_station_id;
+
+  -- Same visibility rule as the public_stations view: a station customers
+  -- can't see must not be orderable by calling this function directly.
+  if not found or not s.is_active or not s.is_colorum_verified then
+    raise exception 'This station is not available for ordering.';
+  end if;
+  if not coalesce(s.accepts_new_orders, true) then
+    raise exception 'This station is not currently accepting orders.';
+  end if;
+
+  if p_jugs_ordered is null or p_jugs_ordered < 1 or p_jugs_ordered > v_max_jugs then
+    raise exception 'Please order between 1 and % jugs.', v_max_jugs;
+  end if;
+  if p_water_type is null or not (p_water_type = any(s.offered_water_types)) then
+    raise exception 'This station does not offer % water.', coalesce(p_water_type, 'that');
+  end if;
+  -- A station that declares containers must be ordered in one of them.
+  if cardinality(coalesce(s.offered_jug_types::text[], '{}')) > 0
+     and (p_jug_type is null or not (p_jug_type = any(s.offered_jug_types::text[]))) then
+    raise exception 'This station does not offer that container.';
+  end if;
+  if s.price_per_jug is null or s.price_per_jug <= 0 then
+    raise exception 'This station has not set its prices yet.';
+  end if;
+
+  v_subtotal := p_jugs_ordered * s.price_per_jug;
+
+  v_origin := case
+    when p_jug_exchange_origin_station_id is not null
+      and p_jug_exchange_origin_station_id <> p_station_id
+      and coalesce(s.offers_jug_exchange, false)
+    then p_jug_exchange_origin_station_id
+    else null
+  end;
+
+  insert into orders (
+    station_id, customer_profile_id, guest_name, guest_phone,
+    delivery_location, jugs_ordered, water_type, jug_type,
+    subtotal, delivery_fee, total_amount, customer_phone, client_request_id, scheduled_for,
+    jug_exchange_origin_station_id
+  ) values (
+    p_station_id,
+    case when auth.uid() is not null then auth.uid() else null end,
+    case when auth.uid() is null then p_guest_name else null end,
+    case when auth.uid() is null then p_guest_phone else null end,
+    st_setsrid(st_makepoint(p_lng, p_lat), 4326)::geography,
+    p_jugs_ordered, p_water_type, p_jug_type,
+    v_subtotal, s.delivery_fee, v_subtotal + s.delivery_fee,
+    p_guest_phone, p_client_request_id, p_scheduled_for,
+    v_origin
+  ) returning id into new_order_id;
+
+  return new_order_id;
+end;
+$$ language plpgsql security definer set search_path = public;
+
+-- ---------------------------------------------------------------------
+-- 3. Floor-price check only when something it checks actually changed.
+--    Done in the function rather than a trigger WHEN clause, because a
+--    trigger covering INSERT can't reference OLD.
+-- ---------------------------------------------------------------------
+create or replace function enforce_floor_price() returns trigger as $$
+declare
+  v_floor numeric(10,2);
+begin
+  if tg_op = 'UPDATE'
+     and new.price_per_jug is not distinct from old.price_per_jug
+     and new.offered_water_types is not distinct from old.offered_water_types then
+    return new;
+  end if;
+
+  select max(min_price_per_jug) into v_floor
+    from floor_prices
+    where association_id = new.association_id
+      and water_type = any(new.offered_water_types);
+
+  if v_floor is not null and new.price_per_jug < v_floor then
+    raise exception 'price_per_jug (%) is below the association floor price (%) for one or more offered water types.', new.price_per_jug, v_floor;
+  end if;
+
+  return new;
+end;
+$$ language plpgsql security definer set search_path = public;
+
+-- ---------------------------------------------------------------------
+-- 4. Test floor prices out until the association sets real ones.
+-- ---------------------------------------------------------------------
+delete from floor_prices;
