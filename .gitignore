@@ -44,8 +44,11 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 
-# Supabase Edge Functions Secrets
-supabase/.envgit
+# Supabase Edge Functions Secrets (local `supabase functions serve` reads
+# these -- e.g. ORS_API_KEY). Also caught by the `.env` rule below, but kept
+# explicit so it doesn't silently depend on that rule staying unanchored.
+supabase/.env
+supabase/functions/.env
 
 # Secret Environment Variables
 .env
