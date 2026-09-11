@@ -8,6 +8,7 @@ import '../../services/photo_service.dart';
 import '../../services/supabase_service.dart';
 import '../public/info/about_wasa_hub_screen.dart';
 import '../app_route.dart';
+import 'products_screen.dart';
 
 /// Builds the `profiles` table update payload (trimmed). Split from
 /// [buildStationPayload] since profile identity and station business data
@@ -49,9 +50,7 @@ class _MerchantProfileScreenState extends State<MerchantProfileScreen> {
   Map<String, dynamic>? _profileData;
   Map<String, dynamic>? _stationData;
   bool _isAcceptingOrders = true;
-  final Set<String> _offeredJugTypes = {};
   bool _offersJugExchange = false;
-  final Set<String> _offeredWaterTypes = {};
   final Set<int> _operatingDays = {1, 2, 3, 4, 5, 6, 7};
   TimeOfDay? _opensAt;
   TimeOfDay? _closesAt;
@@ -140,13 +139,7 @@ class _MerchantProfileScreenState extends State<MerchantProfileScreen> {
           _latitudeController.text = (station?['latitude'] as num?)?.toString() ?? '';
           _longitudeController.text = (station?['longitude'] as num?)?.toString() ?? '';
           _isAcceptingOrders = station?['accepts_new_orders'] as bool? ?? true;
-          _offeredJugTypes
-            ..clear()
-            ..addAll(List<String>.from(station?['offered_jug_types'] as List? ?? const []));
           _offersJugExchange = station?['offers_jug_exchange'] as bool? ?? false;
-          _offeredWaterTypes
-            ..clear()
-            ..addAll(List<String>.from(station?['offered_water_types'] as List? ?? const []));
           final operatingDaysRaw = station?['operating_days'] as List?;
           _operatingDays
             ..clear()
@@ -257,9 +250,10 @@ class _MerchantProfileScreenState extends State<MerchantProfileScreen> {
         stationPayload['longitude'] = lng;
       }
       stationPayload['accepts_new_orders'] = _isAcceptingOrders;
-      stationPayload['offered_jug_types'] = _offeredJugTypes.toList();
+      // Water types and containers are no longer saved from here: they're
+      // derived from the station's products (Products tab), and writing this
+      // screen's copy back would overwrite them with whatever was loaded.
       stationPayload['offers_jug_exchange'] = _offersJugExchange;
-      stationPayload['offered_water_types'] = _offeredWaterTypes.toList();
       // All 7 days selected is treated as "no restriction" (same as never
       // having set a schedule) rather than storing a literal every-day
       // array -- keeps the common case simple for isOpenNow to interpret.
@@ -665,57 +659,16 @@ class _MerchantProfileScreenState extends State<MerchantProfileScreen> {
               subtitle: const Text('Turn off when closed -- customers will see this station as closed and can\'t order.', style: TextStyle(fontSize: 12)),
             ),
             const Divider(),
-            const Align(alignment: Alignment.centerLeft, child: Text('Water Types Offered', style: TextStyle(fontWeight: FontWeight.w600))),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              children: [
-                FilterChip(
-                  label: const Text('Purified'),
-                  selected: _offeredWaterTypes.contains('purified'),
-                  onSelected: (v) => setState(() => v ? _offeredWaterTypes.add('purified') : _offeredWaterTypes.remove('purified')),
-                ),
-                FilterChip(
-                  label: const Text('Mineral'),
-                  selected: _offeredWaterTypes.contains('mineral'),
-                  onSelected: (v) => setState(() => v ? _offeredWaterTypes.add('mineral') : _offeredWaterTypes.remove('mineral')),
-                ),
-                FilterChip(
-                  label: const Text('Alkaline'),
-                  selected: _offeredWaterTypes.contains('alkaline'),
-                  onSelected: (v) => setState(() => v ? _offeredWaterTypes.add('alkaline') : _offeredWaterTypes.remove('alkaline')),
-                ),
-                FilterChip(
-                  label: const Text('Distilled'),
-                  selected: _offeredWaterTypes.contains('distilled'),
-                  onSelected: (v) => setState(() => v ? _offeredWaterTypes.add('distilled') : _offeredWaterTypes.remove('distilled')),
-                ),
-              ],
-            ),
-            const Padding(
-              padding: EdgeInsets.only(top: 4),
-              child: Text(
-                'Checking Alkaline will require two extra permits before you\'re accredited for it.',
-                style: TextStyle(fontSize: 12, color: Colors.grey),
-              ),
-            ),
-            const Divider(),
-            const Align(alignment: Alignment.centerLeft, child: Text('Container Options', style: TextStyle(fontWeight: FontWeight.w600))),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              children: [
-                FilterChip(
-                  label: const Text('Slim 5-gal'),
-                  selected: _offeredJugTypes.contains('slim_5gal'),
-                  onSelected: (v) => setState(() => v ? _offeredJugTypes.add('slim_5gal') : _offeredJugTypes.remove('slim_5gal')),
-                ),
-                FilterChip(
-                  label: const Text('Round 5-gal'),
-                  selected: _offeredJugTypes.contains('round_5gal'),
-                  onSelected: (v) => setState(() => v ? _offeredJugTypes.add('round_5gal') : _offeredJugTypes.remove('round_5gal')),
-                ),
-              ],
+            // Water types and containers used to be chips here, with no price
+            // anywhere. They now come from the station's products, where each
+            // one carries its own price.
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.sell_outlined),
+              title: const Text('Products & prices', style: TextStyle(fontWeight: FontWeight.w600)),
+              subtitle: const Text('Water types, containers, prices and delivery fee', style: TextStyle(fontSize: 12)),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => Navigator.push(context, appRoute(const ProductsScreen())),
             ),
             SwitchListTile(
               contentPadding: EdgeInsets.zero,

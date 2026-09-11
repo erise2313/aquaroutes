@@ -4,7 +4,9 @@ import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../../constants/web_theme.dart';
+import '../../models/product.dart';
 import '../../models/station.dart';
+import '../../services/product_service.dart';
 import '../../services/station_service.dart';
 import '../../services/supabase_service.dart';
 import '../../utils/formatters.dart';
@@ -35,10 +37,13 @@ class StationDetailScreen extends StatefulWidget {
 
 class _StationDetailScreenState extends State<StationDetailScreen> {
   final _stationService = StationService(SupabaseService.instance);
+  final _productService = ProductService(SupabaseService.instance);
 
   bool _isLoading = true;
   String? _error;
   PublicStation? _station;
+  List<StationProduct> _products = [];
+  Map<String, ContainerType> _containers = {};
 
   @override
   void initState() {
@@ -62,7 +67,27 @@ class _StationDetailScreenState extends State<StationDetailScreen> {
     });
     try {
       final station = await _stationService.fetchPublicStation(widget.stationId);
-      if (mounted) setState(() { _station = station; _isLoading = false; });
+      var products = <StationProduct>[];
+      var containers = <String, ContainerType>{};
+      if (station != null) {
+        try {
+          containers = {for (final c in await _productService.fetchContainerTypes()) c.code: c};
+          products = (await _productService.fetchStationProducts(station.id))
+              .where((p) => p.isAvailable && containers.containsKey(p.containerCode))
+              .toList();
+        } catch (_) {
+          // The page still works without the price list; it falls back to
+          // the station's "from" price.
+        }
+      }
+      if (mounted) {
+        setState(() {
+          _station = station;
+          _products = products;
+          _containers = containers;
+          _isLoading = false;
+        });
+      }
     } catch (e) {
       if (mounted) setState(() { _error = 'Could not load this station: $e'; _isLoading = false; });
     }
@@ -297,7 +322,6 @@ class _StationDetailScreenState extends State<StationDetailScreen> {
         _sectionTitle('What they offer'),
         const SizedBox(height: 12),
         _factRow(Icons.local_drink_outlined, 'Water types', _titleCaseList(station.offeredWaterTypes)),
-        _factRow(Icons.water_drop_outlined, 'Jug sizes', _jugLabel(station.offeredJugTypes)),
         _factRow(
           Icons.swap_horiz,
           'Jug exchange',
@@ -308,7 +332,14 @@ class _StationDetailScreenState extends State<StationDetailScreen> {
         const SizedBox(height: 28),
         _sectionTitle('Prices'),
         const SizedBox(height: 12),
-        _factRow(Icons.payments_outlined, 'Per jug', formatPeso(station.pricePerJug)),
+        if (_products.isNotEmpty)
+          _priceTable()
+        else
+          _factRow(
+            Icons.payments_outlined,
+            'Price',
+            station.pricePerJug > 0 ? 'From ${formatPeso(station.pricePerJug)}' : 'No prices listed yet',
+          ),
         _factRow(
           Icons.delivery_dining_outlined,
           'Delivery fee',
@@ -421,14 +452,47 @@ class _StationDetailScreenState extends State<StationDetailScreen> {
     return values.map((v) => v.isEmpty ? v : v[0].toUpperCase() + v.substring(1)).join(', ');
   }
 
-  String _jugLabel(List<String> jugTypes) {
-    if (jugTypes.isEmpty) return 'Not specified';
-    return jugTypes
-        .map((j) => switch (j) {
-              'slim_5gal' => 'Slim 5-gallon',
-              'round_5gal' => 'Round 5-gallon',
-              _ => j,
-            })
-        .join(', ');
+  /// Every product the station sells, grouped by water type. Replaces the
+  /// single "per jug" figure, which couldn't describe bottles or new jugs.
+  Widget _priceTable() {
+    final palette = WebTheme.of(context);
+    final grouped = groupProductsByWaterType(_products, _containers);
+    return Container(
+      margin: const EdgeInsets.only(bottom: 14),
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        border: Border.all(color: palette.border),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (final entry in grouped.entries) ...[
+            Container(
+              color: palette.foam,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Text(waterTypeLabel(entry.key), style: TextStyle(fontWeight: FontWeight.w700, color: palette.ink)),
+            ),
+            for (final p in entry.value)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        p.kind == ProductKind.refill
+                            ? '${_containers[p.containerCode]!.label} refill'
+                            : '${_containers[p.containerCode]!.label} (new container)',
+                        style: TextStyle(color: palette.ink),
+                      ),
+                    ),
+                    Text(formatPeso(p.price), style: TextStyle(fontWeight: FontWeight.w600, color: palette.ink)),
+                  ],
+                ),
+              ),
+          ],
+        ],
+      ),
+    );
   }
 }

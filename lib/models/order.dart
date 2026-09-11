@@ -13,17 +13,64 @@ OrderStatus orderStatusFromString(String value) {
   );
 }
 
-/// "Slim 5-gal"/"Round 5-gal" for display, or null if unset (older orders
-/// placed before jug_type existed, or a station with no declared shapes).
-String? jugTypeLabel(String? jugType) {
-  switch (jugType) {
+/// Display name for a container code ("500 mL bottle"). Covers the starter
+/// container list so a screen renders sensibly even without loading
+/// `container_types`; a label from the database should win where a screen
+/// has one, since the association can rename containers.
+String? containerLabel(String? code) {
+  switch (code) {
     case 'slim_5gal':
       return 'Slim 5-gal';
     case 'round_5gal':
       return 'Round 5-gal';
+    case 'gallon_1':
+      return '1-gallon';
+    case 'bottle_500ml':
+      return '500 mL bottle';
+    case 'bottle_350ml':
+      return '350 mL bottle';
     default:
       return null;
   }
+}
+
+/// Kept for existing callers; containers are no longer only 5-gallon jugs.
+String? jugTypeLabel(String? jugType) => containerLabel(jugType);
+
+/// One order line worded for what was actually bought:
+/// "3 × Slim 5-gal refill · Purified", "2 × 500 mL bottle (new) · Mineral".
+///
+/// Replaces "3 jugs of purified", which was wrong for bottles and for buying
+/// a new container. Orders placed before the product catalog have no kind,
+/// and read as "3 × Slim 5-gal · Purified".
+String describeOrderLine({
+  required int quantity,
+  required String waterType,
+  String? containerCode,
+  String? containerLabelOverride,
+  String? productKind,
+}) {
+  final water = waterType.isEmpty ? waterType : waterType[0].toUpperCase() + waterType.substring(1);
+  final container = containerLabelOverride ?? containerLabel(containerCode);
+  if (container == null) return '$quantity × $water';
+  final what = switch (productKind) {
+    'refill' => '$container refill',
+    'new_container' => '$container (new)',
+    _ => container,
+  };
+  return '$quantity × $what · $water';
+}
+
+/// Whether a delivery should come back with empty containers: only refills
+/// of returnable containers do. A new-container purchase leaves the
+/// customer's jug with them, and bottles aren't returned at all.
+///
+/// Orders from before the catalog have no kind and were always 5-gallon
+/// jugs, so a missing container or kind counts as a returnable refill.
+bool expectsEmptyContainers({String? productKind, String? containerCode, bool? isReturnable}) {
+  final returnable = isReturnable ??
+      (containerCode == null || containerCode == 'slim_5gal' || containerCode == 'round_5gal');
+  return returnable && (productKind == null || productKind == 'refill');
 }
 
 class Order {
@@ -48,6 +95,12 @@ class Order {
   final bool? paymentCollected;
   final DateTime createdAt;
 
+  /// Snapshot of what was bought, at the price it was bought for. Null on
+  /// orders placed before the product catalog.
+  final String? productId;
+  final double? unitPrice;
+  final String? productKind;
+
   const Order({
     required this.id,
     required this.stationId,
@@ -69,6 +122,9 @@ class Order {
     this.emptyJugsReturned,
     this.paymentCollected,
     required this.createdAt,
+    this.productId,
+    this.unitPrice,
+    this.productKind,
   });
 
   String get displayName => guestName ?? customerPhone ?? 'Customer';
@@ -95,14 +151,17 @@ class Order {
       emptyJugsReturned: map['empty_jugs_returned'] as int?,
       paymentCollected: map['payment_collected'] as bool?,
       createdAt: DateTime.parse(map['created_at'] as String),
+      productId: map['product_id'] as String?,
+      unitPrice: (map['unit_price'] as num?)?.toDouble(),
+      productKind: map['product_kind'] as String?,
     );
   }
 }
 
-/// Result row from the lookup_guest_order() RPC (0008_bulletin.sql) --
-/// deliberately a narrower summary than [Order] (no delivery coordinates,
-/// no other-customer fields), since a guest-phone-verified lookup is meant
-/// to answer "where's my order," not expose the full row.
+/// Result row from the lookup_guest_order() RPC -- deliberately a narrower
+/// summary than [Order] (no delivery coordinates, no other-customer fields),
+/// since a guest-phone-verified lookup is meant to answer "where's my
+/// order," not expose the full row.
 class GuestOrderStatus {
   final String id;
   final String stationName;
@@ -112,6 +171,8 @@ class GuestOrderStatus {
   final String? jugType;
   final double totalAmount;
   final DateTime createdAt;
+  final String? containerLabelText;
+  final String? productKind;
 
   const GuestOrderStatus({
     required this.id,
@@ -122,7 +183,17 @@ class GuestOrderStatus {
     this.jugType,
     required this.totalAmount,
     required this.createdAt,
+    this.containerLabelText,
+    this.productKind,
   });
+
+  String get lineDescription => describeOrderLine(
+        quantity: jugsOrdered,
+        waterType: waterType,
+        containerCode: jugType,
+        containerLabelOverride: containerLabelText,
+        productKind: productKind,
+      );
 
   factory GuestOrderStatus.fromMap(Map<String, dynamic> map) {
     return GuestOrderStatus(
@@ -134,6 +205,8 @@ class GuestOrderStatus {
       jugType: map['jug_type'] as String?,
       totalAmount: (map['total_amount'] as num).toDouble(),
       createdAt: DateTime.parse(map['created_at'] as String),
+      containerLabelText: map['container_label'] as String?,
+      productKind: map['product_kind'] as String?,
     );
   }
 }

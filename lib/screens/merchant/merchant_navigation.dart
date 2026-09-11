@@ -3,6 +3,7 @@ import 'merchant_dashboard.dart';
 import 'orders_screen.dart';
 import 'tracking_screen.dart';
 import 'merchant_profile_screens.dart';
+import 'products_screen.dart';
 import '../../constants/app_colors.dart';
 import '../../constants/app_theme.dart';
 import '../../widgets/responsive_nav_shell.dart';
@@ -25,9 +26,13 @@ class MerchantNavigation extends StatelessWidget {
       data: AppTheme.light,
       child: ResponsiveNavShell(
         selectedItemColor: AppColors.primary,
+        // Products sits right after Orders: it's the second thing an owner
+        // needs (a station can't take orders until it lists one), and it
+        // used to be buried as chips under Profile > Station Info.
         destinations: const [
           NavShellDestination(icon: Icons.home_outlined, selectedIcon: Icons.home, label: 'Home'),
           NavShellDestination(icon: Icons.list_alt, label: 'Orders'),
+          NavShellDestination(icon: Icons.sell_outlined, selectedIcon: Icons.sell, label: 'Products'),
           NavShellDestination(icon: Icons.map_outlined, selectedIcon: Icons.map, label: 'Track'),
           NavShellDestination(icon: Icons.campaign_outlined, selectedIcon: Icons.campaign, label: 'Board'),
           NavShellDestination(icon: Icons.person_outline, selectedIcon: Icons.person, label: 'Profile'),
@@ -35,6 +40,7 @@ class MerchantNavigation extends StatelessWidget {
         pages: const [
           MerchantDashboardScreen(),
           MerchantOrdersScreen(),
+          ProductsScreen(),
           TrackingScreen(),
           BulletinBoardScreen(),
           MerchantProfileScreen(),

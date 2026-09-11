@@ -51,7 +51,7 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
       final userId = _supabase.auth.currentUser!.id;
       final rows = await _supabase
           .from('orders')
-          .select('id, station_id, status, jugs_ordered, water_type, jug_type, total_amount, created_at, water_stations(station_name)')
+          .select('id, station_id, status, jugs_ordered, water_type, jug_type, product_kind, total_amount, created_at, water_stations(station_name)')
           .eq('customer_profile_id', userId)
           .order('created_at', ascending: false);
       if (mounted) {
@@ -114,9 +114,12 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
   }
 
   String _orderLineText(Map<String, dynamic> order) {
-    final label = jugTypeLabel(order['jug_type'] as String?);
-    final jugsWord = label == null ? 'jugs' : '$label jugs';
-    return '${order['jugs_ordered']} $jugsWord of ${order['water_type']}';
+    return describeOrderLine(
+      quantity: (order['jugs_ordered'] as num).toInt(),
+      waterType: order['water_type'] as String? ?? '',
+      containerCode: order['jug_type'] as String?,
+      productKind: order['product_kind'] as String?,
+    );
   }
 
   Widget _buildOrderCard(Map<String, dynamic> order) {

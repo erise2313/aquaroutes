@@ -315,7 +315,7 @@ class _OrgHomeScreenState extends ConsumerState<OrgHomeScreen> {
             const SizedBox(height: 6),
             StarRatingDisplay(rating: station.avgRating, reviewCount: station.reviewCount, size: 13),
             const SizedBox(height: 10),
-            Text('${formatPeso(station.pricePerJug)} / jug', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12, color: WebTheme.harborBlue)),
+            Text('From ${formatPeso(station.pricePerJug)}',style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12, color: WebTheme.harborBlue)),
           ],
         ),
       ),

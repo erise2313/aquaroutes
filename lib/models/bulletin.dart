@@ -98,15 +98,22 @@ class Bulletin {
   }
 }
 
+/// The association's minimum price for a refill of one water type in one
+/// container (supabase/patch_product_catalog.sql). Floors apply to refills
+/// only -- a new container's price includes the container itself.
 class FloorPrice {
   final String id;
   final String waterType;
+
+  /// Null only on rows written before floors became per-container.
+  final String? containerCode;
   final double minPricePerJug;
   final DateTime effectiveDate;
 
   const FloorPrice({
     required this.id,
     required this.waterType,
+    this.containerCode,
     required this.minPricePerJug,
     required this.effectiveDate,
   });
@@ -115,8 +122,18 @@ class FloorPrice {
     return FloorPrice(
       id: map['id'] as String,
       waterType: map['water_type'] as String,
+      containerCode: map['container_code'] as String?,
       minPricePerJug: (map['min_price_per_jug'] as num).toDouble(),
       effectiveDate: DateTime.parse(map['effective_date'] as String),
     );
   }
+}
+
+/// The association's minimum for a refill of [waterType] in [containerCode],
+/// or null when it hasn't set one.
+double? floorPriceFor(List<FloorPrice> floors, String waterType, String containerCode) {
+  for (final floor in floors) {
+    if (floor.waterType == waterType && floor.containerCode == containerCode) return floor.minPricePerJug;
+  }
+  return null;
 }

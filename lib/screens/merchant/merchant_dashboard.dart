@@ -9,6 +9,7 @@ import 'package:aquaroute/screens/merchant/worker_registry_screen.dart';
 import 'package:aquaroute/services/permit_service.dart';
 import 'package:aquaroute/services/supabase_service.dart';
 import '../app_route.dart';
+import 'products_screen.dart';
 
 /// 'assigned' rolls into "active" alongside 'active' (both mean a driver is
 /// on it, just not picked up yet vs. en route); 'done' is counted on its
@@ -46,6 +47,7 @@ class _MerchantDashboardScreenState extends State<MerchantDashboardScreen> {
   int _activeCount = 0;
   int _doneCount = 0;
   int _renewalDueCount = 0;
+  bool _hasNoProducts = false;
   String _inviteCode = "Loading...";
   bool _isLoading = true;
 
@@ -74,9 +76,11 @@ class _MerchantDashboardScreenState extends State<MerchantDashboardScreen> {
         final counts = calculateOrderCounts(response);
         final permits = await _permitService.fetchStationPermits(stationId);
         final renewalDueCount = permits.where((p) => p.isRequired && p.isRenewalDueSoon).length;
+        final products = await supabase.from('station_products').select('id').eq('station_id', stationId).eq('is_available', true).limit(1);
 
         if (mounted) {
           setState(() {
+            _hasNoProducts = products.isEmpty;
             _pendingCount = counts['pending']!;
             _activeCount = counts['active']!;
             _doneCount = counts['done']!;
@@ -123,6 +127,10 @@ class _MerchantDashboardScreenState extends State<MerchantDashboardScreen> {
                 padding: const EdgeInsets.all(16),
                 children: [
                   _buildInviteCodeCard(_inviteCode),
+                  if (_hasNoProducts) ...[
+                    const SizedBox(height: 16),
+                    _buildNoProductsBanner(),
+                  ],
                   if (_renewalDueCount > 0) ...[
                     const SizedBox(height: 16),
                     _buildRenewalBanner(),
@@ -194,6 +202,25 @@ class _MerchantDashboardScreenState extends State<MerchantDashboardScreen> {
                 ],
               ),
             ),
+    );
+  }
+
+  /// A station with no available product can't take orders at all
+  /// (insert_quick_order refuses it), so this says so up front.
+  Widget _buildNoProductsBanner() {
+    return Card(
+      color: Colors.orange.shade50,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: Colors.orange.shade200),
+      ),
+      child: ListTile(
+        leading: Icon(Icons.sell_outlined, color: Colors.orange.shade800),
+        title: const Text("Customers can't order from you yet", style: TextStyle(fontWeight: FontWeight.bold)),
+        subtitle: const Text('Add at least one product with a price so your station can take orders.'),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: () => Navigator.push(context, appRoute(const ProductsScreen())).then((_) => _fetchDashboardData()),
+      ),
     );
   }
 

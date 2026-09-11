@@ -9,6 +9,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../models/bulletin.dart';
 import '../../models/membership.dart';
+import '../../models/order.dart';
+import '../../models/product.dart';
 import '../../providers/app_state.dart';
 import '../../services/bulletin_service.dart';
 import '../../services/photo_service.dart';
@@ -316,7 +318,9 @@ class _BulletinFeedState extends ConsumerState<BulletinFeed> {
                         children: _floorPrices
                             .map((fp) => ListTile(
                                   leading: const Icon(Icons.water_drop, color: Colors.blue),
-                                  title: Text(fp.waterType[0].toUpperCase() + fp.waterType.substring(1)),
+                                  title: Text(fp.containerCode == null
+                                      ? waterTypeLabel(fp.waterType)
+                                      : '${waterTypeLabel(fp.waterType)} · ${containerLabel(fp.containerCode) ?? fp.containerCode} refill'),
                                   subtitle: Text('Effective ${DateFormat('MMM d, yyyy').format(fp.effectiveDate)}'),
                                   trailing: Text(
                                     'Min ${formatPeso(fp.minPricePerJug)}',

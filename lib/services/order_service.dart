@@ -105,7 +105,11 @@ class OrderService {
     DateTime? scheduledFor,
     String? jugType,
     String? jugExchangeOriginStationId,
+    String? productId,
   }) async {
+    // subtotal / deliveryFee / totalAmount are still sent so older server
+    // versions keep working, but the server now ignores them and prices the
+    // order from the product (supabase/patch_product_catalog.sql).
     final id = await _supabase.client.rpc('insert_quick_order', params: {
       'p_station_id': stationId,
       'p_lat': lat,
@@ -121,6 +125,7 @@ class OrderService {
       'p_scheduled_for': scheduledFor?.toIso8601String(),
       'p_jug_type': jugType,
       'p_jug_exchange_origin_station_id': jugExchangeOriginStationId,
+      'p_product_id': productId,
     });
     return id as String;
   }

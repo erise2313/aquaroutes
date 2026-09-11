@@ -302,7 +302,17 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
   Future<void> _showCompletionDialog() async {
     if (_currentActiveOrder == null) return;
 
-    final TextEditingController emptyJugsController = TextEditingController(text: '1');
+    // Empties only come back on a refill of a returnable jug. The field used
+    // to show for every order and default to 1, so a bottle order or a new
+    // jug purchase was logged as having returned an empty.
+    final order = _currentActiveOrder!;
+    final expectsEmpties = expectsEmptyContainers(
+      productKind: order['product_kind'] as String?,
+      containerCode: order['jug_type'] as String?,
+      isReturnable: order['is_returnable'] as bool?,
+    );
+    final quantity = (order['jugs_ordered'] as num?)?.toInt() ?? 1;
+    final TextEditingController emptyJugsController = TextEditingController(text: expectsEmpties ? '$quantity' : '0');
     // Deliberately starts unset (null), not defaulted to true -- the driver
     // must explicitly confirm whether cash was actually collected.
     bool? paymentCollected;
@@ -338,21 +348,25 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Log the returned empty jugs and confirm cash collection before finalizing.',
+                expectsEmpties
+                    ? 'Log the returned empty jugs and confirm cash collection before finalizing.'
+                    : 'Confirm cash collection before finalizing.',
                 style: TextStyle(fontSize: 13, color: AppColors.driverText.withValues(alpha: 0.7)),
               ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: emptyJugsController,
-                keyboardType: TextInputType.number,
-                style: const TextStyle(color: AppColors.driverText),
-                decoration: InputDecoration(
-                  labelText: 'Empty Jugs Collected',
-                  labelStyle: TextStyle(color: AppColors.driverText.withValues(alpha: 0.7)),
-                  border: const OutlineInputBorder(),
-                  isDense: true,
+              if (expectsEmpties) ...[
+                const SizedBox(height: 16),
+                TextField(
+                  controller: emptyJugsController,
+                  keyboardType: TextInputType.number,
+                  style: const TextStyle(color: AppColors.driverText),
+                  decoration: InputDecoration(
+                    labelText: 'Empty Jugs Collected',
+                    labelStyle: TextStyle(color: AppColors.driverText.withValues(alpha: 0.7)),
+                    border: const OutlineInputBorder(),
+                    isDense: true,
+                  ),
                 ),
-              ),
+              ],
               if (declaredOrigin != null) ...[
                 const SizedBox(height: 16),
                 Text(
@@ -739,7 +753,13 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
           _buildDetailRow(
             Icons.water_drop,
             'Payload:',
-            '${_currentActiveOrder!['jugs_ordered']} ${jugTypeLabel(_currentActiveOrder!['jug_type'] as String?) ?? ''} Jugs'.replaceAll('  ', ' '),
+            describeOrderLine(
+              quantity: (_currentActiveOrder!['jugs_ordered'] as num).toInt(),
+              waterType: _currentActiveOrder!['water_type'] as String? ?? '',
+              containerCode: _currentActiveOrder!['jug_type'] as String?,
+              containerLabelOverride: _currentActiveOrder!['container_label'] as String?,
+              productKind: _currentActiveOrder!['product_kind'] as String?,
+            ),
           ),
           const SizedBox(height: 8),
           _buildDetailRow(Icons.payments, 'Collect:', formatPeso(_totalAmount)),

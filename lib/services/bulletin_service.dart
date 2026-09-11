@@ -69,23 +69,26 @@ class BulletinService {
     return row['id'] as String;
   }
 
-  /// Upserts against the (association_id, water_type) unique constraint
-  /// (0008_bulletin.sql) -- re-setting a price for a water type that
-  /// already has one updates it in place instead of accumulating
-  /// duplicate rows (a real bug: this used to be a plain insert).
+  /// Upserts against the (association_id, water_type, container_code) unique
+  /// constraint (supabase/patch_product_catalog.sql) -- re-setting the floor
+  /// for a water type and container that already has one updates it in
+  /// place instead of accumulating duplicate rows. Floors apply to refills
+  /// only.
   Future<void> setFloorPrice({
     required String associationId,
     required String waterType,
+    required String containerCode,
     required double minPricePerJug,
     required String setByProfileId,
   }) {
     return _supabase.client.from('floor_prices').upsert({
       'association_id': associationId,
       'water_type': waterType,
+      'container_code': containerCode,
       'min_price_per_jug': minPricePerJug,
       'set_by': setByProfileId,
       'effective_date': DateTime.now().toIso8601String().split('T').first,
-    }, onConflict: 'association_id,water_type');
+    }, onConflict: 'association_id,water_type,container_code');
   }
 
   /// Admin-only (enforced by floor_prices_admin_delete RLS, 0009_rls.sql).

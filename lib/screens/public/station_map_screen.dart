@@ -200,7 +200,7 @@ class _StationMapScreenState extends State<StationMapScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '${station.barangayName ?? station.stationAddress} · ${formatPeso(station.pricePerJug)}/jug'
+                  '${station.barangayName ?? station.stationAddress} · from ${formatPeso(station.pricePerJug)}'
                   '${_userLat != null && _userLng != null ? ' · ${_nearbyService.formatDistance(_nearbyService.distanceKm(_userLat!, _userLng!, station))}' : ''}',
                   style: const TextStyle(fontSize: 12),
                 ),
@@ -293,7 +293,7 @@ class _StationMapScreenState extends State<StationMapScreen> {
               ],
             ),
             const SizedBox(height: 8),
-            Text('${formatPeso(station.pricePerJug)} / jug · ${formatPeso(station.deliveryFee)} delivery'),
+            Text('From ${formatPeso(station.pricePerJug)} · ${formatPeso(station.deliveryFee)} delivery'),
           ],
         ),
       ),

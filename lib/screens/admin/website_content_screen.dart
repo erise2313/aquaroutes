@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:aquaroute/widgets/dispose_with.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../constants/admin_theme.dart';
@@ -333,7 +334,11 @@ class _ItemsEditorState extends State<_ItemsEditor> {
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      // Controllers are created per dialog, so they're released when it
+      // leaves the tree (see DisposeWith for why not on pop).
+      builder: (context) => DisposeWith(
+        notifiers: [titleController, bodyController, iconController, sortController],
+        child: AlertDialog(
         title: Text(editing == null ? 'Add Entry' : 'Edit Entry'),
         content: SingleChildScrollView(
           child: Column(
@@ -374,16 +379,9 @@ class _ItemsEditorState extends State<_ItemsEditor> {
             child: Text(editing == null ? 'Add' : 'Save'),
           ),
         ],
+        ),
       ),
-      // Controllers are created per dialog, so they have to be released when
-      // it closes -- otherwise every open leaks four of them for the life of
-      // the session.
-    ).whenComplete(() {
-      titleController.dispose();
-      bodyController.dispose();
-      iconController.dispose();
-      sortController.dispose();
-    });
+    );
   }
 
   Future<void> _delete(WebContentItem item) async {
@@ -475,7 +473,9 @@ class _FaqEditorState extends State<_FaqEditor> {
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (context) => DisposeWith(
+        notifiers: [questionController, answerController, sortController],
+        child: AlertDialog(
         title: Text(editing == null ? 'Add FAQ' : 'Edit FAQ'),
         content: SingleChildScrollView(
           child: Column(
@@ -511,12 +511,9 @@ class _FaqEditorState extends State<_FaqEditor> {
             child: Text(editing == null ? 'Add' : 'Save'),
           ),
         ],
+        ),
       ),
-    ).whenComplete(() {
-      questionController.dispose();
-      answerController.dispose();
-      sortController.dispose();
-    });
+    );
   }
 
   Future<void> _delete(WebFaqEntry faq) async {
@@ -608,7 +605,9 @@ class _PermitLabelsEditorState extends State<_PermitLabelsEditor> {
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (context) => DisposeWith(
+        notifiers: [labelController, noteController],
+        child: AlertDialog(
         title: const Text('Edit Permit Label'),
         content: SingleChildScrollView(
           child: Column(
@@ -642,11 +641,9 @@ class _PermitLabelsEditorState extends State<_PermitLabelsEditor> {
             child: const Text('Save'),
           ),
         ],
+        ),
       ),
-    ).whenComplete(() {
-      labelController.dispose();
-      noteController.dispose();
-    });
+    );
   }
 
   @override

@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../models/order.dart';
 import '../../services/order_service.dart';
 import '../../services/supabase_service.dart';
 import '../../widgets/confirm_dialog.dart';
@@ -322,7 +323,8 @@ class _MerchantOrdersScreenState extends State<MerchantOrdersScreen> {
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    'Jugs: ${order['jugs_ordered']} | Total: ₱${order['total_amount']}',
+                    '${describeOrderLine(quantity: (order['jugs_ordered'] as num).toInt(), waterType: order['water_type'] as String? ?? '', containerCode: order['jug_type'] as String?, productKind: order['product_kind'] as String?)}'
+                    '  |  Total: ₱${order['total_amount']}',
                     style: TextStyle(fontWeight: FontWeight.w600, color: Theme.of(context).colorScheme.onSurface),
                   ),
 

@@ -286,7 +286,7 @@ class _StationsDirectoryScreenState extends ConsumerState<StationsDirectoryScree
               Builder(builder: (context) {
                 final status = stationAvailabilityStatus(acceptsNewOrders: station.acceptsNewOrders, isOpenNow: station.isOpenNow);
                 return Text(
-                  '${station.barangayName ?? station.stationAddress} · ${formatPeso(station.pricePerJug)}/jug · ${status.label}',
+                  '${station.barangayName ?? station.stationAddress} · from ${formatPeso(station.pricePerJug)} · ${status.label}',
                   style: TextStyle(fontSize: 12, color: status.isOpen ? null : Colors.redAccent, fontWeight: status.isOpen ? null : FontWeight.w600),
                 );
               }),

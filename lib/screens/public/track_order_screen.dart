@@ -199,7 +199,7 @@ class _TrackOrderScreenState extends State<TrackOrderScreen> {
               ],
             ),
             const SizedBox(height: 8),
-            Text('${result.jugsOrdered} ${jugTypeLabel(result.jugType) == null ? 'jugs' : '${jugTypeLabel(result.jugType)} jugs'} of ${result.waterType}'),
+            Text(result.lineDescription),
             Text('Total: ${formatPeso(result.totalAmount)}'),
             const SizedBox(height: 4),
             Text('Placed ${DateFormat('MMM d, yyyy h:mm a').format(result.createdAt)}', style: TextStyle(color: Colors.grey.shade700, fontSize: 12)),

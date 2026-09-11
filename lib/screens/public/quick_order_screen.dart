@@ -6,10 +6,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../models/product.dart';
 import '../../models/station.dart';
 import '../../providers/app_state.dart';
 import '../../services/nearby_service.dart';
 import '../../services/order_service.dart';
+import '../../services/product_service.dart';
 import '../../services/station_service.dart';
 import '../../services/supabase_service.dart';
 import '../../utils/formatters.dart';
@@ -23,12 +25,37 @@ import 'track_order_screen.dart';
 import '../app_route.dart';
 import '../../widgets/app_map_tiles.dart';
 
+/// Most a single order may contain. Mirrors v_max_qty in insert_quick_order
+/// (supabase/patch_product_catalog.sql) so the form says so before the
+/// server has to.
+const kMaxOrderQuantity = 50;
+
+/// What a customer can pick at a station: available products, in containers
+/// the association still offers, matching the water-type filter if one is
+/// set. Top-level so the rule is unit-testable.
+List<StationProduct> orderableProducts(
+  List<StationProduct> products,
+  Map<String, ContainerType> activeContainers, {
+  String? waterType,
+}) {
+  return products
+      .where((p) =>
+          p.isAvailable &&
+          activeContainers.containsKey(p.containerCode) &&
+          (waterType == null || p.waterType == waterType))
+      .toList();
+}
+
 /// Quick-order form for the Public Consumer Portal. Placing an order
 /// requires a signed-in customer account (public_consumer membership,
 /// registration_screen.dart) -- browsing/bulletin stay no-login, but
 /// ordering doesn't, so a customer's orders are tied to a real account
 /// instead of device-local guest state. Logged-out visitors see a gate
 /// instead of the form (see _OrderLoginGate below).
+///
+/// The customer picks one of the station's products (water type, container,
+/// refill or new). The price shown is a preview; the server computes the
+/// amount actually stored on the order.
 class QuickOrderScreen extends ConsumerStatefulWidget {
   const QuickOrderScreen({super.key});
 
@@ -39,6 +66,7 @@ class QuickOrderScreen extends ConsumerStatefulWidget {
 class _QuickOrderScreenState extends ConsumerState<QuickOrderScreen> {
   final _stationService = StationService(SupabaseService.instance);
   final _orderService = OrderService(SupabaseService.instance);
+  final _productService = ProductService(SupabaseService.instance);
   final _nearbyService = NearbyService();
   double? _userLat;
   double? _userLng;
@@ -51,7 +79,6 @@ class _QuickOrderScreenState extends ConsumerState<QuickOrderScreen> {
 
   LatLng? _selectedLocation;
   String? _waterTypeFilter;
-  String? _selectedJugType;
   DateTime? _scheduledFor;
   bool _isJugExchange = false;
   String? _jugExchangeOriginStationId;
@@ -63,6 +90,13 @@ class _QuickOrderScreenState extends ConsumerState<QuickOrderScreen> {
   List<PublicStation> _availableStations = [];
   String? _selectedStationId;
   bool _hasInitializedForSession = false;
+
+  // Products are loaded per station on demand and cached; containers once.
+  List<ContainerType> _containers = [];
+  final Map<String, List<StationProduct>> _productsByStation = {};
+  bool _isLoadingProducts = false;
+  String? _productsError;
+  String? _selectedProductId;
 
   // Idempotency key for this order attempt -- reused across manual retries
   // (e.g. after a network error) so a genuine retry-after-timeout can't
@@ -131,6 +165,10 @@ class _QuickOrderScreenState extends ConsumerState<QuickOrderScreen> {
     }
   }
 
+  /// A station with no products has a derived "from" price of 0 and can't
+  /// take orders (insert_quick_order refuses it).
+  bool _hasProducts(PublicStation s) => s.pricePerJug > 0;
+
   Future<void> _fetchStations() async {
     setState(() {
       _isFetchingStations = true;
@@ -157,9 +195,13 @@ class _QuickOrderScreenState extends ConsumerState<QuickOrderScreen> {
       if (mounted) {
         setState(() {
           _availableStations = stations;
-          if (stations.isNotEmpty) _selectedStationId = stations.firstWhere((s) => s.isOrderable, orElse: () => stations.first).id;
+          if (stations.isNotEmpty) {
+            _selectedStationId =
+                stations.firstWhere((s) => s.isOrderable && _hasProducts(s), orElse: () => stations.first).id;
+          }
           _isFetchingStations = false;
         });
+        if (_selectedStationId != null) _loadProductsFor(_selectedStationId!);
       }
     } catch (e) {
       if (mounted) {
@@ -170,6 +212,31 @@ class _QuickOrderScreenState extends ConsumerState<QuickOrderScreen> {
       }
     }
   }
+
+  Future<void> _loadProductsFor(String stationId, {bool force = false}) async {
+    if (!force && _productsByStation.containsKey(stationId)) return;
+    setState(() {
+      _isLoadingProducts = true;
+      _productsError = null;
+    });
+    try {
+      if (_containers.isEmpty) _containers = await _productService.fetchContainerTypes();
+      final products = await _productService.fetchStationProducts(stationId);
+      if (!mounted) return;
+      setState(() {
+        _productsByStation[stationId] = products;
+        _isLoadingProducts = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _productsError = "Could not load this station's products.";
+        _isLoadingProducts = false;
+      });
+    }
+  }
+
+  Map<String, ContainerType> get _containerByCode => {for (final c in _containers) c.code: c};
 
   List<PublicStation> get _filteredStations {
     if (_waterTypeFilter == null) return _availableStations;
@@ -183,6 +250,33 @@ class _QuickOrderScreenState extends ConsumerState<QuickOrderScreen> {
       return null;
     }
   }
+
+  List<StationProduct> get _productsForSelectedStation {
+    final station = _selectedStation;
+    if (station == null) return const [];
+    return orderableProducts(_productsByStation[station.id] ?? const [], _containerByCode, waterType: _waterTypeFilter);
+  }
+
+  /// The chosen product, or the first one on offer when nothing is chosen
+  /// yet (or the previous choice no longer applies).
+  StationProduct? get _selectedProduct {
+    final products = _productsForSelectedStation;
+    for (final p in products) {
+      if (p.id == _selectedProductId) return p;
+    }
+    return products.isEmpty ? null : products.first;
+  }
+
+  String _productTitle(StationProduct p) {
+    final label = _containerByCode[p.containerCode]?.label ?? p.containerCode;
+    return p.kind == ProductKind.refill ? '$label refill' : '$label (new)';
+  }
+
+  /// An empty only gets exchanged on a refill of a returnable container.
+  bool _canExchange(StationProduct p, PublicStation station) =>
+      station.offersJugExchange &&
+      p.kind == ProductKind.refill &&
+      (_containerByCode[p.containerCode]?.isReturnable ?? false);
 
   Future<void> _pickScheduledTime() async {
     final now = DateTime.now();
@@ -203,6 +297,7 @@ class _QuickOrderScreenState extends ConsumerState<QuickOrderScreen> {
 
   Future<void> _submitOrder() async {
     final station = _selectedStation;
+    final product = _selectedProduct;
     if (!(_formKey.currentState?.validate() ?? false)) return;
     if (station == null || _selectedLocation == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -216,41 +311,46 @@ class _QuickOrderScreenState extends ConsumerState<QuickOrderScreen> {
       );
       return;
     }
+    if (product == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Choose what you'd like to order.")),
+      );
+      return;
+    }
 
     setState(() => _isLoading = true);
 
     try {
-      final int jugs = int.parse(_jugCountController.text.trim());
-      final double subtotal = jugs * station.pricePerJug;
-      final double total = subtotal + station.deliveryFee;
-
-      // If the customer filtered by "Any" water type, don't just default to
-      // 'purified' -- that could record an order for a type the chosen
-      // station doesn't actually offer. Fall back to whatever the station
-      // does offer instead.
-      final waterType = _waterTypeFilter ?? (station.offeredWaterTypes.isNotEmpty ? station.offeredWaterTypes.first : 'purified');
-      // Same fallback pattern as waterType above -- don't submit a jug type
-      // the currently-selected station doesn't actually offer, and don't
-      // require a choice at all if the station hasn't declared any shapes.
-      final jugType = station.offeredJugTypes.isEmpty
-          ? null
-          : (station.offeredJugTypes.contains(_selectedJugType) ? _selectedJugType : station.offeredJugTypes.first);
+      final int quantity = int.parse(_jugCountController.text.trim());
+      final preview = previewOrderPrice(unitPrice: product.price, quantity: quantity, deliveryFee: station.deliveryFee);
 
       final orderId = await _orderService.insertQuickOrder(
         stationId: station.id,
         lat: _selectedLocation!.latitude,
         lng: _selectedLocation!.longitude,
-        jugsOrdered: jugs,
-        waterType: waterType,
-        subtotal: subtotal,
+        jugsOrdered: quantity,
+        waterType: product.waterType,
+        subtotal: preview.subtotal,
         deliveryFee: station.deliveryFee,
-        totalAmount: total,
+        totalAmount: preview.total,
         guestPhone: _phoneController.text.trim(),
         clientRequestId: _clientRequestId,
         scheduledFor: _scheduledFor,
-        jugType: jugType,
-        jugExchangeOriginStationId: _isJugExchange ? _jugExchangeOriginStationId : null,
+        jugType: product.containerCode,
+        jugExchangeOriginStationId: _isJugExchange && _canExchange(product, station) ? _jugExchangeOriginStationId : null,
+        productId: product.id,
       );
+
+      // Show the total the server stored rather than this screen's
+      // arithmetic: the server prices the order itself, and the two differ
+      // if the station changed a price after this screen loaded it.
+      var total = preview.total;
+      try {
+        final row = await Supabase.instance.client.from('orders').select('total_amount').eq('id', orderId).single();
+        total = (row['total_amount'] as num).toDouble();
+      } catch (_) {
+        // Keep the preview; the order itself has been placed.
+      }
 
       if (mounted) {
         Navigator.pushReplacement(
@@ -264,8 +364,12 @@ class _QuickOrderScreenState extends ConsumerState<QuickOrderScreen> {
           ),
         );
       }
+    } on PostgrestException catch (e) {
+      // The server's rejections ("This station does not offer ...") are
+      // written for customers, so they're shown as-is.
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not place the order: $e')));
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -281,6 +385,7 @@ class _QuickOrderScreenState extends ConsumerState<QuickOrderScreen> {
     _initializeForSession();
 
     final station = _selectedStation;
+    final product = _selectedProduct;
 
     return Scaffold(
       appBar: AppBar(
@@ -347,14 +452,13 @@ class _QuickOrderScreenState extends ConsumerState<QuickOrderScreen> {
                         DropdownButtonFormField<String?>(
                           initialValue: _waterTypeFilter,
                           decoration: const InputDecoration(labelText: 'Water Type', border: OutlineInputBorder(), prefixIcon: Icon(Icons.water_drop_outlined)),
-                          items: const [
-                            DropdownMenuItem(value: null, child: Text('Any')),
-                            DropdownMenuItem(value: 'purified', child: Text('Purified')),
-                            DropdownMenuItem(value: 'mineral', child: Text('Mineral')),
-                            DropdownMenuItem(value: 'alkaline', child: Text('Alkaline')),
+                          items: [
+                            const DropdownMenuItem(value: null, child: Text('Any')),
+                            for (final w in kWaterTypes) DropdownMenuItem(value: w, child: Text(waterTypeLabel(w))),
                           ],
                           onChanged: (val) => setState(() {
                             _waterTypeFilter = val;
+                            _selectedProductId = null;
                             // Previously left _selectedStationId pointing at
                             // a station no longer in _filteredStations when
                             // the new filter matched zero stations -- the
@@ -364,6 +468,7 @@ class _QuickOrderScreenState extends ConsumerState<QuickOrderScreen> {
                               _selectedStationId = null;
                             } else if (!_filteredStations.any((s) => s.id == _selectedStationId)) {
                               _selectedStationId = _filteredStations.first.id;
+                              _loadProductsFor(_selectedStationId!);
                             }
                           }),
                         ),
@@ -384,7 +489,7 @@ class _QuickOrderScreenState extends ConsumerState<QuickOrderScreen> {
                                     child: s.photoUrl == null ? Icon(Icons.storefront, size: 12, color: Colors.grey.shade700) : null,
                                   ),
                                   const SizedBox(width: 8),
-                                  Flexible(child: Text(s.stationName, overflow: TextOverflow.ellipsis, style: TextStyle(color: s.isOrderable ? null : Colors.grey))),
+                                  Flexible(child: Text(s.stationName, overflow: TextOverflow.ellipsis, style: TextStyle(color: s.isOrderable && _hasProducts(s) ? null : Colors.grey))),
                                   if (s.isColorumVerified) const Padding(
                                     padding: EdgeInsets.only(left: 6),
                                     child: Icon(Icons.verified, size: 16, color: Colors.green),
@@ -396,69 +501,42 @@ class _QuickOrderScreenState extends ConsumerState<QuickOrderScreen> {
                                   if (!s.isOrderable) ...[
                                     const SizedBox(width: 6),
                                     const Text('(Closed)', style: TextStyle(fontSize: 11, color: Colors.redAccent, fontWeight: FontWeight.bold)),
+                                  ] else if (!_hasProducts(s)) ...[
+                                    const SizedBox(width: 6),
+                                    Text('(no products yet)', style: TextStyle(fontSize: 11, color: Colors.grey.shade700)),
                                   ],
                                 ],
                               ),
                             );
                           }).toList(),
-                          onChanged: (val) => setState(() {
-                            _selectedStationId = val;
-                            _selectedJugType = null;
-                            _isJugExchange = false;
-                            _jugExchangeOriginStationId = null;
-                          }),
+                          onChanged: (val) {
+                            setState(() {
+                              _selectedStationId = val;
+                              _selectedProductId = null;
+                              _isJugExchange = false;
+                              _jugExchangeOriginStationId = null;
+                            });
+                            if (val != null) _loadProductsFor(val);
+                          },
                         ),
                         if (station != null) ...[
-                          const SizedBox(height: 8),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  'Rates: ${formatPeso(station.pricePerJug)}/jug · ${formatPeso(station.deliveryFee)} delivery',
-                                  style: TextStyle(color: Colors.grey.shade700, fontWeight: FontWeight.w600),
-                                ),
-                              ),
-                              if (station.isColorumVerified)
-                                const Chip(
+                          if (station.isColorumVerified)
+                            const Padding(
+                              padding: EdgeInsets.only(top: 8),
+                              child: Align(
+                                alignment: Alignment.centerLeft,
+                                child: Chip(
                                   visualDensity: VisualDensity.compact,
                                   avatar: Icon(Icons.verified, size: 14, color: Colors.white),
                                   label: Text('WASA Verified', style: TextStyle(color: Colors.white, fontSize: 11)),
                                   backgroundColor: Colors.green,
                                 ),
-                            ],
-                          ),
-                          if (station.offeredJugTypes.isNotEmpty) ...[
-                            const SizedBox(height: 8),
-                            const Text('Container', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-                            const SizedBox(height: 4),
-                            Wrap(
-                              spacing: 6,
-                              runSpacing: 4,
-                              children: [
-                                for (final jugType in station.offeredJugTypes)
-                                  ChoiceChip(
-                                    visualDensity: VisualDensity.compact,
-                                    label: Text(jugType == 'slim_5gal' ? 'Slim 5-gal' : 'Round 5-gal', style: const TextStyle(fontSize: 11)),
-                                    selected: (_selectedJugType ?? station.offeredJugTypes.first) == jugType,
-                                    onSelected: (_) => setState(() => _selectedJugType = jugType),
-                                  ),
-                                if (station.offersJugExchange)
-                                  const Chip(
-                                    visualDensity: VisualDensity.compact,
-                                    avatar: Icon(Icons.swap_horiz, size: 14),
-                                    label: Text('Jug exchange accepted', style: TextStyle(fontSize: 11)),
-                                  ),
-                              ],
+                              ),
                             ),
-                          ] else if (station.offersJugExchange) ...[
-                            const SizedBox(height: 6),
-                            const Chip(
-                              visualDensity: VisualDensity.compact,
-                              avatar: Icon(Icons.swap_horiz, size: 14),
-                              label: Text('Jug exchange accepted', style: TextStyle(fontSize: 11)),
-                            ),
-                          ],
-                          if (station.offersJugExchange) ...[
+                          const SizedBox(height: 12),
+                          const Text('What would you like?', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+                          _buildProductPicker(station),
+                          if (product != null && _canExchange(product, station)) ...[
                             const SizedBox(height: 4),
                             CheckboxListTile(
                               value: _isJugExchange,
@@ -495,16 +573,9 @@ class _QuickOrderScreenState extends ConsumerState<QuickOrderScreen> {
                           ],
                           if (!station.isOrderable) ...[
                             const SizedBox(height: 8),
-                            Container(
-                              padding: const EdgeInsets.all(10),
-                              decoration: BoxDecoration(color: Colors.red.shade50, borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.red.shade200)),
-                              child: const Row(
-                                children: [
-                                  Icon(Icons.info_outline, color: Colors.redAccent, size: 18),
-                                  SizedBox(width: 8),
-                                  Expanded(child: Text('This station is currently closed and not accepting orders. Please pick another station.', style: TextStyle(color: Colors.redAccent, fontSize: 12))),
-                                ],
-                              ),
+                            _buildNotice(
+                              'This station is currently closed and not accepting orders. Please pick another station.',
+                              isWarning: true,
                             ),
                           ],
                         ],
@@ -523,14 +594,20 @@ class _QuickOrderScreenState extends ConsumerState<QuickOrderScreen> {
                         const SizedBox(height: 12),
                         TextFormField(
                           controller: _jugCountController,
-                          decoration: const InputDecoration(labelText: 'Number of Jugs', border: OutlineInputBorder(), prefixIcon: Icon(Icons.water_drop)),
+                          decoration: const InputDecoration(labelText: 'Quantity', border: OutlineInputBorder(), prefixIcon: Icon(Icons.water_drop)),
                           keyboardType: TextInputType.number,
+                          onChanged: (_) => setState(() {}), // keeps the price summary live
                           validator: (v) {
                             final n = int.tryParse(v?.trim() ?? '');
-                            if (n == null || n < 1) return 'Enter at least 1 jug';
+                            if (n == null || n < 1) return 'Enter at least 1';
+                            if (n > kMaxOrderQuantity) return 'At most $kMaxOrderQuantity per order';
                             return null;
                           },
                         ),
+                        if (station != null && product != null) ...[
+                          const SizedBox(height: 12),
+                          _buildPriceSummary(station, product),
+                        ],
                         const SizedBox(height: 16),
                         SegmentedButton<bool>(
                           segments: const [
@@ -565,7 +642,7 @@ class _QuickOrderScreenState extends ConsumerState<QuickOrderScreen> {
                         Text('Cash on delivery only.', style: TextStyle(color: Colors.grey.shade700, fontSize: 12)),
                         const SizedBox(height: 16),
                         ElevatedButton(
-                          onPressed: (_isLoading || station?.isOrderable == false) ? null : _submitOrder,
+                          onPressed: (_isLoading || station?.isOrderable == false || product == null) ? null : _submitOrder,
                           style: ElevatedButton.styleFrom(backgroundColor: Colors.blue.shade700, padding: const EdgeInsets.symmetric(vertical: 20)),
                           child: _isLoading
                               ? const CircularProgressIndicator(color: Colors.white)
@@ -578,6 +655,110 @@ class _QuickOrderScreenState extends ConsumerState<QuickOrderScreen> {
                 ),
               ],
             ),
+    );
+  }
+
+  Widget _buildProductPicker(PublicStation station) {
+    if (_isLoadingProducts && !_productsByStation.containsKey(station.id)) {
+      return const Padding(padding: EdgeInsets.symmetric(vertical: 12), child: LinearProgressIndicator());
+    }
+    if (_productsError != null && !_productsByStation.containsKey(station.id)) {
+      return Row(
+        children: [
+          Expanded(child: Text(_productsError!, style: TextStyle(color: Theme.of(context).colorScheme.error))),
+          TextButton(onPressed: () => _loadProductsFor(station.id, force: true), child: const Text('Retry')),
+        ],
+      );
+    }
+    final products = _productsForSelectedStation;
+    if (products.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.only(top: 8),
+        child: _buildNotice(_waterTypeFilter == null
+            ? "This station hasn't listed any products yet. Please pick another station."
+            : "This station doesn't sell ${waterTypeLabel(_waterTypeFilter!)} water. Pick another water type or station."),
+      );
+    }
+    final selected = _selectedProduct;
+    final grouped = groupProductsByWaterType(products, _containerByCode);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (final entry in grouped.entries) ...[
+          Padding(
+            padding: const EdgeInsets.only(top: 8, bottom: 4),
+            child: Text(waterTypeLabel(entry.key), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+          ),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: [
+              for (final p in entry.value)
+                ChoiceChip(
+                  label: Text('${_productTitle(p)} · ${formatPeso(p.price)}'),
+                  selected: p.id == selected?.id,
+                  onSelected: (_) => setState(() {
+                    _selectedProductId = p.id;
+                    if (!_canExchange(p, station)) {
+                      _isJugExchange = false;
+                      _jugExchangeOriginStationId = null;
+                    }
+                  }),
+                ),
+            ],
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildPriceSummary(PublicStation station, StationProduct product) {
+    final quantity = int.tryParse(_jugCountController.text.trim()) ?? 0;
+    final preview = previewOrderPrice(unitPrice: product.price, quantity: quantity, deliveryFee: station.deliveryFee);
+    Widget line(String label, String value, {bool bold = false}) {
+      final style = bold ? const TextStyle(fontWeight: FontWeight.bold) : null;
+      return Row(
+        children: [
+          Expanded(child: Text(label, style: style)),
+          Text(value, style: style),
+        ],
+      );
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        children: [
+          line('$quantity × ${_productTitle(product)}', formatPeso(preview.subtotal)),
+          const SizedBox(height: 4),
+          line('Delivery', station.deliveryFee == 0 ? 'Free' : formatPeso(station.deliveryFee)),
+          const Divider(height: 16),
+          line('Total due on delivery', formatPeso(preview.total), bold: true),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNotice(String message, {bool isWarning = false}) {
+    final color = isWarning ? Colors.redAccent : Colors.grey.shade800;
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: isWarning ? Colors.red.shade50 : Colors.grey.shade100,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: isWarning ? Colors.red.shade200 : Colors.grey.shade300),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.info_outline, color: color, size: 18),
+          const SizedBox(width: 8),
+          Expanded(child: Text(message, style: TextStyle(color: color, fontSize: 12))),
+        ],
+      ),
     );
   }
 }
