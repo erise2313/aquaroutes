@@ -205,7 +205,7 @@ class _BenefitCardState extends State<_BenefitCard> {
                   const SizedBox(height: 14),
                   Text(widget.title, style: TextStyle(fontWeight: FontWeight.bold, color: WebTheme.of(context).ink)),
                   const SizedBox(height: 6),
-                  Text(widget.body, style: const TextStyle(color: Colors.black54, fontSize: 13, height: 1.4)),
+                  Text(widget.body, style: TextStyle(color: WebTheme.of(context).inkMuted, fontSize: 13, height: 1.4)),
                 ],
               ),
             ),

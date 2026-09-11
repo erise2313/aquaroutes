@@ -90,7 +90,7 @@ class _ResourcesScreenState extends ConsumerState<ResourcesScreen> {
                           else if (_error != null)
                             ErrorState(message: _error!, onRetry: _load)
                           else if (_resources.isEmpty)
-                            const Text('No resources available yet.', style: TextStyle(color: Colors.grey))
+                            Text('No resources available yet.', style: TextStyle(color: WebTheme.of(context).inkMuted))
                           else
                             for (final resource in _resources) _buildResourceCard(resource),
                         ],

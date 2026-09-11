@@ -92,12 +92,12 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
                           else if (_error != null)
                             ErrorState(message: _error!, onRetry: _load)
                           else ...[
-                            if (upcoming.isEmpty && past.isEmpty) const Text('No events scheduled yet.', style: TextStyle(color: Colors.grey)),
+                            if (upcoming.isEmpty && past.isEmpty) Text('No events scheduled yet.', style: TextStyle(color: WebTheme.of(context).inkMuted)),
                             for (var i = 0; i < upcoming.length; i++)
                               FadeSlideIn(delay: Duration(milliseconds: 140 + i * 50), child: _buildEventCard(upcoming[i])),
                             if (past.isNotEmpty) ...[
                               const SizedBox(height: 24),
-                              const Text('Past events', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.grey)),
+                              Text('Past events', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: WebTheme.of(context).inkMuted)),
                               const SizedBox(height: 12),
                               for (final e in past) _buildEventCard(e, isPast: true),
                             ],
@@ -146,8 +146,8 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
                   children: [
                     Text(event.title, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: WebTheme.of(context).ink)),
                     const SizedBox(height: 4),
-                    Text(DateFormat('MMM d, yyyy · h:mm a').format(event.eventDate), style: const TextStyle(color: Colors.grey, fontSize: 12)),
-                    if (event.location != null) Text(event.location!, style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                    Text(DateFormat('MMM d, yyyy · h:mm a').format(event.eventDate), style: TextStyle(color: WebTheme.of(context).inkMuted, fontSize: 12)),
+                    if (event.location != null) Text(event.location!, style: TextStyle(color: WebTheme.of(context).inkMuted, fontSize: 12)),
                     if (event.description != null) ...[
                       const SizedBox(height: 8),
                       Text(event.description!, style: const TextStyle(height: 1.4)),

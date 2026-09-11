@@ -101,7 +101,7 @@ class _AboutScreenState extends ConsumerState<AboutScreen> {
                           const SizedBox(height: 40),
                           Text('Coverage Area', style: WebTheme.display(fontSize: 22)),
                           const SizedBox(height: 4),
-                          const Text('GENTRI WASA covers all barangays of General Trias, Cavite:', style: TextStyle(color: Colors.grey)),
+                          Text('GENTRI WASA covers all barangays of General Trias, Cavite:', style: TextStyle(color: WebTheme.of(context).inkMuted)),
                           const SizedBox(height: 16),
                           Wrap(
                             spacing: 8,

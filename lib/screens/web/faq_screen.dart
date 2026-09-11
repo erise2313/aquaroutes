@@ -108,7 +108,7 @@ class _FaqScreenState extends ConsumerState<FaqScreen> {
         collapsedIconColor: WebTheme.harborBlue,
         childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
         expandedCrossAxisAlignment: CrossAxisAlignment.start,
-        children: [Text(answer, style: const TextStyle(height: 1.4, color: Colors.black87))],
+        children: [Text(answer, style: TextStyle(height: 1.4, color: WebTheme.of(context).ink))],
       ),
     );
   }

@@ -285,7 +285,7 @@ class _OrgHomeScreenState extends ConsumerState<OrgHomeScreen> {
         ),
         const SizedBox(height: 16),
         if (_stations.isEmpty)
-          const Text('No verified stations yet.', style: TextStyle(color: Colors.grey))
+          Text('No verified stations yet.', style: TextStyle(color: WebTheme.of(context).inkMuted))
         else
           Wrap(
             spacing: 16,
@@ -311,7 +311,7 @@ class _OrgHomeScreenState extends ConsumerState<OrgHomeScreen> {
               ],
             ),
             const SizedBox(height: 6),
-            Text(station.stationAddress, style: const TextStyle(color: Colors.grey, fontSize: 12), maxLines: 2, overflow: TextOverflow.ellipsis),
+            Text(station.stationAddress, style: TextStyle(color: WebTheme.of(context).inkMuted, fontSize: 12), maxLines: 2, overflow: TextOverflow.ellipsis),
             const SizedBox(height: 6),
             StarRatingDisplay(rating: station.avgRating, reviewCount: station.reviewCount, size: 13),
             const SizedBox(height: 10),
@@ -338,7 +338,7 @@ class _OrgHomeScreenState extends ConsumerState<OrgHomeScreen> {
         ),
         const SizedBox(height: 16),
         if (_bulletins.isEmpty)
-          const Text('No announcements yet.', style: TextStyle(color: Colors.grey))
+          Text('No announcements yet.', style: TextStyle(color: WebTheme.of(context).inkMuted))
         else
           ..._bulletins.map(
             (b) => HoverScale(
@@ -356,12 +356,12 @@ class _OrgHomeScreenState extends ConsumerState<OrgHomeScreen> {
                         children: [
                           Text(b.title, style: TextStyle(fontWeight: FontWeight.bold, color: WebTheme.of(context).ink)),
                           const SizedBox(height: 4),
-                          Text(b.body, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.black54)),
+                          Text(b.body, maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(color: WebTheme.of(context).inkMuted)),
                         ],
                       ),
                     ),
                     const SizedBox(width: 12),
-                    Text(DateFormat('MMM d').format(b.createdAt), style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                    Text(DateFormat('MMM d').format(b.createdAt), style: TextStyle(color: WebTheme.of(context).inkMuted, fontSize: 12)),
                   ],
                 ),
               ),

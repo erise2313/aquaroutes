@@ -18,15 +18,16 @@ class NoMembershipScreen extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.info_outline, size: 48, color: Colors.grey.shade700),
+              Icon(Icons.info_outline, size: 48, color: Theme.of(context).colorScheme.onSurfaceVariant),
               const SizedBox(height: 16),
-              const Text(
+              // The old copy said ordering needs no account; it has required a
+              // customer account since ordering moved behind sign-in.
+              Text(
                 'This account isn\'t linked to a GENTRI WASA station or role yet.\n\n'
-                'If you\'re looking to order water, no account is needed -- '
-                'use the public station search instead. If you\'re a station '
-                'owner or driver awaiting setup, contact WASA.',
+                'To order water, finish setting up a customer account below. '
+                'If you\'re a station owner or driver awaiting setup, contact WASA.',
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 15, color: Colors.black54),
+                style: TextStyle(fontSize: 15, color: Theme.of(context).colorScheme.onSurfaceVariant),
               ),
               const SizedBox(height: 24),
               ElevatedButton(

@@ -139,7 +139,13 @@ class _VerifyAccreditationScreenState extends ConsumerState<VerifyAccreditationS
 
   Widget _buildNotFoundCard() {
     return Container(
-      decoration: BoxDecoration(color: Colors.red.shade50, borderRadius: BorderRadius.circular(10)),
+      // Translucent rather than red.shade50, which stayed pale pink in dark
+      // mode under light text. Mirrors the found card's gold treatment.
+      decoration: BoxDecoration(
+        color: Colors.red.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
+      ),
       child: ListTile(
         leading: Icon(Icons.error_outline, color: Colors.red, size: 32),
         title: Text('No accredited station found by that name', style: TextStyle(fontWeight: FontWeight.bold, color: WebTheme.of(context).ink)),

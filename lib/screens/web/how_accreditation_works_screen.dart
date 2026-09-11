@@ -155,7 +155,7 @@ class _HowAccreditationWorksScreenState extends ConsumerState<HowAccreditationWo
               children: [
                 Text(title, style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: WebTheme.of(context).ink)),
                 const SizedBox(height: 4),
-                Text(description, style: const TextStyle(color: Colors.grey, height: 1.4)),
+                Text(description, style: TextStyle(color: WebTheme.of(context).inkMuted, height: 1.4)),
               ],
             ),
           ),

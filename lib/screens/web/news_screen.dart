@@ -251,7 +251,7 @@ class _NewsScreenState extends ConsumerState<NewsScreen> {
                             const SizedBox(height: 24),
                             for (final b in featured) _buildFeaturedCard(b),
                             if (featured.isNotEmpty) const SizedBox(height: 8),
-                            if (filtered.isEmpty) const Text('No posts yet.', style: TextStyle(color: Colors.grey)),
+                            if (filtered.isEmpty) Text('No posts yet.', style: TextStyle(color: WebTheme.of(context).inkMuted)),
                             for (final b in rest) _buildCard(b),
                           ],
                         ),
@@ -314,7 +314,7 @@ class _NewsScreenState extends ConsumerState<NewsScreen> {
               ),
             ],
             const SizedBox(height: 12),
-            Text('${bulletin.authorBadge} · ${DateFormat('MMM d, yyyy').format(bulletin.createdAt)}', style: const TextStyle(color: Colors.grey, fontSize: 12)),
+            Text('${bulletin.authorBadge} · ${DateFormat('MMM d, yyyy').format(bulletin.createdAt)}', style: TextStyle(color: WebTheme.of(context).inkMuted, fontSize: 12)),
             const SizedBox(height: 12),
             _buildInteractionBar(bulletin),
             if (_expandedComments.contains(bulletin.id)) _buildCommentsSection(bulletin.id),
@@ -350,7 +350,7 @@ class _NewsScreenState extends ConsumerState<NewsScreen> {
               const SizedBox(height: 10),
               Text(bulletin.title, style: WebTheme.display(fontSize: 18)),
               const SizedBox(height: 6),
-              Text(bulletin.body, style: const TextStyle(color: Colors.black87, height: 1.4)),
+              Text(bulletin.body, style: TextStyle(color: WebTheme.of(context).ink, height: 1.4)),
               if (bulletin.imageUrl != null) ...[
                 const SizedBox(height: 12),
                 ClipRRect(
@@ -370,7 +370,7 @@ class _NewsScreenState extends ConsumerState<NewsScreen> {
                 ),
               ],
               const SizedBox(height: 8),
-              Text('${bulletin.authorBadge} · ${DateFormat('MMM d, yyyy').format(bulletin.createdAt)}', style: const TextStyle(color: Colors.grey, fontSize: 12)),
+              Text('${bulletin.authorBadge} · ${DateFormat('MMM d, yyyy').format(bulletin.createdAt)}', style: TextStyle(color: WebTheme.of(context).inkMuted, fontSize: 12)),
               const SizedBox(height: 10),
               _buildInteractionBar(bulletin),
               if (_expandedComments.contains(bulletin.id)) _buildCommentsSection(bulletin.id),
@@ -440,7 +440,7 @@ class _NewsScreenState extends ConsumerState<NewsScreen> {
             if (isLoading)
               const Padding(padding: EdgeInsets.symmetric(vertical: 8), child: Center(child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))))
             else if (comments.isEmpty)
-              const Text('No comments yet -- be the first.', style: TextStyle(color: Colors.grey, fontSize: 13))
+              Text('No comments yet -- be the first.', style: TextStyle(color: WebTheme.of(context).inkMuted, fontSize: 13))
             else
               for (final c in comments)
                 Padding(
@@ -452,7 +452,7 @@ class _NewsScreenState extends ConsumerState<NewsScreen> {
                         children: [
                           Text(c.authorName, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: WebTheme.of(context).ink)),
                           const SizedBox(width: 8),
-                          Text(DateFormat('MMM d, h:mm a').format(c.createdAt), style: const TextStyle(color: Colors.grey, fontSize: 11)),
+                          Text(DateFormat('MMM d, h:mm a').format(c.createdAt), style: TextStyle(color: WebTheme.of(context).inkMuted, fontSize: 11)),
                         ],
                       ),
                       const SizedBox(height: 2),

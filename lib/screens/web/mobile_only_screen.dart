@@ -24,11 +24,11 @@ class MobileOnlyScreen extends StatelessWidget {
             children: [
               const Icon(Icons.phone_android, size: 48, color: Colors.grey),
               const SizedBox(height: 16),
-              const Text(
+              Text(
                 'This account type is only available on the GenTri: WASA mobile app.\n\n'
                 'The website is for station owners and WASA admin. Download the app to order water or manage deliveries.',
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 15, color: Colors.black54),
+                style: TextStyle(fontSize: 15, color: Theme.of(context).colorScheme.onSurfaceVariant),
               ),
               const SizedBox(height: 24),
               ElevatedButton(

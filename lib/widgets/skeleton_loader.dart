@@ -41,7 +41,12 @@ class _SkeletonBlockState extends State<SkeletonBlock> with SingleTickerProvider
       child: Container(
         width: widget.width,
         height: widget.height,
-        decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(widget.borderRadius)),
+        // Derived from the theme so the placeholder is a faint block in dark
+        // mode too, not a bright grey slab on a navy page.
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.10),
+          borderRadius: BorderRadius.circular(widget.borderRadius),
+        ),
       ),
     );
   }

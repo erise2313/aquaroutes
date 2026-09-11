@@ -158,7 +158,7 @@ class _StationsDirectoryScreenState extends ConsumerState<StationsDirectoryScree
                                       ? Center(
                                           child: Text(
                                             _stations.isEmpty ? 'No verified stations yet.' : 'No stations match your filters.',
-                                            style: const TextStyle(color: Colors.grey),
+                                            style: TextStyle(color: WebTheme.of(context).inkMuted),
                                           ),
                                         )
                                       : ListView.builder(
