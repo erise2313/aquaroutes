@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import 'screens/auth/auth_gate.dart';
 import 'screens/web/about_screen.dart';
+import 'screens/web/account_deletion_screen.dart';
 import 'screens/web/contact_screen.dart';
 import 'screens/web/events_screen.dart';
 import 'screens/web/faq_screen.dart';
@@ -34,6 +35,9 @@ class WebRoutes {
   static const jugClearinghouse = '/jug-clearinghouse';
   static const resources = '/resources';
   static const events = '/events';
+
+  /// Google Play's required "how to delete your account" page.
+  static const accountDeletion = '/account-deletion';
 
   static String station(String id) => '$stations/$id';
 
@@ -114,6 +118,7 @@ GoRouter buildWebRouter() {
       GoRoute(path: WebRoutes.jugClearinghouse, pageBuilder: (_, _) => _page(const JugClearinghouseExplainerScreen())),
       GoRoute(path: WebRoutes.resources, pageBuilder: (_, _) => _page(const ResourcesScreen())),
       GoRoute(path: WebRoutes.events, pageBuilder: (_, _) => _page(const EventsScreen())),
+      GoRoute(path: WebRoutes.accountDeletion, pageBuilder: (_, _) => _page(const AccountDeletionScreen())),
     ],
     // A mistyped URL should land somewhere useful rather than on a router
     // stack trace, which is what an unhandled route renders in release.

@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../constants/admin_theme.dart';
+import 'account_settings_section.dart';
 
 /// The single header on an admin page -- an in-body header rather than an
 /// AppBar, so admin pages render exactly one navy bar instead of the two
@@ -90,11 +91,39 @@ class AdminPageHeader extends StatelessWidget {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           ...actions,
+                          // An account menu rather than a bare sign-out button,
+                          // so admins can also change their password.
                           if (showSignOut && !canPop)
-                            IconButton(
-                              icon: const Icon(Icons.logout),
-                              tooltip: 'Sign Out',
-                              onPressed: () => Supabase.instance.client.auth.signOut(),
+                            PopupMenuButton<String>(
+                              tooltip: 'Account',
+                              icon: const Icon(Icons.account_circle_outlined),
+                              onSelected: (value) {
+                                if (value == 'account') {
+                                  showDialog(
+                                    context: context,
+                                    builder: (dialogContext) => AlertDialog(
+                                      title: const Text('Account'),
+                                      contentPadding: const EdgeInsets.fromLTRB(8, 16, 8, 0),
+                                      content: const SizedBox(width: 420, child: AccountSettingsSection()),
+                                      actions: [
+                                        TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Close')),
+                                      ],
+                                    ),
+                                  );
+                                } else {
+                                  Supabase.instance.client.auth.signOut();
+                                }
+                              },
+                              itemBuilder: (_) => const [
+                                PopupMenuItem(
+                                  value: 'account',
+                                  child: ListTile(leading: Icon(Icons.manage_accounts_outlined), title: Text('Account & password')),
+                                ),
+                                PopupMenuItem(
+                                  value: 'signout',
+                                  child: ListTile(leading: Icon(Icons.logout), title: Text('Sign out')),
+                                ),
+                              ],
                             ),
                         ],
                       ),

@@ -16,6 +16,7 @@ import '../../services/bulletin_service.dart';
 import '../../services/photo_service.dart';
 import '../../services/supabase_service.dart';
 import '../../utils/formatters.dart';
+import '../../widgets/bulletin_comments.dart';
 import '../../widgets/confirm_dialog.dart';
 import '../../widgets/error_state.dart';
 import '../auth/login_screen.dart';
@@ -49,6 +50,8 @@ class _BulletinFeedState extends ConsumerState<BulletinFeed> {
   Set<String> _myReactions = {};
   final Set<String> _pendingReactionToggles = {};
   BulletinCategory? _filter;
+  final Set<String> _expandedComments = {};
+  final Map<String, int> _commentCounts = {};
 
   @override
   void initState() {
@@ -501,25 +504,59 @@ class _BulletinFeedState extends ConsumerState<BulletinFeed> {
             ),
             Text(bulletin.authorBadge, style: TextStyle(color: Colors.grey.shade700, fontSize: 12)),
             const SizedBox(height: 4),
-            InkWell(
-              onTap: () => _toggleReaction(bulletin, membership),
-              borderRadius: BorderRadius.circular(8),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      _myReactions.contains(bulletin.id) ? Icons.favorite : Icons.favorite_border,
-                      size: 18,
-                      color: _myReactions.contains(bulletin.id) ? Colors.red : Colors.grey,
+            Row(
+              children: [
+                InkWell(
+                  onTap: () => _toggleReaction(bulletin, membership),
+                  borderRadius: BorderRadius.circular(8),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          _myReactions.contains(bulletin.id) ? Icons.favorite : Icons.favorite_border,
+                          size: 18,
+                          color: _myReactions.contains(bulletin.id) ? Colors.red : Colors.grey,
+                        ),
+                        const SizedBox(width: 6),
+                        Text('${_reactionCounts[bulletin.id] ?? 0}', style: TextStyle(color: Colors.grey.shade700, fontSize: 12)),
+                      ],
                     ),
-                    const SizedBox(width: 6),
-                    Text('${_reactionCounts[bulletin.id] ?? 0}', style: TextStyle(color: Colors.grey.shade700, fontSize: 12)),
-                  ],
+                  ),
                 ),
-              ),
+                const SizedBox(width: 16),
+                // Comments used to exist only on the website's News page.
+                InkWell(
+                  onTap: () => setState(() {
+                    if (!_expandedComments.remove(bulletin.id)) _expandedComments.add(bulletin.id);
+                  }),
+                  borderRadius: BorderRadius.circular(8),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.mode_comment_outlined, size: 17, color: Colors.grey.shade700),
+                        const SizedBox(width: 6),
+                        Text(
+                          _commentCounts[bulletin.id]?.toString() ?? 'Comments',
+                          style: TextStyle(color: Colors.grey.shade700, fontSize: 12),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             ),
+            if (_expandedComments.contains(bulletin.id)) ...[
+              const SizedBox(height: 8),
+              BulletinComments(
+                bulletinId: bulletin.id,
+                onLoginRequested: _showLoginPrompt,
+                onCountChanged: (count) => setState(() => _commentCounts[bulletin.id] = count),
+              ),
+            ],
           ],
         ),
       ),

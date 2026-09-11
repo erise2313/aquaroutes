@@ -13,7 +13,10 @@ class CommentService {
   Future<List<BulletinComment>> fetchComments(String bulletinId) async {
     final rows = await _supabase.client
         .from('bulletin_comments')
-        .select('id, bulletin_id, profile_id, body, created_at, profiles(full_name)')
+        // author_name is stored on the comment (patch_account_lifecycle.sql):
+        // profiles is readable only by its owner and admin, so joining it
+        // showed every other commenter as "Resident".
+        .select('id, bulletin_id, profile_id, body, created_at, author_name')
         .eq('bulletin_id', bulletinId)
         .order('created_at', ascending: true);
     return List<Map<String, dynamic>>.from(rows).map(BulletinComment.fromMap).toList();

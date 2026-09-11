@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../constants/admin_theme.dart';
 import '../../constants/app_colors.dart';
+import '../../services/account_service.dart';
+import '../../services/supabase_service.dart';
 import '../../widgets/admin_filter_bar.dart';
 import '../../widgets/admin_page_header.dart';
 import '../../widgets/admin_status_pill.dart';
@@ -139,6 +142,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
           title: 'User Management',
           subtitle: _memberships.isEmpty ? null : '${_memberships.length} accounts',
         ),
+        const _DeletionRequestsPanel(),
         Expanded(
           child: _isLoading
               ? const Padding(padding: EdgeInsets.all(16), child: SkeletonList(count: 6))
@@ -258,6 +262,206 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
           onPressed: () => _toggleStatus(membership),
           child: Text(isActive ? 'Suspend' : 'Reactivate'),
         ),
+      ),
+    );
+  }
+}
+
+/// Pending account-deletion requests from station owners, drivers and admins
+/// (customers delete their own). Hidden when there are none. Deleting runs
+/// the delete-account Edge Function, which refuses -- saying why -- while
+/// the account still has an open station, deliveries in progress, or is the
+/// last admin.
+class _DeletionRequestsPanel extends StatefulWidget {
+  const _DeletionRequestsPanel();
+
+  @override
+  State<_DeletionRequestsPanel> createState() => _DeletionRequestsPanelState();
+}
+
+class _DeletionRequestsPanelState extends State<_DeletionRequestsPanel> {
+  final _accountService = AccountService(SupabaseService.instance);
+  final _supabase = Supabase.instance.client;
+  List<AccountDeletionRequest> _requests = [];
+  Map<String, Map<String, dynamic>> _membershipByProfile = {};
+  String? _busyId;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final requests = await _accountService.fetchPendingRequests();
+      var memberships = <Map<String, dynamic>>[];
+      if (requests.isNotEmpty) {
+        final rows = await _supabase
+            .from('memberships')
+            .select('profile_id, role, water_stations(id, station_name, is_active)')
+            .inFilter('profile_id', requests.map((r) => r.profileId).toList());
+        memberships = List<Map<String, dynamic>>.from(rows);
+      }
+      if (!mounted) return;
+      setState(() {
+        _requests = requests;
+        _membershipByProfile = {for (final m in memberships) m['profile_id'] as String: m};
+      });
+    } catch (e) {
+      // The rest of the screen still works; the panel just stays hidden.
+      debugPrint('Could not load deletion requests: $e');
+    }
+  }
+
+  void _snack(String message) {
+    if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  Future<void> _run(String requestId, Future<void> Function() action, String done) async {
+    setState(() => _busyId = requestId);
+    try {
+      await action();
+      _snack(done);
+      await _load();
+    } on AccountException catch (e) {
+      _snack(e.message);
+    } catch (e) {
+      _snack('Error: $e');
+    } finally {
+      if (mounted) setState(() => _busyId = null);
+    }
+  }
+
+  Future<void> _closeStation(AccountDeletionRequest request, String stationId, String stationName) async {
+    final confirmed = await showConfirmDialog(
+      context,
+      title: 'Close $stationName?',
+      message: 'It stops appearing to customers and can no longer take orders. Its order and jug-ledger history is kept.',
+      confirmLabel: 'Close station',
+    );
+    if (!confirmed) return;
+    await _run(
+      request.id,
+      () => _supabase.from('water_stations').update({'is_active': false, 'accepts_new_orders': false}).eq('id', stationId),
+      '$stationName closed.',
+    );
+  }
+
+  Future<void> _decline(AccountDeletionRequest request) async {
+    final confirmed = await showConfirmDialog(
+      context,
+      title: 'Decline this request?',
+      message: 'The account stays as it is. Let the person know why.',
+      confirmLabel: 'Decline',
+      isDestructive: false,
+    );
+    if (!confirmed) return;
+    await _run(request.id, () => _accountService.cancelDeletionRequest(request.id), 'Request declined.');
+  }
+
+  Future<void> _delete(AccountDeletionRequest request, String name) async {
+    final confirmed = await showConfirmDialog(
+      context,
+      title: "Delete $name's account?",
+      message: 'Their login, profile, reviews and comments are removed permanently. Association records '
+          '(orders, jug ledger, permits) stay, without their name.',
+      confirmLabel: 'Delete account',
+    );
+    if (!confirmed) return;
+    await _run(request.id, () => _accountService.deleteAccountAsAdmin(request.profileId), 'Account deleted.');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_requests.isEmpty) return const SizedBox.shrink();
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+      decoration: BoxDecoration(
+        color: AppColors.flagged.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.flagged.withValues(alpha: 0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+            child: Text(
+              'Account deletion requests (${_requests.length})',
+              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: AdminTheme.inkNavy),
+            ),
+          ),
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxHeight: 320),
+            child: ListView(
+              shrinkWrap: true,
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+              children: [for (final request in _requests) _buildRequest(request)],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRequest(AccountDeletionRequest request) {
+    final membership = _membershipByProfile[request.profileId];
+    final role = switch (membership?['role']) {
+      'station_owner' => 'Station Owner',
+      'driver' => 'Driver / Helper',
+      'wasa_admin' => 'WASA Admin',
+      'public_consumer' => 'Customer',
+      _ => 'No role',
+    };
+    final station = membership?['water_stations'] as Map<String, dynamic>?;
+    final stationId = station?['id'] as String?;
+    final stationName = station?['station_name'] as String?;
+    final stationOpen = station?['is_active'] == true;
+    final name = request.fullName ?? 'Unnamed account';
+    final busy = _busyId == request.id;
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(name, style: const TextStyle(fontWeight: FontWeight.w600, color: AdminTheme.inkNavy)),
+          Text(
+            [
+              role,
+              if (stationName != null) stationOpen ? stationName : '$stationName (closed)',
+              'requested ${DateFormat('MMM d, yyyy').format(request.requestedAt)}',
+            ].join(' · '),
+            style: TextStyle(color: AdminTheme.inkNavy.withValues(alpha: 0.65)),
+          ),
+          if (request.reason != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Text('"${request.reason}"', style: const TextStyle(fontStyle: FontStyle.italic)),
+            ),
+          const SizedBox(height: 6),
+          Wrap(
+            spacing: 8,
+            runSpacing: 4,
+            children: [
+              if (stationOpen && stationId != null && membership?['role'] == 'station_owner')
+                OutlinedButton(
+                  onPressed: busy ? null : () => _closeStation(request, stationId, stationName ?? 'the station'),
+                  child: const Text('Close station'),
+                ),
+              TextButton(onPressed: busy ? null : () => _decline(request), child: const Text('Decline')),
+              FilledButton(
+                style: FilledButton.styleFrom(backgroundColor: AppColors.flagged),
+                onPressed: busy ? null : () => _delete(request, name),
+                child: busy
+                    ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                    : const Text('Delete account'),
+              ),
+            ],
+          ),
+          const Divider(height: 20),
+        ],
       ),
     );
   }

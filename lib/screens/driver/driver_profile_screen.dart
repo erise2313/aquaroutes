@@ -10,6 +10,7 @@ import '../../services/photo_service.dart';
 import '../../services/supabase_service.dart';
 import '../../services/worker_credential_service.dart';
 import '../../services/worker_service.dart';
+import '../../widgets/account_settings_section.dart';
 
 /// Driver profile + the Digital WASA Worker QR Badge. Clearance status is
 /// read-only here -- it can only change via the worker_incidents review
@@ -293,9 +294,9 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
                     style: const TextStyle(color: AppColors.driverText),
                     decoration: InputDecoration(
                       labelText: 'Full Name',
-                      labelStyle: TextStyle(color: Colors.grey.shade700),
+                      labelStyle: TextStyle(color: AppColors.driverText.withValues(alpha: 0.7)),
                       border: OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.person, color: Colors.grey.shade700),
+                      prefixIcon: Icon(Icons.person, color: AppColors.driverText.withValues(alpha: 0.7)),
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -306,9 +307,9 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
                     decoration: InputDecoration(
                       labelText: 'Phone Number',
                       hintText: 'e.g., 09123456789',
-                      labelStyle: TextStyle(color: Colors.grey.shade700),
+                      labelStyle: TextStyle(color: AppColors.driverText.withValues(alpha: 0.7)),
                       border: OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.phone, color: Colors.grey.shade700),
+                      prefixIcon: Icon(Icons.phone, color: AppColors.driverText.withValues(alpha: 0.7)),
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -317,9 +318,9 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
                     style: const TextStyle(color: AppColors.driverText),
                     decoration: InputDecoration(
                       labelText: 'Vehicle Plate Number',
-                      labelStyle: TextStyle(color: Colors.grey.shade700),
+                      labelStyle: TextStyle(color: AppColors.driverText.withValues(alpha: 0.7)),
                       border: OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.directions_car, color: Colors.grey.shade700),
+                      prefixIcon: Icon(Icons.directions_car, color: AppColors.driverText.withValues(alpha: 0.7)),
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -329,9 +330,9 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
                     style: const TextStyle(color: AppColors.driverText),
                     decoration: InputDecoration(
                       labelText: 'Jug Capacity',
-                      labelStyle: TextStyle(color: Colors.grey.shade700),
+                      labelStyle: TextStyle(color: AppColors.driverText.withValues(alpha: 0.7)),
                       border: OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.water_drop, color: Colors.grey.shade700),
+                      prefixIcon: Icon(Icons.water_drop, color: AppColors.driverText.withValues(alpha: 0.7)),
                     ),
                   ),
                   const SizedBox(height: 32),
@@ -348,6 +349,15 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
                       backgroundColor: AppColors.primary,
                       padding: const EdgeInsets.symmetric(vertical: 18),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
+                  ),
+                  const SizedBox(height: 32),
+                  Container(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    decoration: BoxDecoration(color: AppColors.driverSurface, borderRadius: BorderRadius.circular(16)),
+                    child: AccountSettingsSection(
+                      textColor: AppColors.driverText,
+                      mutedColor: AppColors.driverText.withValues(alpha: 0.7),
                     ),
                   ),
                 ],
@@ -368,7 +378,7 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
             backgroundImage: _avatarUrl != null ? NetworkImage(_avatarUrl!) : null,
             child: _isUploadingAvatar
                 ? const CircularProgressIndicator(color: AppColors.primary)
-                : (_avatarUrl == null ? Icon(Icons.local_shipping, size: 45, color: Colors.grey.shade700) : null),
+                : (_avatarUrl == null ? Icon(Icons.local_shipping, size: 45, color: AppColors.driverText.withValues(alpha: 0.7)) : null),
           ),
           Container(
             padding: const EdgeInsets.all(6),
@@ -388,7 +398,7 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('CURRENT STATION', style: TextStyle(color: Colors.grey.shade700, letterSpacing: 1.2, fontSize: 12)),
+          Text('CURRENT STATION', style: TextStyle(color: AppColors.driverText.withValues(alpha: 0.7), letterSpacing: 1.2, fontSize: 12)),
           const SizedBox(height: 8),
           Text(
             isLinked ? (_stationName ?? 'Unknown Station') : 'Not currently linked to a station',
@@ -427,11 +437,11 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('MY CREDENTIALS', style: TextStyle(color: Colors.grey.shade700, letterSpacing: 1.2, fontSize: 12)),
+          Text('MY CREDENTIALS', style: TextStyle(color: AppColors.driverText.withValues(alpha: 0.7), letterSpacing: 1.2, fontSize: 12)),
           const SizedBox(height: 8),
           Text(
             'Submit these for WASA to review and clear your account.',
-            style: TextStyle(color: Colors.grey.shade700, fontSize: 12),
+            style: TextStyle(color: AppColors.driverText.withValues(alpha: 0.7), fontSize: 12),
           ),
           const SizedBox(height: 12),
           ..._credentials.map(_buildCredentialTile),
@@ -457,7 +467,7 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
         children: [
           Text(label, style: TextStyle(color: color)),
           if (credential.status == PermitStatus.rejected && credential.rejectionReason != null && credential.rejectionReason!.isNotEmpty)
-            Text('Reason: ${credential.rejectionReason}', style: TextStyle(fontSize: 12, color: Colors.grey.shade700)),
+            Text('Reason: ${credential.rejectionReason}', style: TextStyle(fontSize: 12, color: AppColors.driverText.withValues(alpha: 0.7))),
         ],
       ),
       trailing: TextButton(
@@ -483,7 +493,7 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
       ),
       child: Column(
         children: [
-          Text('GENTRI WASA WORKER BADGE', style: TextStyle(color: Colors.grey.shade700, letterSpacing: 1.5, fontSize: 12)),
+          Text('GENTRI WASA WORKER BADGE', style: TextStyle(color: AppColors.driverText.withValues(alpha: 0.7), letterSpacing: 1.5, fontSize: 12)),
           const SizedBox(height: 16),
           Container(
             padding: const EdgeInsets.all(12),

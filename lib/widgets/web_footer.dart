@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:aquaroute/screens/web/account_deletion_screen.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -92,6 +93,10 @@ class WebFooter extends ConsumerWidget {
                         _FooterLink(label: t('jug_clearinghouse_title'), onTap: () => _push(context, const JugClearinghouseExplainerScreen(), WebRoutes.jugClearinghouse)),
                         _FooterLink(label: t('resources_title'), onTap: () => _push(context, const ResourcesScreen(), WebRoutes.resources)),
                         _FooterLink(label: t('events_title'), onTap: () => _push(context, const EventsScreen(), WebRoutes.events)),
+                        _FooterLink(
+                          label: 'Delete your account',
+                          onTap: () => _push(context, const AccountDeletionScreen(), WebRoutes.accountDeletion),
+                        ),
                       ],
                     ),
                   ),

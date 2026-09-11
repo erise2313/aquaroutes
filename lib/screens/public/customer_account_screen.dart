@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../providers/app_state.dart';
+import '../../widgets/account_settings_section.dart';
 import '../../widgets/error_state.dart';
 import 'my_orders_screen.dart';
 import '../app_route.dart';
@@ -121,6 +122,8 @@ class _CustomerAccountScreenState extends ConsumerState<CustomerAccountScreen> {
                   trailing: const Icon(Icons.arrow_forward_ios, size: 14),
                   onTap: () => Navigator.push(context, appRoute(const MyOrdersScreen())),
                 ),
+                const Divider(),
+                const AccountSettingsSection(),
                 const Divider(),
                 ListTile(
                   leading: const Icon(Icons.logout, color: Colors.red),

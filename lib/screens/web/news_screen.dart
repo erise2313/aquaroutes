@@ -5,14 +5,13 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../constants/web_theme.dart';
 import '../../models/bulletin.dart';
-import '../../models/bulletin_comment.dart';
 import '../../providers/app_state.dart';
 import '../../providers/web_locale_provider.dart';
 import '../../services/bulletin_service.dart';
-import '../../services/comment_service.dart';
 import '../../services/supabase_service.dart';
 import '../../web_strings.dart';
 import '../../widgets/back_to_top_button.dart';
+import '../../widgets/bulletin_comments.dart';
 import '../../widgets/error_state.dart';
 import '../../widgets/fade_slide_in.dart';
 import '../../widgets/hover_scale.dart';
@@ -38,7 +37,6 @@ class NewsScreen extends ConsumerStatefulWidget {
 
 class _NewsScreenState extends ConsumerState<NewsScreen> {
   final _bulletinService = BulletinService(SupabaseService.instance);
-  final _commentService = CommentService(SupabaseService.instance);
 
   bool _isLoading = true;
   String? _error;
@@ -49,10 +47,10 @@ class _NewsScreenState extends ConsumerState<NewsScreen> {
   Map<String, int> _reactionCounts = {};
   Set<String> _myReactions = {};
 
-  final Map<String, List<BulletinComment>> _comments = {};
+  // The threads themselves live in BulletinComments (widgets/bulletin_comments.dart),
+  // shared with the app's Board; this only tracks which are open and their counts.
   final Set<String> _expandedComments = {};
-  final Set<String> _loadingComments = {};
-  final Map<String, TextEditingController> _commentControllers = {};
+  final Map<String, int> _commentCounts = {};
 
   @override
   void initState() {
@@ -63,9 +61,6 @@ class _NewsScreenState extends ConsumerState<NewsScreen> {
   @override
   void dispose() {
     _scrollController.dispose();
-    for (final c in _commentControllers.values) {
-      c.dispose();
-    }
     super.dispose();
   }
 
@@ -139,49 +134,10 @@ class _NewsScreenState extends ConsumerState<NewsScreen> {
     );
   }
 
-  Future<void> _toggleComments(String bulletinId) async {
-    if (_expandedComments.contains(bulletinId)) {
-      setState(() => _expandedComments.remove(bulletinId));
-      return;
-    }
+  void _toggleComments(String bulletinId) {
     setState(() {
-      _expandedComments.add(bulletinId);
-      _loadingComments.add(bulletinId);
+      if (!_expandedComments.remove(bulletinId)) _expandedComments.add(bulletinId);
     });
-    try {
-      final comments = await _commentService.fetchComments(bulletinId);
-      if (mounted) {
-        setState(() {
-          _comments[bulletinId] = comments;
-          _loadingComments.remove(bulletinId);
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() => _loadingComments.remove(bulletinId));
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not load comments: $e')));
-      }
-    }
-  }
-
-  Future<void> _submitComment(String bulletinId) async {
-    final userId = Supabase.instance.client.auth.currentUser?.id;
-    if (userId == null) {
-      _promptLogin('leave a comment');
-      return;
-    }
-    final controller = _commentControllers[bulletinId];
-    final body = controller?.text.trim() ?? '';
-    if (body.isEmpty) return;
-
-    try {
-      await _commentService.addComment(bulletinId: bulletinId, profileId: userId, body: body);
-      controller?.clear();
-      final comments = await _commentService.fetchComments(bulletinId);
-      if (mounted) setState(() => _comments[bulletinId] = comments);
-    } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not post comment: $e')));
-    }
   }
 
   @override
@@ -384,7 +340,7 @@ class _NewsScreenState extends ConsumerState<NewsScreen> {
   Widget _buildInteractionBar(Bulletin bulletin) {
     final reacted = _myReactions.contains(bulletin.id);
     final count = _reactionCounts[bulletin.id] ?? 0;
-    final commentCount = _comments[bulletin.id]?.length;
+    final commentCount = _commentCounts[bulletin.id];
 
     return Row(
       children: [
@@ -424,65 +380,13 @@ class _NewsScreenState extends ConsumerState<NewsScreen> {
   }
 
   Widget _buildCommentsSection(String bulletinId) {
-    final comments = _comments[bulletinId] ?? [];
-    final isLoading = _loadingComments.contains(bulletinId);
-    final controller = _commentControllers.putIfAbsent(bulletinId, () => TextEditingController());
-    final isLoggedIn = Supabase.instance.client.auth.currentUser != null;
-
     return Padding(
       padding: const EdgeInsets.only(top: 14),
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(color: WebTheme.of(context).card, borderRadius: BorderRadius.circular(8)),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (isLoading)
-              const Padding(padding: EdgeInsets.symmetric(vertical: 8), child: Center(child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))))
-            else if (comments.isEmpty)
-              Text('No comments yet -- be the first.', style: TextStyle(color: WebTheme.of(context).inkMuted, fontSize: 13))
-            else
-              for (final c in comments)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Text(c.authorName, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: WebTheme.of(context).ink)),
-                          const SizedBox(width: 8),
-                          Text(DateFormat('MMM d, h:mm a').format(c.createdAt), style: TextStyle(color: WebTheme.of(context).inkMuted, fontSize: 11)),
-                        ],
-                      ),
-                      const SizedBox(height: 2),
-                      Text(c.body, style: const TextStyle(fontSize: 13, height: 1.3)),
-                    ],
-                  ),
-                ),
-            const SizedBox(height: 8),
-            if (isLoggedIn)
-              Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: controller,
-                      decoration: const InputDecoration(hintText: 'Write a comment...', isDense: true, border: OutlineInputBorder()),
-                      onSubmitted: (_) => _submitComment(bulletinId),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  IconButton(icon: const Icon(Icons.send, color: WebTheme.harborBlue), onPressed: () => _submitComment(bulletinId)),
-                ],
-              )
-            else
-              TextButton(
-                onPressed: () => _promptLogin('leave a comment'),
-                style: TextButton.styleFrom(foregroundColor: WebTheme.harborBlue, padding: EdgeInsets.zero),
-                child: const Text('Log in to comment'),
-              ),
-          ],
-        ),
+      child: BulletinComments(
+        bulletinId: bulletinId,
+        background: WebTheme.of(context).card,
+        onLoginRequested: () => _promptLogin('leave a comment'),
+        onCountChanged: (count) => setState(() => _commentCounts[bulletinId] = count),
       ),
     );
   }

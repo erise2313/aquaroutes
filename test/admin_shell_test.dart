@@ -28,12 +28,20 @@ void main() {
         reason: 'pushed admin screen should keep the admin theme, not the root blue');
   });
 
-  testWidgets('header: sign-out on a tab page, back button when pushed', (tester) async {
+  testWidgets('header: account menu on a tab page, back button when pushed', (tester) async {
     await tester.pumpWidget(const MaterialApp(
       home: Scaffold(body: AdminPageHeader(title: 'Tab Page')),
     ));
-    expect(find.byTooltip('Sign Out'), findsOneWidget);
+    expect(find.byTooltip('Account'), findsOneWidget);
     expect(find.byTooltip('Back'), findsNothing);
+
+    // Sign-out moved into the account menu, next to changing the password.
+    await tester.tap(find.byTooltip('Account'));
+    await tester.pumpAndSettle();
+    expect(find.text('Sign out'), findsOneWidget);
+    expect(find.text('Account & password'), findsOneWidget);
+    await tester.tapAt(Offset.zero); // close the menu
+    await tester.pumpAndSettle();
 
     await tester.pumpWidget(MaterialApp(
       home: Builder(builder: (context) => Scaffold(
@@ -47,7 +55,7 @@ void main() {
     await tester.tap(find.text('go'));
     await tester.pumpAndSettle();
     expect(find.byTooltip('Back'), findsOneWidget, reason: 'pushed page needs a way back');
-    expect(find.byTooltip('Sign Out'), findsNothing);
+    expect(find.byTooltip('Account'), findsNothing);
   });
 
   // Regression: ThemeData's textTheme has null fontSizes at construction time

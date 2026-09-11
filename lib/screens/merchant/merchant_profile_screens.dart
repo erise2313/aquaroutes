@@ -9,6 +9,7 @@ import '../../services/supabase_service.dart';
 import '../public/info/about_wasa_hub_screen.dart';
 import '../app_route.dart';
 import 'products_screen.dart';
+import '../../widgets/account_settings_section.dart';
 
 /// Builds the `profiles` table update payload (trimmed). Split from
 /// [buildStationPayload] since profile identity and station business data
@@ -427,6 +428,13 @@ class _MerchantProfileScreenState extends State<MerchantProfileScreen> {
               ),
               icon: const Icon(Icons.info_outline),
               label: const Text('WASA Resources'),
+            ),
+            const SizedBox(height: 16),
+            const Card(
+              child: Padding(
+                padding: EdgeInsets.symmetric(vertical: 8),
+                child: AccountSettingsSection(),
+              ),
             ),
             const SizedBox(height: 16),
             OutlinedButton.icon(
