@@ -7,9 +7,11 @@ import '../../services/nearby_service.dart';
 import '../../services/station_service.dart';
 import '../../services/supabase_service.dart';
 import '../../utils/formatters.dart';
+import '../../constants/app_colors.dart';
 import '../../widgets/custom_map_marker.dart';
 import '../../widgets/error_state.dart';
 import '../../widgets/permission_rationale_dialog.dart';
+import '../../widgets/portal/portal.dart';
 import '../../widgets/star_rating.dart';
 import '../../widgets/app_map_tiles.dart';
 import '../../utils/error_text.dart';
@@ -174,48 +176,100 @@ class _StationMapScreenState extends State<StationMapScreen> {
   }
 
   Widget _buildList(List<PublicStation> stations) {
+    final density = PortalDensity.of(context);
+
     if (stations.isEmpty) {
-      return Center(child: Text('No stations match your filter.', style: TextStyle(color: Colors.grey.shade700)));
+      return PortalEmptyState(
+        icon: Icons.search_off,
+        title: 'No stations match',
+        message: 'Nothing matches the water type you picked. Try another, or clear the filter.',
+        action: _filter == null
+            ? null
+            : TextButton.icon(
+                onPressed: () => setState(() => _filter = null),
+                icon: const Icon(Icons.clear),
+                label: const Text('Clear filter'),
+              ),
+      );
     }
+
     return ListView.builder(
-      padding: const EdgeInsets.all(12),
+      padding: density.pagePadding,
       itemCount: stations.length,
-      itemBuilder: (context, index) {
-        final station = stations[index];
-        return Card(
-          margin: const EdgeInsets.only(bottom: 10),
-          child: ListTile(
-            onTap: () => _showStationSheet(station),
-            leading: CircleAvatar(
-              backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
-              backgroundImage: station.photoUrl != null ? NetworkImage(station.photoUrl!) : null,
-              child: station.photoUrl == null ? Icon(Icons.storefront, color: Colors.grey.shade700) : null,
-            ),
-            title: Row(
-              children: [
-                Expanded(child: Text(station.stationName, overflow: TextOverflow.ellipsis)),
-                if (station.isColorumVerified) const Icon(Icons.verified, color: Colors.green, size: 16),
-              ],
-            ),
-            subtitle: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '${station.barangayName ?? station.stationAddress} · from ${formatPeso(station.pricePerJug)}'
-                  '${_userLat != null && _userLng != null ? ' · ${_nearbyService.formatDistance(_nearbyService.distanceKm(_userLat!, _userLng!, station))}' : ''}',
-                  style: const TextStyle(fontSize: 12),
+      itemBuilder: (context, index) =>
+          _buildStationCard(stations[index], last: index == stations.length - 1, density: density),
+    );
+  }
+
+  Widget _buildStationCard(PublicStation station, {required bool last, required PortalDensity density}) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final distance = _userLat != null && _userLng != null
+        ? _nearbyService.formatDistance(_nearbyService.distanceKm(_userLat!, _userLng!, station))
+        : null;
+
+    return PortalCard(
+      onTap: () => _showStationSheet(station),
+      accent: station.isColorumVerified ? AppColors.seal : null,
+      margin: EdgeInsets.only(bottom: last ? 0 : density.gap),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              CircleAvatar(
+                radius: 24,
+                backgroundColor: scheme.surfaceContainerHighest,
+                backgroundImage: station.photoUrl == null ? null : NetworkImage(station.photoUrl!),
+                child: station.photoUrl != null ? null : Icon(Icons.storefront, color: scheme.onSurfaceVariant),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            station.stationName,
+                            style: theme.textTheme.titleMedium,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        if (station.isColorumVerified) ...[
+                          const SizedBox(width: 6),
+                          const Icon(Icons.verified, color: AppColors.cleared, size: 17),
+                        ],
+                      ],
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      [
+                        station.barangayName ?? station.stationAddress,
+                        'from ${formatPeso(station.pricePerJug)}',
+                        ?distance,
+                      ].join(' · '),
+                      style: theme.textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+                    ),
+                    const SizedBox(height: 6),
+                    StarRatingDisplay(rating: station.avgRating, reviewCount: station.reviewCount, size: 13),
+                  ],
                 ),
-                const SizedBox(height: 2),
-                StarRatingDisplay(rating: station.avgRating, reviewCount: station.reviewCount, size: 13),
-              ],
-            ),
-            trailing: station.isOrderable
-                ? null
-                : const Text('Closed', style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold, fontSize: 11)),
-            isThreeLine: true,
+              ),
+            ],
           ),
-        );
-      },
+          // On its own line rather than as a ListTile trailing: a pill beside
+          // an expanded name is laid out with unbounded width and can never
+          // wrap.
+          if (!station.isOrderable) ...[
+            const SizedBox(height: 10),
+            const StatusPill(label: 'CLOSED', color: AppColors.flagged),
+          ],
+        ],
+      ),
     );
   }
 
@@ -234,52 +288,32 @@ class _StationMapScreenState extends State<StationMapScreen> {
                 child: Image.network(station.photoUrl!, height: 140, width: double.infinity, fit: BoxFit.cover),
               ),
             if (station.photoUrl != null) const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(child: Text(station.stationName, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold))),
-                if (station.isColorumVerified)
-                  const Chip(
-                    avatar: Icon(Icons.verified, color: Colors.white, size: 16),
-                    label: Text('WASA Verified', style: TextStyle(color: Colors.white)),
-                    backgroundColor: Colors.green,
-                  ),
-              ],
-            ),
+            Text(station.stationName, style: Theme.of(context).textTheme.headlineSmall),
+            if (station.isColorumVerified) ...[
+              const SizedBox(height: 8),
+              const StatusPill(label: 'WASA VERIFIED', color: AppColors.cleared, icon: Icons.verified),
+            ],
             const SizedBox(height: 8),
             Builder(builder: (context) {
               final status = stationAvailabilityStatus(acceptsNewOrders: station.acceptsNewOrders, isOpenNow: station.isOpenNow);
               final hoursText = formatStationHours(operatingDays: station.operatingDays, opensAt: station.opensAt, closesAt: station.closesAt);
               if (status.isOpen && hoursText == null) return const SizedBox.shrink();
-              final color = status.isOpen ? Colors.green : Colors.redAccent;
+              // Was a green.shade50 / red.shade50 wash that assumed dark text
+              // and stayed pale in dark mode -- the same fault the portals had.
               return Padding(
                 padding: const EdgeInsets.only(bottom: 8),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  decoration: BoxDecoration(color: status.isOpen ? Colors.green.shade50 : Colors.red.shade50, borderRadius: BorderRadius.circular(8)),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(status.isOpen ? Icons.schedule : Icons.info_outline, color: color, size: 16),
-                      const SizedBox(width: 6),
-                      Text(status.label, style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.bold)),
-                      if (hoursText != null) ...[
-                        const SizedBox(width: 6),
-                        Flexible(
-                          child: Text(
-                            hoursText,
-                            style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
+                child: StatusCallout(
+                  accent: status.isOpen ? AppColors.cleared : AppColors.flagged,
+                  icon: status.isOpen ? Icons.schedule : Icons.info_outline,
+                  title: status.label,
+                  message: hoursText,
+                  padding: const EdgeInsets.all(12),
                 ),
               );
             }),
             Text(
               station.stationAddress + (_userLat != null && _userLng != null ? ' · ${_nearbyService.formatDistance(_nearbyService.distanceKm(_userLat!, _userLng!, station))} away' : ''),
-              style: TextStyle(color: Colors.grey.shade700),
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
             ),
             const SizedBox(height: 6),
             StarRatingDisplay(rating: station.avgRating, reviewCount: station.reviewCount),

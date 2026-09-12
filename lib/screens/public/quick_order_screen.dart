@@ -17,9 +17,11 @@ import '../../services/product_service.dart';
 import '../../services/station_service.dart';
 import '../../services/supabase_service.dart';
 import '../../utils/formatters.dart';
+import '../../constants/app_colors.dart';
 import '../../widgets/custom_map_marker.dart';
 import '../../widgets/error_state.dart';
 import '../../widgets/permission_rationale_dialog.dart';
+import '../../widgets/portal/portal.dart';
 import '../auth/login_screen.dart';
 import '../auth/registration_screen.dart';
 import 'addresses_screen.dart';
@@ -494,70 +496,75 @@ class _QuickOrderScreenState extends ConsumerState<QuickOrderScreen> {
     final product = _selectedProduct;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Quick Water Order', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.blue.shade700,
-      ),
+      appBar: AppBar(title: const Text('Quick water order')),
       body: _isFetchingStations
           ? const Center(child: CircularProgressIndicator())
           : _fetchError != null
           ? ErrorState(message: _fetchError!, onRetry: _fetchStations)
-          : Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Expanded(
-                  flex: 2,
-                  child: Stack(
-                    children: [
-                      FlutterMap(
-                        mapController: _mapController,
-                        options: MapOptions(
-                          initialCenter: _selectedLocation ?? _initialCenter,
-                          initialZoom: _selectedLocation == null ? 14 : 16,
-                          onTap: (tapPosition, point) => setState(() {
-                            _selectedLocation = point;
-                            // A pin dropped by hand is no longer one of the
-                            // saved addresses.
-                            _selectedAddressId = null;
-                          }),
-                        ),
+          // The map used to be an Expanded(flex: 2) above an Expanded(flex: 3)
+          // form, so on a phone the form was permanently squeezed into 60% of
+          // the screen and everything from the product picker down lived
+          // behind a scroll inside that pane. It is a fixed-height header on
+          // one scroll now: same fields, same order, same validation.
+          : SingleChildScrollView(
+              padding: EdgeInsets.zero,
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    SizedBox(
+                      height: 240,
+                      child: Stack(
                         children: [
-                          const AppMapTiles(),
-                          if (_selectedLocation != null)
-                            MarkerLayer(markers: [
-                              Marker(
-                                point: _selectedLocation!,
-                                width: 40,
-                                height: 40,
-                                child: const MapPin(kind: MapPinKind.deliveryAddress),
+                          FlutterMap(
+                            mapController: _mapController,
+                            options: MapOptions(
+                              initialCenter: _selectedLocation ?? _initialCenter,
+                              initialZoom: _selectedLocation == null ? 14 : 16,
+                              onTap: (tapPosition, point) => setState(() {
+                                _selectedLocation = point;
+                                // A pin dropped by hand is no longer one of the
+                                // saved addresses.
+                                _selectedAddressId = null;
+                              }),
+                            ),
+                            children: [
+                              const AppMapTiles(),
+                              if (_selectedLocation != null)
+                                MarkerLayer(markers: [
+                                  Marker(
+                                    point: _selectedLocation!,
+                                    width: 40,
+                                    height: 40,
+                                    child: const MapPin(kind: MapPinKind.deliveryAddress),
+                                  ),
+                                ]),
+                              const AppMapAttribution(),
+                            ],
+                          ),
+                          Positioned(
+                            top: 10,
+                            left: 10,
+                            right: 10,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              decoration: BoxDecoration(
+                                color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.92),
+                                borderRadius: BorderRadius.circular(8),
                               ),
-                            ]),
-                          const AppMapAttribution(),
+                              child: Text(
+                                'Tap the map to set your delivery address',
+                                textAlign: TextAlign.center,
+                                style: Theme.of(context).textTheme.titleSmall,
+                              ),
+                            ),
+                          ),
                         ],
                       ),
-                      Positioned(
-                        top: 10,
-                        left: 10,
-                        right: 10,
-                        child: Container(
-                          padding: const EdgeInsets.all(8),
-                          color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.92),
-                          child: const Text(
-                            'Tap the map to set your delivery address',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Expanded(
-                  flex: 3,
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Form(
-                      key: _formKey,
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.all(16.0),
                       child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
@@ -758,19 +765,19 @@ class _QuickOrderScreenState extends ConsumerState<QuickOrderScreen> {
                         const SizedBox(height: 8),
                         Text('Cash on delivery only.', style: TextStyle(color: Colors.grey.shade700, fontSize: 12)),
                         const SizedBox(height: 16),
-                        ElevatedButton(
+                        FilledButton(
                           onPressed: (_isLoading || station?.isOrderable == false || product == null) ? null : _submitOrder,
-                          style: ElevatedButton.styleFrom(backgroundColor: Colors.blue.shade700, padding: const EdgeInsets.symmetric(vertical: 20)),
+                          style: FilledButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 20)),
                           child: _isLoading
-                              ? const CircularProgressIndicator(color: Colors.white)
-                              : const Text('PLACE ORDER', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                              ? const SizedBox(height: 22, width: 22, child: CircularProgressIndicator(strokeWidth: 2))
+                              : const Text('Place order', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                         ),
                       ],
                       ),
                     ),
-                  ),
+                  ],
                 ),
-              ],
+              ),
             ),
     );
   }
@@ -908,22 +915,14 @@ class _QuickOrderScreenState extends ConsumerState<QuickOrderScreen> {
     );
   }
 
+  /// Was a grey.shade100 / red.shade50 fill with shade800 text -- a pale block
+  /// that stayed pale in dark mode with light text on it, the same fault the
+  /// portals had in five places. StatusCallout tints from the theme instead.
   Widget _buildNotice(String message, {bool isWarning = false}) {
-    final color = isWarning ? Colors.redAccent : Colors.grey.shade800;
-    return Container(
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: isWarning ? Colors.red.shade50 : Colors.grey.shade100,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: isWarning ? Colors.red.shade200 : Colors.grey.shade300),
-      ),
-      child: Row(
-        children: [
-          Icon(Icons.info_outline, color: color, size: 18),
-          const SizedBox(width: 8),
-          Expanded(child: Text(message, style: TextStyle(color: color, fontSize: 12))),
-        ],
-      ),
+    return StatusCallout(
+      accent: isWarning ? AppColors.flagged : AppColors.primary,
+      icon: isWarning ? Icons.warning_amber_rounded : Icons.info_outline,
+      title: message,
     );
   }
 }
@@ -936,48 +935,32 @@ class _OrderLoginGate extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Quick Water Order', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.blue.shade700,
-      ),
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.local_shipping_outlined, size: 56, color: Colors.blue.shade700),
-              const SizedBox(height: 16),
-              const Text(
-                'Log in or create a free account to place a water order.',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Browsing the Bulletin Board and station map never requires an account -- only ordering does.',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.grey.shade700),
-              ),
-              const SizedBox(height: 24),
-              ElevatedButton(
-                onPressed: () => Navigator.push(context, appRoute(const LoginScreen())),
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.blue.shade700, padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 14)),
-                child: const Text('Login', style: TextStyle(color: Colors.white)),
-              ),
-              const SizedBox(height: 8),
-              OutlinedButton(
-                onPressed: () => Navigator.push(context, appRoute(const RegistrationScreen())),
-                child: const Text('Create Account'),
-              ),
-              const SizedBox(height: 16),
-              TextButton(
-                onPressed: () => Navigator.push(context, appRoute(const TrackOrderScreen())),
-                child: const Text('Track a past guest order'),
-              ),
-            ],
+      appBar: AppBar(title: const Text('Quick water order')),
+      body: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          PortalEmptyState(
+            icon: Icons.local_shipping_outlined,
+            title: 'Sign in to place an order',
+            message: 'Browsing the bulletin board and the station map never needs an account -- only ordering does.',
+            action: PortalActionRow(
+              children: [
+                FilledButton(
+                  onPressed: () => Navigator.push(context, appRoute(const LoginScreen())),
+                  child: const Text('Sign in'),
+                ),
+                OutlinedButton(
+                  onPressed: () => Navigator.push(context, appRoute(const RegistrationScreen())),
+                  child: const Text('Create account'),
+                ),
+              ],
+            ),
           ),
-        ),
+          TextButton(
+            onPressed: () => Navigator.push(context, appRoute(const TrackOrderScreen())),
+            child: const Text('Track a past guest order'),
+          ),
+        ],
       ),
     );
   }

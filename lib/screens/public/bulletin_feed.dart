@@ -16,10 +16,11 @@ import '../../services/bulletin_service.dart';
 import '../../services/photo_service.dart';
 import '../../services/supabase_service.dart';
 import '../../utils/formatters.dart';
+import '../../constants/app_colors.dart';
 import '../../widgets/bulletin_comments.dart';
 import '../../widgets/confirm_dialog.dart';
 import '../../widgets/error_state.dart';
-import '../../widgets/status_callout.dart';
+import '../../widgets/portal/portal.dart';
 import '../auth/login_screen.dart';
 import '../auth/registration_screen.dart';
 import '../app_route.dart';
@@ -313,29 +314,20 @@ class _BulletinFeedState extends ConsumerState<BulletinFeed> {
           : RefreshIndicator(
               onRefresh: _load,
               child: ListView(
-                padding: const EdgeInsets.all(16),
+                padding: PortalDensity.of(context).pagePadding,
                 children: [
                   if (_floorPrices.isNotEmpty) ...[
-                    const Text('Official Floor Prices', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 8),
-                    Card(
+                    PortalSection(
+                      title: 'Official floor prices',
+                      subtitle: 'The least a member station may charge for a refill',
                       child: Column(
-                        children: _floorPrices
-                            .map((fp) => ListTile(
-                                  leading: const Icon(Icons.water_drop, color: Colors.blue),
-                                  title: Text(fp.containerCode == null
-                                      ? waterTypeLabel(fp.waterType)
-                                      : '${waterTypeLabel(fp.waterType)} · ${containerLabel(fp.containerCode) ?? fp.containerCode} refill'),
-                                  subtitle: Text('Effective ${DateFormat('MMM d, yyyy').format(fp.effectiveDate)}'),
-                                  trailing: Text(
-                                    'Min ${formatPeso(fp.minPricePerJug)}',
-                                    style: const TextStyle(fontWeight: FontWeight.bold),
-                                  ),
-                                ))
-                            .toList(),
+                        children: [
+                          for (var i = 0; i < _floorPrices.length; i++)
+                            _buildFloorPriceCard(_floorPrices[i], last: i == _floorPrices.length - 1),
+                        ],
                       ),
                     ),
-                    const SizedBox(height: 20),
+                    SizedBox(height: PortalSection.gapAfter(context)),
                   ],
                   SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
@@ -352,7 +344,21 @@ class _BulletinFeedState extends ConsumerState<BulletinFeed> {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  if (_filteredBulletins.isEmpty) Text('No posts yet.', style: TextStyle(color: Colors.grey.shade700)),
+                  if (_filteredBulletins.isEmpty)
+                    PortalEmptyState(
+                      icon: Icons.campaign_outlined,
+                      title: _filter == null ? 'No posts yet' : 'Nothing in this category',
+                      message: _filter == null
+                          ? 'Announcements, price changes and events from the association appear here.'
+                          : 'Try another category, or show all posts.',
+                      action: _filter == null
+                          ? null
+                          : TextButton.icon(
+                              onPressed: () => setState(() => _filter = null),
+                              icon: const Icon(Icons.clear),
+                              label: const Text('Show all posts'),
+                            ),
+                    ),
                   ..._filteredBulletins.map((b) => _buildBulletinCard(b, membership)),
                 ],
               ),
@@ -361,6 +367,46 @@ class _BulletinFeedState extends ConsumerState<BulletinFeed> {
         onPressed: () => _handleNewPostTap(membership),
         icon: const Icon(Icons.add),
         label: const Text('New Post'),
+      ),
+    );
+  }
+
+  Widget _buildFloorPriceCard(FloorPrice fp, {required bool last}) {
+    final theme = Theme.of(context);
+    final density = PortalDensity.of(context);
+
+    return PortalCard(
+      lift: false,
+      accent: AppColors.primary,
+      margin: EdgeInsets.only(bottom: last ? 0 : density.gap),
+      child: Row(
+        children: [
+          Icon(Icons.water_drop, color: StatusTint.onTint(context, AppColors.primary)),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  fp.containerCode == null
+                      ? waterTypeLabel(fp.waterType)
+                      : '${waterTypeLabel(fp.waterType)} · ${containerLabel(fp.containerCode) ?? fp.containerCode} refill',
+                  style: theme.textTheme.titleMedium,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Effective ${DateFormat('MMM d, yyyy').format(fp.effectiveDate)}',
+                  style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            'Min ${formatPeso(fp.minPricePerJug)}',
+            style: theme.textTheme.titleSmall?.copyWith(color: theme.colorScheme.primary),
+          ),
+        ],
       ),
     );
   }
