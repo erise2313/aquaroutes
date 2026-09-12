@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:go_router/go_router.dart';
+
 import '../../constants/web_theme.dart';
 import '../../models/web_content.dart';
+import '../../providers/app_state.dart';
 import '../../providers/web_locale_provider.dart';
+import '../../web_router.dart';
 import '../../services/supabase_service.dart';
 import '../../services/web_content_service.dart';
 import '../../web_strings.dart';
@@ -81,6 +85,19 @@ class _ForStationOwnersScreenState extends ConsumerState<ForStationOwnersScreen>
     }
   }
 
+  /// Navigates by URL where a router is present, exactly as the nav bar and
+  /// the footer do, so the site's pages stay siblings rather than a stack.
+  /// The push is the fallback for the non-routed builds that reuse this
+  /// screen.
+  void _goToAccreditation(BuildContext context) {
+    if (GoRouter.maybeOf(context) != null) {
+      context.go(WebRoutes.accreditation);
+      return;
+    }
+    Navigator.of(context).popUntil((route) => route.isFirst);
+    Navigator.of(context).push(webPageRoute(const HowAccreditationWorksScreen()));
+  }
+
   @override
   Widget build(BuildContext context) {
     final locale = ref.watch(webLocaleProvider);
@@ -135,22 +152,37 @@ class _ForStationOwnersScreenState extends ConsumerState<ForStationOwnersScreen>
                             ),
                           ),
                           TextButton(
-                            onPressed: () => Navigator.push(context, webPageRoute(const HowAccreditationWorksScreen())),
+                            // Was a Navigator.push, which stranded the whole
+                            // site: it stacked a route *above* the router's
+                            // page, so every header link afterwards changed
+                            // the URL while navigating underneath the pushed
+                            // screen -- the address bar moved and the page
+                            // did not. Accreditation is a sibling page, so it
+                            // navigates like one.
+                            onPressed: () => _goToAccreditation(context),
                             style: TextButton.styleFrom(foregroundColor: WebTheme.harborBlue),
                             child: const Text('See the full accreditation process'),
                           ),
-                          const SizedBox(height: 24),
-                          HoverScale(
-                            child: ElevatedButton(
-                              onPressed: () => Navigator.push(context, webPageRoute(const RegistrationScreen())),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: WebTheme.harborBlue,
-                                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                          // Registering is for visitors: someone already
+                          // signed in has a station, and this asked them to
+                          // register another one.
+                          if (!ref.watch(isSignedInProvider)) ...[
+                            const SizedBox(height: 24),
+                            HoverScale(
+                              child: ElevatedButton(
+                                // Still a push: registration is a drill-down
+                                // from this page, not one of the site's
+                                // sibling pages.
+                                onPressed: () => Navigator.push(context, webPageRoute(const RegistrationScreen())),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: WebTheme.harborBlue,
+                                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                                ),
+                                child: Text(t('for_owners_cta'), style: const TextStyle(color: Colors.white, fontSize: 16)),
                               ),
-                              child: Text(t('for_owners_cta'), style: const TextStyle(color: Colors.white, fontSize: 16)),
                             ),
-                          ),
+                          ],
                         ],
                       ),
                     ),

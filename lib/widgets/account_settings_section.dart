@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -132,27 +133,33 @@ class _AccountSettingsSectionState extends ConsumerState<AccountSettingsSection>
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-          child: Text('APPEARANCE', style: heading),
-        ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-          // Chips rather than a SegmentedButton: three labels in one row
-          // overflow once the system font size is turned up.
-          child: Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              for (final option in AppThemeMode.values)
-                ChoiceChip(
-                  label: Text(option.label),
-                  selected: themeMode == option,
-                  onSelected: (_) => ref.read(appThemeProvider.notifier).set(option),
-                ),
-            ],
+        // App only. These chips drive appThemeProvider, which the website and
+        // the admin portal do not use -- each has its own switch in its
+        // header -- so on the web they were three controls that changed
+        // nothing. "Follow phone" is meaningless on a desktop browser anyway.
+        if (!kIsWeb) ...[
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+            child: Text('APPEARANCE', style: heading),
           ),
-        ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            // Chips rather than a SegmentedButton: three labels in one row
+            // overflow once the system font size is turned up.
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final option in AppThemeMode.values)
+                  ChoiceChip(
+                    label: Text(option.label),
+                    selected: themeMode == option,
+                    onSelected: (_) => ref.read(appThemeProvider.notifier).set(option),
+                  ),
+              ],
+            ),
+          ),
+        ],
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
           child: Text('ACCOUNT', style: heading),

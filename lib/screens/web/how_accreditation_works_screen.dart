@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../constants/web_theme.dart';
 import '../../models/web_content.dart';
+import '../../providers/app_state.dart';
 import '../../providers/web_locale_provider.dart';
 import '../../services/permit_service.dart';
 import '../../services/supabase_service.dart';
@@ -111,18 +112,22 @@ class _HowAccreditationWorksScreenState extends ConsumerState<HowAccreditationWo
                               ),
                             ),
                           ),
-                          const SizedBox(height: 32),
-                          HoverScale(
-                            child: ElevatedButton(
-                              onPressed: () => Navigator.push(context, webPageRoute(const RegistrationScreen())),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: WebTheme.harborBlue,
-                                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                          // Visitors only: someone already signed in has a
+                          // station, and this asked them to register another.
+                          if (!ref.watch(isSignedInProvider)) ...[
+                            const SizedBox(height: 32),
+                            HoverScale(
+                              child: ElevatedButton(
+                                onPressed: () => Navigator.push(context, webPageRoute(const RegistrationScreen())),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: WebTheme.harborBlue,
+                                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                                ),
+                                child: Text(t('for_owners_cta'), style: const TextStyle(color: Colors.white)),
                               ),
-                              child: Text(t('for_owners_cta'), style: const TextStyle(color: Colors.white)),
                             ),
-                          ),
+                          ],
                         ],
                       ),
                     ),
