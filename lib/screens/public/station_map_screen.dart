@@ -38,6 +38,7 @@ class StationMapScreen extends StatefulWidget {
 class _StationMapScreenState extends State<StationMapScreen> {
   final _stationService = StationService(SupabaseService.instance);
   final _nearbyService = NearbyService();
+  final _mapController = MapController();
   bool _isLoading = true;
   String? _error;
   List<PublicStation> _stations = [];
@@ -103,6 +104,16 @@ class _StationMapScreenState extends State<StationMapScreen> {
       _userLng = position.longitude;
       _stations = _nearbyService.sortByDistance(_stations, position.latitude, position.longitude);
     });
+
+    // The map is already on screen by the time a fix arrives, and
+    // MapOptions.initialCenter only applies to the first build -- so without
+    // this it would stay on the General Trias default, where it used to open
+    // centred on you. Throws when the map is not currently mounted (the list
+    // view is showing instead), which is harmless: mapCenter in build() then
+    // centres it correctly the next time the map is built.
+    try {
+      _mapController.move(LatLng(position.latitude, position.longitude), 13);
+    } catch (_) {}
   }
 
   List<PublicStation> get _filteredStations {
@@ -153,6 +164,7 @@ class _StationMapScreenState extends State<StationMapScreen> {
                   child: _showList
                       ? _buildList(filtered)
                       : FlutterMap(
+                          mapController: _mapController,
                           options: MapOptions(initialCenter: mapCenter, initialZoom: 13),
                           children: [
                             const AppMapTiles(),
