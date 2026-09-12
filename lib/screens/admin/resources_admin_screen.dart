@@ -2,12 +2,14 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import '../../constants/app_colors.dart';
 import '../../models/resource.dart';
 import '../../services/resource_service.dart';
 import '../../services/supabase_service.dart';
 import '../../widgets/admin_page_header.dart';
 import '../../widgets/confirm_dialog.dart';
 import '../../widgets/error_state.dart';
+import '../../widgets/portal/portal.dart';
 import '../../widgets/skeleton_loader.dart';
 import '../../utils/error_text.dart';
 import '../../constants/admin_palette.dart';
@@ -123,7 +125,11 @@ class _ResourcesAdminScreenState extends State<ResourcesAdminScreen> {
       // portal into a generic one. The header supplies its own back button.
       body: Column(
         children: [
-          const AdminPageHeader(title: 'Resources Library', subtitle: 'Downloads published on the public website'),
+          const AdminPageHeader(
+            eyebrow: 'Content management',
+            title: 'Resources Library',
+            subtitle: 'Downloads published on the public website',
+          ),
           Expanded(
             child: _isLoading
                 ? const Padding(padding: EdgeInsets.all(16), child: SkeletonList(count: 4))
@@ -134,18 +140,7 @@ class _ResourcesAdminScreenState extends State<ResourcesAdminScreen> {
                 : ListView.builder(
                     padding: const EdgeInsets.all(16),
                     itemCount: _resources.length,
-                    itemBuilder: (context, index) {
-                      final r = _resources[index];
-                      return Card(
-                        margin: const EdgeInsets.only(bottom: 8),
-                        child: ListTile(
-                          leading: const Icon(Icons.picture_as_pdf_outlined, color: Colors.red),
-                          title: Text(r.title),
-                          subtitle: Text('${r.category} · ${DateFormat('MMM d, yyyy').format(r.createdAt)}'),
-                          trailing: IconButton(icon: const Icon(Icons.delete_outline, color: Colors.red), tooltip: 'Delete resource', onPressed: () => _delete(r)),
-                        ),
-                      );
-                    },
+                    itemBuilder: (context, index) => _buildResourceCard(_resources[index]),
                   ),
           ),
         ],
@@ -153,26 +148,51 @@ class _ResourcesAdminScreenState extends State<ResourcesAdminScreen> {
     );
   }
 
-  Widget _emptyState() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.folder_open_outlined, size: 56, color: AdminPalette.of(context).ink.withValues(alpha: 0.25)),
-            const SizedBox(height: 16),
-            Text('No resources uploaded yet',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: AdminPalette.of(context).ink)),
-            const SizedBox(height: 8),
-            Text(
-              'Anything you upload here appears on the public website\'s Resources page for members to download.',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: AdminPalette.of(context).ink.withValues(alpha: 0.6)),
+  Widget _buildResourceCard(Resource resource) {
+    final palette = AdminPalette.of(context);
+
+    return PortalCard(
+      lift: false,
+      accent: AppColors.flagged,
+      margin: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        children: [
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(color: StatusTint.surface(context, AppColors.flagged), shape: BoxShape.circle),
+            child: Icon(Icons.picture_as_pdf_outlined, color: StatusTint.onTint(context, AppColors.flagged), size: 21),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(resource.title, style: TextStyle(fontWeight: FontWeight.w600, color: palette.ink)),
+                const SizedBox(height: 2),
+                Text(
+                  '${resource.category} · ${DateFormat('MMM d, yyyy').format(resource.createdAt)}',
+                  style: TextStyle(fontSize: 12.5, color: palette.inkMuted),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.delete_outline),
+            color: AppColors.flagged,
+            tooltip: 'Delete resource',
+            onPressed: () => _delete(resource),
+          ),
+        ],
       ),
+    );
+  }
+
+  Widget _emptyState() {
+    return const PortalEmptyState(
+      icon: Icons.folder_open_outlined,
+      title: 'No resources uploaded yet',
+      message: 'Anything you upload here appears on the public website\'s Resources page for members to download.',
     );
   }
 }

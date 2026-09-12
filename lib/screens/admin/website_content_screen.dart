@@ -9,7 +9,9 @@ import '../../services/supabase_service.dart';
 import '../../services/web_content_service.dart';
 import '../../widgets/admin_page_header.dart';
 import '../../widgets/confirm_dialog.dart';
+import '../../constants/app_colors.dart';
 import '../../widgets/error_state.dart';
+import '../../widgets/portal/portal.dart';
 import '../../widgets/skeleton_loader.dart';
 import '../../utils/error_text.dart';
 import '../../constants/admin_palette.dart';
@@ -87,7 +89,11 @@ class _WebsiteContentScreenState extends State<WebsiteContentScreen> {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        const AdminPageHeader(title: 'Website Content', subtitle: 'Edit what shows on the public site and in the app'),
+        const AdminPageHeader(
+          eyebrow: 'Content management',
+          title: 'Website Content',
+          subtitle: 'Edit what shows on the public site and in the app',
+        ),
         Expanded(
           child: LayoutBuilder(
         builder: (context, constraints) {
@@ -424,12 +430,40 @@ class _ItemsEditorState extends State<_ItemsEditor> {
           ],
         ),
         for (final item in _items)
-          Card(
-            child: ListTile(
-              title: Text(item.title.isEmpty ? item.body : item.title, maxLines: 1, overflow: TextOverflow.ellipsis),
-              subtitle: item.title.isEmpty ? null : Text(item.body, maxLines: 2, overflow: TextOverflow.ellipsis),
-              onTap: () => _showEditDialog(editing: item),
-              trailing: IconButton(icon: const Icon(Icons.delete_outline, color: Colors.red), tooltip: 'Delete', onPressed: () => _delete(item)),
+          PortalCard(
+            margin: const EdgeInsets.only(bottom: 8),
+            onTap: () => _showEditDialog(editing: item),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        item.title.isEmpty ? item.body : item.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(fontWeight: FontWeight.w600, color: AdminPalette.of(context).ink),
+                      ),
+                      if (item.title.isNotEmpty) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          item.body,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(fontSize: 12.5, color: AdminPalette.of(context).inkMuted),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.delete_outline),
+                  color: AppColors.flagged,
+                  tooltip: 'Delete',
+                  onPressed: () => _delete(item),
+                ),
+              ],
             ),
           ),
       ],
@@ -555,12 +589,38 @@ class _FaqEditorState extends State<_FaqEditor> {
           ],
         ),
         for (final faq in _faqs)
-          Card(
-            child: ListTile(
-              title: Text(faq.question, maxLines: 1, overflow: TextOverflow.ellipsis),
-              subtitle: Text(faq.answer, maxLines: 2, overflow: TextOverflow.ellipsis),
-              onTap: () => _showEditDialog(editing: faq),
-              trailing: IconButton(icon: const Icon(Icons.delete_outline, color: Colors.red), tooltip: 'Delete', onPressed: () => _delete(faq)),
+          PortalCard(
+            margin: const EdgeInsets.only(bottom: 8),
+            onTap: () => _showEditDialog(editing: faq),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        faq.question,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(fontWeight: FontWeight.w600, color: AdminPalette.of(context).ink),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        faq.answer,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(fontSize: 12.5, color: AdminPalette.of(context).inkMuted),
+                      ),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.delete_outline),
+                  color: AppColors.flagged,
+                  tooltip: 'Delete',
+                  onPressed: () => _delete(faq),
+                ),
+              ],
             ),
           ),
       ],
@@ -660,18 +720,34 @@ class _PermitLabelsEditorState extends State<_PermitLabelsEditor> {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        const Text(
+        Text(
           'Shared by the Permit Vault, Permit Review, and the "How Accreditation Works" page -- editing one updates all three.',
-          style: TextStyle(color: Colors.grey, fontSize: 12.5),
+          style: TextStyle(color: AdminPalette.of(context).inkMuted, fontSize: 12.5),
         ),
         const SizedBox(height: 12),
         for (final label in _labels)
-          Card(
-            child: ListTile(
-              title: Text(label.label),
-              subtitle: Text(label.conditionNote, maxLines: 2, overflow: TextOverflow.ellipsis),
-              trailing: const Icon(Icons.edit_outlined),
-              onTap: () => _showEditDialog(label),
+          PortalCard(
+            margin: const EdgeInsets.only(bottom: 8),
+            onTap: () => _showEditDialog(label),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(label.label, style: TextStyle(fontWeight: FontWeight.w600, color: AdminPalette.of(context).ink)),
+                      const SizedBox(height: 2),
+                      Text(
+                        label.conditionNote,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(fontSize: 12.5, color: AdminPalette.of(context).inkMuted),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(Icons.edit_outlined, color: AdminPalette.of(context).inkMuted),
+              ],
             ),
           ),
       ],

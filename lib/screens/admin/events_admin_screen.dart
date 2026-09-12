@@ -7,7 +7,9 @@ import '../../services/event_service.dart';
 import '../../services/supabase_service.dart';
 import '../../widgets/admin_page_header.dart';
 import '../../widgets/confirm_dialog.dart';
+import '../../constants/app_colors.dart';
 import '../../widgets/error_state.dart';
+import '../../widgets/portal/portal.dart';
 import '../../widgets/skeleton_loader.dart';
 import '../../utils/error_text.dart';
 import '../../constants/admin_palette.dart';
@@ -171,6 +173,7 @@ class _EventsAdminScreenState extends State<EventsAdminScreen> {
       body: Column(
         children: [
           AdminPageHeader(
+            eyebrow: 'Content management',
             title: 'Events',
             subtitle: 'Assemblies and seminars listed on the public website',
             // Past events used to sit in the same list, dimmed. Dimming says
@@ -204,33 +207,7 @@ class _EventsAdminScreenState extends State<EventsAdminScreen> {
                 : ListView.builder(
                     padding: const EdgeInsets.all(16),
                     itemCount: visible.length,
-                    itemBuilder: (context, index) {
-                      final e = visible[index];
-                      return Card(
-                        margin: const EdgeInsets.only(bottom: 8),
-                        child: ListTile(
-                          leading: Icon(Icons.event, color: e.isPast ? Colors.grey : AdminTheme.harborBlue),
-                          title: Text(e.title),
-                          subtitle: Text('${DateFormat('MMM d, yyyy h:mm a').format(e.eventDate)}${e.location != null ? ' · ${e.location}' : ''}'),
-                          onTap: () => _eventFlow(editing: e),
-                          trailing: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              IconButton(
-                                icon: const Icon(Icons.edit_outlined),
-                                tooltip: 'Edit event',
-                                onPressed: () => _eventFlow(editing: e),
-                              ),
-                              IconButton(
-                                icon: const Icon(Icons.delete_outline, color: Colors.red),
-                                tooltip: 'Delete event',
-                                onPressed: () => _delete(e),
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    },
+                    itemBuilder: (context, index) => _buildEventCard(visible[index]),
                   ),
           ),
         ],
@@ -238,30 +215,60 @@ class _EventsAdminScreenState extends State<EventsAdminScreen> {
     );
   }
 
-  Widget _emptyState() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.event_busy_outlined, size: 56, color: AdminPalette.of(context).ink.withValues(alpha: 0.25)),
-            const SizedBox(height: 16),
-            Text(
-              _showPast ? 'No past events' : 'No upcoming events',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: AdminPalette.of(context).ink),
+  Widget _buildEventCard(AssociationEvent event) {
+    final palette = AdminPalette.of(context);
+    final tone = event.isPast ? AppColors.inkMuted : AdminTheme.harborBlue;
+
+    return PortalCard(
+      onTap: () => _eventFlow(editing: event),
+      accent: tone,
+      margin: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        children: [
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(color: StatusTint.surface(context, tone), shape: BoxShape.circle),
+            child: Icon(Icons.event, color: StatusTint.onTint(context, tone), size: 21),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(event.title, style: TextStyle(fontWeight: FontWeight.w600, color: palette.ink)),
+                const SizedBox(height: 2),
+                Text(
+                  '${DateFormat('MMM d, yyyy h:mm a').format(event.eventDate)}'
+                  '${event.location != null ? ' · ${event.location}' : ''}',
+                  style: TextStyle(fontSize: 12.5, color: palette.inkMuted),
+                ),
+              ],
             ),
-            const SizedBox(height: 8),
-            Text(
-              _showPast
-                  ? 'Events move here automatically once their date has passed.'
-                  : 'Create one and it appears on the public website\'s Events page.',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: AdminPalette.of(context).ink.withValues(alpha: 0.6)),
-            ),
-          ],
-        ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.edit_outlined),
+            tooltip: 'Edit event',
+            onPressed: () => _eventFlow(editing: event),
+          ),
+          IconButton(
+            icon: const Icon(Icons.delete_outline),
+            color: AppColors.flagged,
+            tooltip: 'Delete event',
+            onPressed: () => _delete(event),
+          ),
+        ],
       ),
+    );
+  }
+
+  Widget _emptyState() {
+    return PortalEmptyState(
+      icon: Icons.event_busy_outlined,
+      title: _showPast ? 'No past events' : 'No upcoming events',
+      message: _showPast
+          ? 'Events move here automatically once their date has passed.'
+          : 'Create one and it appears on the public website\'s Events page.',
     );
   }
 }

@@ -11,7 +11,10 @@ import '../../services/supabase_service.dart';
 import '../../utils/formatters.dart';
 import '../../widgets/admin_page_header.dart';
 import '../../widgets/confirm_dialog.dart';
+import '../../constants/admin_theme.dart';
+import '../../constants/app_colors.dart';
 import '../../widgets/error_state.dart';
+import '../../widgets/portal/portal.dart';
 import '../../widgets/skeleton_loader.dart';
 import '../public/bulletin_feed.dart';
 import '../../utils/error_text.dart';
@@ -158,15 +161,26 @@ class _BulletinEditorScreenState extends State<BulletinEditorScreen> {
       length: 3,
       child: Column(
         children: [
-          const AdminPageHeader(title: 'Bulletin & Prices'),
-          const TabBar(
-            isScrollable: true,
-            tabAlignment: TabAlignment.start,
-            tabs: [
-              Tab(text: 'Floor prices'),
-              Tab(text: 'Containers'),
-              Tab(text: 'Bulletin posts'),
-            ],
+          const AdminPageHeader(
+            eyebrow: 'Association',
+            title: 'Bulletin & Prices',
+            subtitle: 'The price floor, the containers stations may list, and what members are told',
+          ),
+          // A TabBar's height is fixed, so past about 130% system text its
+          // labels clip -- the same clamp the bottom nav and the owner
+          // portal's tab bars use. Everything below scales freely.
+          // (withClampedTextScaling is a factory, not a const constructor.)
+          MediaQuery.withClampedTextScaling(
+            maxScaleFactor: 1.3,
+            child: const TabBar(
+              isScrollable: true,
+              tabAlignment: TabAlignment.start,
+              tabs: [
+                Tab(text: 'Floor prices'),
+                Tab(text: 'Containers'),
+                Tab(text: 'Bulletin posts'),
+              ],
+            ),
           ),
           Expanded(
             child: _isLoading
@@ -217,27 +231,46 @@ class _BulletinEditorScreenState extends State<BulletinEditorScreen> {
             onAction: () => _showSetFloorPriceDialog(),
           ),
           if (_floorPrices.isEmpty)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-              child: Text('No floor prices set yet.', style: TextStyle(color: AdminPalette.of(context).inkMuted)),
+            const PortalEmptyState(
+              icon: Icons.price_change_outlined,
+              title: 'No floor prices set yet',
+              message: 'Until one is set, a station may charge whatever it likes for a refill.',
             ),
-          ..._floorPrices.map((fp) => ListTile(
-                leading: const Icon(Icons.water_drop, color: Colors.blue),
-                title: Text(_floorTitle(fp)),
-                subtitle: Text('Effective ${DateFormat('MMM d, yyyy').format(fp.effectiveDate)}'),
-                trailing: Row(
-                  mainAxisSize: MainAxisSize.min,
+          for (final fp in _floorPrices)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+              child: PortalCard(
+                accent: AdminTheme.harborBlue,
+                onTap: fp.containerCode == null ? null : () => _showSetFloorPriceDialog(editing: fp),
+                child: Row(
                   children: [
-                    Text('Min ${formatPeso(fp.minPricePerJug)}'),
+                    Icon(Icons.water_drop, color: StatusTint.onTint(context, AdminTheme.harborBlue)),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(_floorTitle(fp), style: TextStyle(fontWeight: FontWeight.w600, color: AdminPalette.of(context).ink)),
+                          const SizedBox(height: 2),
+                          Text(
+                            'Effective ${DateFormat('MMM d, yyyy').format(fp.effectiveDate)}',
+                            style: TextStyle(fontSize: 12.5, color: AdminPalette.of(context).inkMuted),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text('Min ${formatPeso(fp.minPricePerJug)}', style: TextStyle(fontWeight: FontWeight.w600, color: AdminPalette.of(context).ink)),
                     IconButton(
-                      icon: const Icon(Icons.delete_outline, size: 20, color: Colors.red),
+                      icon: const Icon(Icons.delete_outline, size: 20),
+                      color: AppColors.flagged,
                       tooltip: 'Remove',
                       onPressed: () => _deleteFloorPrice(fp),
                     ),
                   ],
                 ),
-                onTap: fp.containerCode == null ? null : () => _showSetFloorPriceDialog(editing: fp),
-              )),
+              ),
+            ),
         ],
       ),
     );
@@ -260,12 +293,43 @@ class _BulletinEditorScreenState extends State<BulletinEditorScreen> {
               c.isReturnable ? 'returnable' : 'not returnable',
               if (c.ledgerJugType != null) 'tracked by the jug clearinghouse',
             ].join(' · ');
-            return ListTile(
-              leading: Icon(c.isReturnable ? Icons.autorenew : Icons.local_drink_outlined, color: c.isActive ? Colors.blue : Colors.grey),
-              title: Text(c.label, style: TextStyle(color: c.isActive ? null : Colors.grey)),
-              subtitle: Text(c.isActive ? details : 'Retired · $details'),
-              trailing: const Icon(Icons.edit_outlined, size: 20),
-              onTap: () => _showContainerDialog(editing: c),
+            final tone = c.isActive ? AdminTheme.harborBlue : AppColors.inkMuted;
+            return Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+              child: PortalCard(
+                accent: tone,
+                onTap: () => _showContainerDialog(editing: c),
+                child: Row(
+                  children: [
+                    Icon(
+                      c.isReturnable ? Icons.autorenew : Icons.local_drink_outlined,
+                      color: StatusTint.onTint(context, tone),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            c.label,
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              color: c.isActive ? AdminPalette.of(context).ink : AdminPalette.of(context).inkMuted,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            c.isActive ? details : 'Retired · $details',
+                            style: TextStyle(fontSize: 12.5, color: AdminPalette.of(context).inkMuted),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Icon(Icons.edit_outlined, size: 20, color: AdminPalette.of(context).inkMuted),
+                  ],
+                ),
+              ),
             );
           }),
         ],
