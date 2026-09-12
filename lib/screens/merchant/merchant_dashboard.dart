@@ -11,8 +11,10 @@ import 'package:aquaroute/services/supabase_service.dart';
 import 'package:aquaroute/utils/formatters.dart';
 import '../app_route.dart';
 import 'products_screen.dart';
+import '../../constants/app_colors.dart';
 import '../../widgets/app_theme_toggle.dart';
 import '../../widgets/notification_bell.dart';
+import '../../widgets/portal/portal.dart';
 import '../../widgets/status_callout.dart';
 
 /// 'assigned' rolls into "active" alongside 'active' (both mean a driver is
@@ -160,101 +162,154 @@ class _MerchantDashboardScreenState extends State<MerchantDashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final onSurface = Theme.of(context).colorScheme.onSurface;
+    final density = PortalDensity.of(context);
+
     return Scaffold(
-      appBar: AppBar(
-        title: Text('Station Dashboard', style: TextStyle(fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurface)),
-        elevation: 0,
-        actions: const [AppThemeToggle(), NotificationBell()],
+      // The app bar is gone in favour of the portal header, which carries an
+      // eyebrow and a subtitle the bar had nowhere to put. The toggle and the
+      // bell move into it unchanged.
+      body: Column(
+        children: [
+          const PortalPageHeader(
+            eyebrow: 'Your station',
+            title: 'Station Dashboard',
+            subtitle: 'Live orders, takings, and the records the association asks for',
+            showBack: false,
+            actions: [AppThemeToggle(), NotificationBell()],
+          ),
+          Expanded(
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : RefreshIndicator(
+                    onRefresh: _fetchDashboardData,
+                    child: ListView(
+                      padding: density.pagePadding,
+                      children: [
+                        _buildInviteCodeCard(_inviteCode),
+                        if (_hasNoProducts) ...[
+                          SizedBox(height: density.gap),
+                          _buildNoProductsBanner(),
+                        ],
+                        if (_renewalDueCount > 0) ...[
+                          SizedBox(height: density.gap),
+                          _buildRenewalBanner(),
+                        ],
+                        SizedBox(height: density.sectionGap),
+
+                        PortalSection(
+                          title: 'Live orders',
+                          subtitle: 'Cancelled orders are counted in none of these',
+                          child: _buildStatRow(density),
+                        ),
+                        SizedBox(height: density.sectionGap),
+
+                        PortalSection(
+                          title: 'Sales',
+                          subtitle: 'Delivered orders only, in your phone\'s time zone',
+                          child: _buildSalesCard(),
+                        ),
+                        SizedBox(height: density.sectionGap),
+
+                        PortalSection(
+                          title: 'Governance & compliance',
+                          subtitle: 'What the association checks when it reviews your station',
+                          child: Column(
+                            children: [
+                              _buildNavCard(
+                                icon: Icons.folder_shared_outlined,
+                                tone: AppColors.primary,
+                                title: 'Permit Vault',
+                                subtitle: 'Upload business, sanitary, and (if alkaline) technical permits',
+                                onTap: () => Navigator.push(context, appRoute(const PermitVaultScreen())),
+                              ),
+                              _buildNavCard(
+                                icon: Icons.badge_outlined,
+                                tone: AppColors.accent,
+                                title: 'Worker Registry',
+                                subtitle: 'Manage worker clearance and file security incidents',
+                                onTap: () => Navigator.push(context, appRoute(const WorkerRegistryScreen())),
+                              ),
+                              _buildNavCard(
+                                icon: Icons.fact_check_outlined,
+                                tone: AppColors.primary,
+                                title: 'Hire Check',
+                                subtitle: 'Search a worker\'s clearance history before hiring them',
+                                onTap: () => Navigator.push(context, appRoute(const HireCheckScreen())),
+                              ),
+                              _buildNavCard(
+                                icon: Icons.swap_horiz,
+                                tone: AppColors.accent,
+                                title: 'Jug Clearinghouse',
+                                subtitle: 'Settle Slim/Round 5-gal jug balances with other stations',
+                                onTap: () => Navigator.push(context, appRoute(const JugClearinghouseScreen())),
+                                last: true,
+                              ),
+                            ],
+                          ),
+                        ),
+                        SizedBox(height: density.sectionGap),
+
+                        PortalSection(
+                          title: 'Fleet management',
+                          child: _buildNavCard(
+                            icon: Icons.local_shipping_outlined,
+                            tone: AppColors.primary,
+                            title: 'Track & Manage Drivers',
+                            subtitle: 'Configure vehicle capacities, plates, and monitor idle drivers',
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                appRoute(const DriverManagementScreen()),
+                              ).then((_) => _fetchDashboardData());
+                            },
+                            last: true,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+          ),
+        ],
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : RefreshIndicator(
-              onRefresh: _fetchDashboardData,
-              child: ListView(
-                padding: const EdgeInsets.all(16),
-                children: [
-                  _buildInviteCodeCard(_inviteCode),
-                  if (_hasNoProducts) ...[
-                    const SizedBox(height: 16),
-                    _buildNoProductsBanner(),
-                  ],
-                  if (_renewalDueCount > 0) ...[
-                    const SizedBox(height: 16),
-                    _buildRenewalBanner(),
-                  ],
-                  const SizedBox(height: 16),
+    );
+  }
 
-                  Text('Live order overview', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: onSurface)),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Expanded(child: _buildStatCard('Pending', _pendingCount, Colors.red)),
-                      const SizedBox(width: 8),
-                      Expanded(child: _buildStatCard('Active', _activeCount, Colors.orange)),
-                      const SizedBox(width: 8),
-                      Expanded(child: _buildStatCard('Done', _doneCount, Colors.green)),
-                    ],
-                  ),
-                  const SizedBox(height: 24),
-
-                  Text('Sales', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: onSurface)),
-                  const SizedBox(height: 12),
-                  _buildSalesCard(),
-                  const SizedBox(height: 24),
-
-                  Text('Governance & compliance', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: onSurface)),
-                  const SizedBox(height: 12),
-                  _buildNavCard(
-                    icon: Icons.folder_shared_outlined,
-                    color: Colors.teal,
-                    title: 'Permit Vault',
-                    subtitle: 'Upload business, sanitary, and (if alkaline) technical permits',
-                    onTap: () => Navigator.push(context, appRoute(const PermitVaultScreen())),
-                  ),
-                  const SizedBox(height: 8),
-                  _buildNavCard(
-                    icon: Icons.badge_outlined,
-                    color: Colors.indigo,
-                    title: 'Worker Registry',
-                    subtitle: 'Manage worker clearance and file security incidents',
-                    onTap: () => Navigator.push(context, appRoute(const WorkerRegistryScreen())),
-                  ),
-                  const SizedBox(height: 8),
-                  _buildNavCard(
-                    icon: Icons.fact_check_outlined,
-                    color: Colors.teal,
-                    title: 'Hire Check',
-                    subtitle: 'Search a worker\'s clearance history before hiring them',
-                    onTap: () => Navigator.push(context, appRoute(const HireCheckScreen())),
-                  ),
-                  const SizedBox(height: 8),
-                  _buildNavCard(
-                    icon: Icons.swap_horiz,
-                    color: Colors.deepPurple,
-                    title: 'Jug Clearinghouse',
-                    subtitle: 'Settle Slim/Round 5-gal jug balances with other stations',
-                    onTap: () => Navigator.push(context, appRoute(const JugClearinghouseScreen())),
-                  ),
-                  const SizedBox(height: 24),
-
-                  Text('Fleet management', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: onSurface)),
-                  const SizedBox(height: 12),
-                  _buildNavCard(
-                    icon: Icons.local_shipping,
-                    color: Colors.blue,
-                    title: 'Track & Manage Drivers',
-                    subtitle: 'Configure vehicle capacities, plates, and monitor idle drivers',
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        appRoute(const DriverManagementScreen()),
-                      ).then((_) => _fetchDashboardData());
-                    },
-                  ),
-                ],
-              ),
-            ),
+  /// Pending / Active / Done as counting stat tiles.
+  ///
+  /// The icons are desk-only: on a phone the three tiles share about 100px
+  /// each, and at 200% system text an icon beside the number leaves too
+  /// little room for the number itself.
+  Widget _buildStatRow(PortalDensity density) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: PortalStatTile(
+            value: _pendingCount,
+            label: 'Pending',
+            accent: AppColors.flagged,
+            icon: density.isWide ? Icons.hourglass_top_outlined : null,
+          ),
+        ),
+        SizedBox(width: density.gap),
+        Expanded(
+          child: PortalStatTile(
+            value: _activeCount,
+            label: 'Active',
+            accent: AppColors.pendingClearance,
+            icon: density.isWide ? Icons.local_shipping_outlined : null,
+          ),
+        ),
+        SizedBox(width: density.gap),
+        Expanded(
+          child: PortalStatTile(
+            value: _doneCount,
+            label: 'Done',
+            accent: AppColors.cleared,
+            icon: density.isWide ? Icons.check_circle_outline : null,
+          ),
+        ),
+      ],
     );
   }
 
@@ -262,21 +317,28 @@ class _MerchantDashboardScreenState extends State<MerchantDashboardScreen> {
   /// arrived but never what they were worth, which is the number an owner
   /// actually wants at the end of a day.
   Widget _buildSalesCard() {
-    final scheme = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
 
     Widget figure(String label, double amount, {bool emphasise = false}) {
       return Expanded(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(label, style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant)),
+            Text(label, style: theme.textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant)),
             const SizedBox(height: 4),
-            Text(
-              formatPeso(amount),
-              style: TextStyle(
-                fontSize: emphasise ? 22 : 18,
-                fontWeight: FontWeight.bold,
-                color: emphasise ? scheme.primary : scheme.onSurface,
+            // A peso figure has no space to wrap at, so at large system text
+            // it would otherwise run past its column. Scaling down keeps all
+            // three readable side by side.
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Text(
+                formatPeso(amount),
+                style: (emphasise ? theme.textTheme.headlineSmall : theme.textTheme.titleMedium)?.copyWith(
+                  color: emphasise ? scheme.primary : scheme.onSurface,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
           ],
@@ -284,28 +346,27 @@ class _MerchantDashboardScreenState extends State<MerchantDashboardScreen> {
       );
     }
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                figure('Today', _sales.today, emphasise: true),
-                figure('This week', _sales.week),
-                figure('This month', _sales.month),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              _sales.deliveredToday == 1
-                  ? '1 order delivered today'
-                  : '${_sales.deliveredToday} orders delivered today',
-              style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
-            ),
-          ],
-        ),
+    return PortalCard(
+      lift: false,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              figure('Today', _sales.today, emphasise: true),
+              figure('This week', _sales.week),
+              figure('This month', _sales.month),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            _sales.deliveredToday == 1
+                ? '1 order delivered today'
+                : '${_sales.deliveredToday} orders delivered today',
+            style: theme.textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+          ),
+        ],
       ),
     );
   }
@@ -323,23 +384,46 @@ class _MerchantDashboardScreenState extends State<MerchantDashboardScreen> {
     );
   }
 
+  /// One row of the governance and fleet lists: a tinted icon, the name, what
+  /// it's for, and a leading colour bar -- the teaser-card treatment the
+  /// public site uses, rather than a stack of stock ListTiles.
   Widget _buildNavCard({
     required IconData icon,
-    required Color color,
+    required Color tone,
     required String title,
     required String subtitle,
     required VoidCallback onTap,
+    bool last = false,
   }) {
-    return Card(
-      elevation: 1,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        leading: CircleAvatar(backgroundColor: color.withValues(alpha: 0.1), child: Icon(icon, color: color)),
-        title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
-        subtitle: Text(subtitle),
-        trailing: Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey.shade700),
-        onTap: onTap,
+    final theme = Theme.of(context);
+    final density = PortalDensity.of(context);
+
+    return PortalCard(
+      onTap: onTap,
+      accent: tone,
+      margin: EdgeInsets.only(bottom: last ? 0 : density.gap),
+      child: Row(
+        children: [
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(color: StatusTint.surface(context, tone), shape: BoxShape.circle),
+            child: Icon(icon, color: StatusTint.onTint(context, tone), size: 21),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: theme.textTheme.titleMedium),
+                const SizedBox(height: 2),
+                Text(subtitle, style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          Icon(Icons.chevron_right, color: theme.colorScheme.onSurfaceVariant),
+        ],
       ),
     );
   }
@@ -356,60 +440,71 @@ class _MerchantDashboardScreenState extends State<MerchantDashboardScreen> {
   }
 
   Widget _buildInviteCodeCard(String code) {
-    return Card(
-      elevation: 2,
-      color: Colors.blue.shade50,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Column(
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+
+    // The same slot carries a real code and the "Loading..." / "No Station
+    // Linked" / failure placeholders. Only an actual code gets the display
+    // treatment -- a wide-tracked sentence set in the heading face reads as
+    // broken, not styled.
+    final isCode = !code.contains(' ');
+
+    return PortalCard(
+      lift: false,
+      accent: scheme.primary,
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  "STATION INVITE CODE",
-                  style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blueGrey, letterSpacing: 1.0, fontSize: 12),
+                Text(
+                  'STATION INVITE CODE',
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: scheme.secondary,
+                    letterSpacing: 1.6,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    code,
+                    style: isCode
+                        ? theme.textTheme.headlineSmall?.copyWith(
+                            color: scheme.primary,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 2,
+                          )
+                        : theme.textTheme.titleMedium?.copyWith(color: scheme.onSurfaceVariant),
+                  ),
                 ),
                 const SizedBox(height: 4),
-                Text(code, style: const TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: Colors.blue, letterSpacing: 1.5)),
+                Text(
+                  'Your drivers and helpers enter this to join your station.',
+                  style: theme.textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+                ),
               ],
             ),
-            IconButton(
-              icon: const Icon(Icons.copy, color: Colors.blue, size: 28),
-              tooltip: 'Copy Invite Code',
-              onPressed: () {
-                Clipboard.setData(ClipboardData(text: code));
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text("Copied invite code '$code' to clipboard!"),
-                    backgroundColor: Colors.blue.shade600,
-                    behavior: SnackBarBehavior.floating,
-                  ),
-                );
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildStatCard(String title, int count, Color accent) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: StatusTint.surface(context, accent),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: StatusTint.border(context, accent)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(title, style: TextStyle(color: StatusTint.onTint(context, accent), fontWeight: FontWeight.bold)),
-          const SizedBox(height: 8),
-          Text('$count', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurface)),
+          ),
+          IconButton(
+            icon: const Icon(Icons.copy_outlined),
+            color: scheme.primary,
+            tooltip: 'Copy invite code',
+            onPressed: !isCode
+                ? null
+                : () {
+                    Clipboard.setData(ClipboardData(text: code));
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text("Copied invite code '$code' to clipboard!"),
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                  },
+          ),
         ],
       ),
     );

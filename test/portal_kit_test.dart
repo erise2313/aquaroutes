@@ -165,6 +165,97 @@ void main() {
     });
   });
 
+  // The owner Dashboard can't be mounted in a test -- it reads Supabase in
+  // initState -- but its geometry can. These are the two compositions most
+  // likely to break on a phone at large system text: three stat tiles sharing
+  // about 100px each, and three peso figures in one row, which have no space
+  // to wrap at.
+  group('owner dashboard composition', () {
+    Widget figure(BuildContext context, String label, String amount, {bool emphasise = false}) {
+      final theme = Theme.of(context);
+      return Expanded(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(label, style: theme.textTheme.bodySmall),
+            const SizedBox(height: 4),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Text(amount, style: emphasise ? theme.textTheme.headlineSmall : theme.textTheme.titleMedium),
+            ),
+          ],
+        ),
+      );
+    }
+
+    Widget body() => Builder(
+          builder: (context) => Column(
+            children: [
+              const Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(child: PortalStatTile(value: 12, label: 'Pending')),
+                  SizedBox(width: 10),
+                  Expanded(child: PortalStatTile(value: 148, label: 'Active')),
+                  SizedBox(width: 10),
+                  Expanded(child: PortalStatTile(value: 2064, label: 'Done')),
+                ],
+              ),
+              const SizedBox(height: 24),
+              PortalCard(
+                lift: false,
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    figure(context, 'Today', '₱1,240.00', emphasise: true),
+                    figure(context, 'This week', '₱18,430.00'),
+                    figure(context, 'This month', '₱112,905.00'),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+              PortalCard(
+                onTap: () {},
+                accent: Colors.teal,
+                child: const Row(
+                  children: [
+                    SizedBox(width: 42, height: 42, child: Icon(Icons.folder_shared_outlined)),
+                    SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Permit Vault'),
+                          Text('Upload business, sanitary, and (if alkaline) technical permits'),
+                        ],
+                      ),
+                    ),
+                    SizedBox(width: 8),
+                    Icon(Icons.chevron_right),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+
+    testWidgets('lays out without overflow across widths, text sizes and modes', (tester) async {
+      for (final theme in [AppTheme.light, AppTheme.dark]) {
+        for (final width in [360.0, 768.0, 1280.0]) {
+          for (final scale in [1.0, 1.3, 2.0]) {
+            await _pump(tester, theme, body(), size: Size(width, 900), textScale: scale);
+            expect(
+              tester.takeException(),
+              isNull,
+              reason: 'dashboard body at ${width}px, text scale $scale',
+            );
+          }
+        }
+      }
+    });
+  });
+
   group('PortalDensity', () {
     test('phone and desk get different spacing, from one decision', () {
       final phone = PortalDensity.forWidth(360);
