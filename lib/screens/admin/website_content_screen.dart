@@ -12,6 +12,7 @@ import '../../widgets/confirm_dialog.dart';
 import '../../widgets/error_state.dart';
 import '../../widgets/skeleton_loader.dart';
 import '../../utils/error_text.dart';
+import '../../constants/admin_palette.dart';
 
 /// wasa_admin editor for the website's static-page content (About, FAQ,
 /// Contact, For Station Owners, How Accreditation Works, Jug Clearinghouse
@@ -97,7 +98,7 @@ class _WebsiteContentScreenState extends State<WebsiteContentScreen> {
                 SizedBox(
                   width: 240,
                   child: Container(
-                    color: AdminTheme.foam,
+                    color: AdminPalette.of(context).foam,
                     child: ListView(
                       padding: const EdgeInsets.symmetric(vertical: 8),
                       children: [
@@ -158,7 +159,7 @@ class _WebsiteContentScreenState extends State<WebsiteContentScreen> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         title: Text(
           page.label,
-          style: TextStyle(fontWeight: selected ? FontWeight.bold : FontWeight.normal, color: AdminTheme.inkNavy),
+          style: TextStyle(fontWeight: selected ? FontWeight.bold : FontWeight.normal, color: AdminPalette.of(context).ink),
         ),
         onTap: () => setState(() => _selected = page),
       ),

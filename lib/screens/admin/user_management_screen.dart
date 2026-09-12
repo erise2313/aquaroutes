@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../../constants/admin_theme.dart';
 import '../../constants/app_colors.dart';
 import '../../services/account_service.dart';
 import '../../services/supabase_service.dart';
@@ -15,6 +14,7 @@ import '../../widgets/skeleton_loader.dart';
 import '../../utils/csv_download.dart';
 import '../../utils/csv_export.dart';
 import '../../utils/error_text.dart';
+import '../../constants/admin_palette.dart';
 
 /// Narrows the loaded membership rows by free-text name/station search plus
 /// optional role and status. Kept as a top-level pure function (same pattern
@@ -253,11 +253,11 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 56, color: AdminTheme.inkNavy.withValues(alpha: 0.25)),
+            Icon(icon, size: 56, color: AdminPalette.of(context).ink.withValues(alpha: 0.25)),
             const SizedBox(height: 16),
-            Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: AdminTheme.inkNavy)),
+            Text(title, style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: AdminPalette.of(context).ink)),
             const SizedBox(height: 8),
-            Text(message, textAlign: TextAlign.center, style: TextStyle(color: AdminTheme.inkNavy.withValues(alpha: 0.6))),
+            Text(message, textAlign: TextAlign.center, style: TextStyle(color: AdminPalette.of(context).ink.withValues(alpha: 0.6))),
             if (action != null) ...[const SizedBox(height: 16), action],
           ],
         ),
@@ -287,7 +287,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
             runSpacing: 6,
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              Text('$role${stationName != null ? ' · $stationName' : ''}', style: TextStyle(color: Colors.grey.shade700)),
+              Text('$role${stationName != null ? ' · $stationName' : ''}', style: TextStyle(color: AdminPalette.of(context).inkMuted)),
               AdminStatusPill(label: isActive ? 'ACTIVE' : 'SUSPENDED', color: isActive ? AppColors.cleared : AppColors.flagged),
             ],
           ),
@@ -423,7 +423,7 @@ class _DeletionRequestsPanelState extends State<_DeletionRequestsPanel> {
             padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
             child: Text(
               'Account deletion requests (${_requests.length})',
-              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: AdminTheme.inkNavy),
+              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: AdminPalette.of(context).ink),
             ),
           ),
           ConstrainedBox(
@@ -460,14 +460,14 @@ class _DeletionRequestsPanelState extends State<_DeletionRequestsPanel> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(name, style: const TextStyle(fontWeight: FontWeight.w600, color: AdminTheme.inkNavy)),
+          Text(name, style: TextStyle(fontWeight: FontWeight.w600, color: AdminPalette.of(context).ink)),
           Text(
             [
               role,
               if (stationName != null) stationOpen ? stationName : '$stationName (closed)',
               'requested ${DateFormat('MMM d, yyyy').format(request.requestedAt)}',
             ].join(' · '),
-            style: TextStyle(color: AdminTheme.inkNavy.withValues(alpha: 0.65)),
+            style: TextStyle(color: AdminPalette.of(context).ink.withValues(alpha: 0.65)),
           ),
           if (request.reason != null)
             Padding(

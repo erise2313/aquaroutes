@@ -17,6 +17,7 @@ import '../../widgets/app_map_tiles.dart';
 import '../../utils/error_text.dart';
 import '../../utils/csv_download.dart';
 import '../../utils/csv_export.dart';
+import '../../constants/admin_palette.dart';
 
 /// Narrows loaded station rows by name/address search and accreditation
 /// state. Top-level and pure so the matching rules are unit-testable.
@@ -321,11 +322,11 @@ class _StationAccreditationScreenState extends State<StationAccreditationScreen>
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 56, color: AdminTheme.inkNavy.withValues(alpha: 0.25)),
+            Icon(icon, size: 56, color: AdminPalette.of(context).ink.withValues(alpha: 0.25)),
             const SizedBox(height: 16),
-            Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: AdminTheme.inkNavy)),
+            Text(title, style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: AdminPalette.of(context).ink)),
             const SizedBox(height: 8),
-            Text(message, textAlign: TextAlign.center, style: TextStyle(color: AdminTheme.inkNavy.withValues(alpha: 0.6))),
+            Text(message, textAlign: TextAlign.center, style: TextStyle(color: AdminPalette.of(context).ink.withValues(alpha: 0.6))),
             if (action != null) ...[const SizedBox(height: 16), action],
           ],
         ),
@@ -389,7 +390,7 @@ class _StationAccreditationScreenState extends State<StationAccreditationScreen>
                       const SizedBox(height: 4),
                       Text(
                         station['station_address'] as String? ?? '',
-                        style: TextStyle(color: Colors.grey.shade700, fontSize: 14),
+                        style: TextStyle(color: AdminPalette.of(context).inkMuted, fontSize: 14),
                       ),
                       const SizedBox(height: 10),
                       Wrap(
@@ -399,7 +400,7 @@ class _StationAccreditationScreenState extends State<StationAccreditationScreen>
                           AdminStatusPill(label: isAccredited ? 'ACCREDITED' : 'PENDING REVIEW', color: statusColor),
                           AdminStatusPill(
                             label: isVerified ? 'COLORUM VERIFIED' : 'NOT YET VERIFIED',
-                            color: isVerified ? AdminTheme.harborBlue : Colors.grey.shade600,
+                            color: isVerified ? AdminTheme.harborBlue : AdminPalette.of(context).inkMuted,
                           ),
                         ],
                       ),
@@ -417,7 +418,7 @@ class _StationAccreditationScreenState extends State<StationAccreditationScreen>
                     ),
                     Text(
                       isActive ? 'Active' : 'Inactive',
-                      style: TextStyle(fontSize: 11, color: Colors.grey.shade600, fontWeight: FontWeight.w600),
+                      style: TextStyle(fontSize: 11, color: AdminPalette.of(context).inkMuted, fontWeight: FontWeight.w600),
                     ),
                   ],
                 ),

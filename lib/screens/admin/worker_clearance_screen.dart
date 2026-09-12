@@ -12,6 +12,7 @@ import '../../widgets/confirm_dialog.dart';
 import '../../widgets/error_state.dart';
 import '../../widgets/skeleton_loader.dart';
 import '../../utils/error_text.dart';
+import '../../constants/admin_palette.dart';
 
 /// wasa_admin review of worker security incidents AND worker credential
 /// submissions (Government ID / Driver's License), in two tabs. Confirming
@@ -287,7 +288,7 @@ class _WorkerClearanceScreenState extends State<WorkerClearanceScreen> {
     final count = _selectedCredentials.length;
 
     return Material(
-      color: AdminTheme.foam,
+      color: AdminPalette.of(context).foam,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(8, 6, 16, 6),
         child: Row(
@@ -306,7 +307,7 @@ class _WorkerClearanceScreenState extends State<WorkerClearanceScreen> {
             Expanded(
               child: Text(
                 count == 0 ? 'Select all' : '$count selected',
-                style: const TextStyle(fontWeight: FontWeight.w600, color: AdminTheme.inkNavy),
+                style: TextStyle(fontWeight: FontWeight.w600, color: AdminPalette.of(context).ink),
               ),
             ),
             if (_bulkInProgress)
@@ -351,7 +352,7 @@ class _WorkerClearanceScreenState extends State<WorkerClearanceScreen> {
                 const AdminStatusPill(label: 'PENDING REVIEW', color: AppColors.pendingClearance),
               ],
             ),
-            Text('${worker?['worker_code'] ?? ''} · ${station?['station_name'] ?? 'Unknown Station'}', style: TextStyle(color: Colors.grey.shade700)),
+            Text('${worker?['worker_code'] ?? ''} · ${station?['station_name'] ?? 'Unknown Station'}', style: TextStyle(color: AdminPalette.of(context).inkMuted)),
             const SizedBox(height: 8),
             Text('Type: ${incident['incident_type']}'),
             if (amount != null) Text('Amount involved: ₱$amount'),
@@ -416,7 +417,7 @@ class _WorkerClearanceScreenState extends State<WorkerClearanceScreen> {
                 const AdminStatusPill(label: 'PENDING REVIEW', color: AppColors.pendingClearance),
               ],
             ),
-            Text(worker?['worker_code'] ?? '', style: TextStyle(color: Colors.grey.shade700)),
+            Text(worker?['worker_code'] ?? '', style: TextStyle(color: AdminPalette.of(context).inkMuted)),
             const SizedBox(height: 8),
             Row(
               children: [

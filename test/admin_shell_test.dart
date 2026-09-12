@@ -21,17 +21,21 @@ Widget _scoped(Widget home) => ProviderScope(
 void main() {
   testWidgets('adminRoute keeps AdminTheme on pushed screens', (tester) async {
     Color? pushedPrimary;
-    await tester.pumpWidget(MaterialApp(
-      theme: ThemeData(colorScheme: const ColorScheme.light(primary: Color(0xFF0000FF))),
-      home: Builder(builder: (context) => Scaffold(
-        body: ElevatedButton(
-          onPressed: () => Navigator.push(context, adminRoute(Builder(builder: (c) {
-            pushedPrimary = Theme.of(c).colorScheme.primary;
-            return const SizedBox();
-          }))),
-          child: const Text('go'),
-        ),
-      )),
+    // adminRoute resolves the portal's own light/dark choice through a
+    // Consumer, so a pushed admin screen needs the app's ProviderScope.
+    await tester.pumpWidget(ProviderScope(
+      child: MaterialApp(
+        theme: ThemeData(colorScheme: const ColorScheme.light(primary: Color(0xFF0000FF))),
+        home: Builder(builder: (context) => Scaffold(
+          body: ElevatedButton(
+            onPressed: () => Navigator.push(context, adminRoute(Builder(builder: (c) {
+              pushedPrimary = Theme.of(c).colorScheme.primary;
+              return const SizedBox();
+            }))),
+            child: const Text('go'),
+          ),
+        )),
+      ),
     ));
     await tester.tap(find.text('go'));
     await tester.pumpAndSettle();

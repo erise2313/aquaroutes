@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../constants/admin_theme.dart';
+import '../../providers/admin_theme_provider.dart';
+
 
 /// Pushes an admin screen with the admin theme still applied.
 ///
@@ -18,6 +20,11 @@ import '../../constants/admin_theme.dart';
 /// screen.
 Route<T> adminRoute<T>(Widget child) {
   return MaterialPageRoute<T>(
-    builder: (context) => Theme(data: AdminTheme.themeData, child: child),
+    builder: (context) => Consumer(
+      builder: (context, ref, _) => Theme(
+        data: adminThemeDataFor(ref.watch(adminThemeProvider)),
+        child: child,
+      ),
+    ),
   );
 }

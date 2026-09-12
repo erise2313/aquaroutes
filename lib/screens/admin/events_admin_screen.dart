@@ -10,6 +10,7 @@ import '../../widgets/confirm_dialog.dart';
 import '../../widgets/error_state.dart';
 import '../../widgets/skeleton_loader.dart';
 import '../../utils/error_text.dart';
+import '../../constants/admin_palette.dart';
 
 class EventsAdminScreen extends StatefulWidget {
   const EventsAdminScreen({super.key});
@@ -244,11 +245,11 @@ class _EventsAdminScreenState extends State<EventsAdminScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.event_busy_outlined, size: 56, color: AdminTheme.inkNavy.withValues(alpha: 0.25)),
+            Icon(Icons.event_busy_outlined, size: 56, color: AdminPalette.of(context).ink.withValues(alpha: 0.25)),
             const SizedBox(height: 16),
             Text(
               _showPast ? 'No past events' : 'No upcoming events',
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: AdminTheme.inkNavy),
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: AdminPalette.of(context).ink),
             ),
             const SizedBox(height: 8),
             Text(
@@ -256,7 +257,7 @@ class _EventsAdminScreenState extends State<EventsAdminScreen> {
                   ? 'Events move here automatically once their date has passed.'
                   : 'Create one and it appears on the public website\'s Events page.',
               textAlign: TextAlign.center,
-              style: TextStyle(color: AdminTheme.inkNavy.withValues(alpha: 0.6)),
+              style: TextStyle(color: AdminPalette.of(context).ink.withValues(alpha: 0.6)),
             ),
           ],
         ),

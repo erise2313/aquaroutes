@@ -16,6 +16,7 @@ import '../../widgets/error_state.dart';
 import '../../widgets/skeleton_loader.dart';
 import '../../widgets/web_seal.dart';
 import '../../utils/error_text.dart';
+import '../../constants/admin_palette.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -223,18 +224,18 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text('Accredited stations', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.grey.shade700)),
+                                Text('Accredited stations', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AdminPalette.of(context).inkMuted)),
                                 const SizedBox(height: 4),
-                                Text('$_accreditedCount', style: const TextStyle(fontSize: 40, fontWeight: FontWeight.w700, color: AdminTheme.inkNavy)),
+                                Text('$_accreditedCount', style: TextStyle(fontSize: 40, fontWeight: FontWeight.w700, color: AdminPalette.of(context).ink)),
                               ],
                             ),
                           ),
-                          Container(width: 1, height: 52, color: Colors.grey.shade300),
+                          Container(width: 1, height: 52, color: AdminPalette.of(context).border),
                           const SizedBox(width: 18),
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('Pending', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.grey.shade700)),
+                              Text('Pending', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AdminPalette.of(context).inkMuted)),
                               const SizedBox(height: 4),
                               Text('$_pendingCount', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w700, color: AppColors.pendingClearance)),
                             ],
@@ -278,7 +279,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   const Text('Needs Your Review', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 12),
                   if (_reviewItems.isEmpty)
-                    Text('Nothing pending review right now.', style: TextStyle(color: Colors.grey.shade700))
+                    Text('Nothing pending review right now.', style: TextStyle(color: AdminPalette.of(context).inkMuted))
                   else ...[
                     // Capped: these are spread into the surrounding ListView,
                     // so every row is built eagerly. A large backlog would
@@ -290,7 +291,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                         child: Text(
                           'Showing the $_reviewItemLimit most recent of ${_reviewItems.length} items awaiting review. '
                           'Open Stations or Workers to work through the rest.',
-                          style: TextStyle(color: Colors.grey.shade700, fontStyle: FontStyle.italic),
+                          style: TextStyle(color: AdminPalette.of(context).inkMuted, fontStyle: FontStyle.italic),
                         ),
                       ),
                   ],
@@ -366,10 +367,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   children: [
                     Text(
                       overrideValue ?? '$value',
-                      style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: AdminTheme.inkNavy),
+                      style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: AdminPalette.of(context).ink),
                     ),
                     const SizedBox(height: 2),
-                    Text(label, style: TextStyle(fontSize: 12.5, color: Colors.grey.shade700, height: 1.2)),
+                    Text(label, style: TextStyle(fontSize: 12.5, color: AdminPalette.of(context).inkMuted, height: 1.2)),
                     if (note != null) ...[
                       const SizedBox(height: 4),
                       Text(

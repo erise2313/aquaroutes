@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../constants/admin_theme.dart';
+import '../providers/admin_theme_provider.dart';
 import 'account_settings_section.dart';
 import 'notification_bell.dart';
 
@@ -92,6 +94,20 @@ class AdminPageHeader extends StatelessWidget {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           ...actions,
+                          // The portal's own light/dark switch. It doesn't
+                          // follow the browser on purpose -- see
+                          // providers/admin_theme_provider.dart.
+                          if (showSignOut && !canPop)
+                            Consumer(
+                              builder: (context, ref, _) {
+                                final isDark = ref.watch(adminThemeProvider) == AdminThemeMode.dark;
+                                return IconButton(
+                                  tooltip: isDark ? 'Switch to light mode' : 'Switch to dark mode',
+                                  icon: Icon(isDark ? Icons.light_mode_outlined : Icons.dark_mode_outlined),
+                                  onPressed: () => ref.read(adminThemeProvider.notifier).toggle(),
+                                );
+                              },
+                            ),
                           if (showSignOut && !canPop) const NotificationBell(),
                           // An account menu rather than a bare sign-out button,
                           // so admins can also change their password.

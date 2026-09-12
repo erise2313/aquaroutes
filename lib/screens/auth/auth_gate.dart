@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../models/membership.dart';
+import '../../providers/admin_theme_provider.dart';
 import '../../providers/app_state.dart';
 import '../admin/admin_navigation.dart';
 import '../driver/driver_dashboard.dart';
@@ -48,7 +49,7 @@ class AuthGate extends ConsumerWidget {
 
     return authState.when(
       loading: () => const _SplashScreen(),
-      error: (_, _) => _isAdminPortalBuild ? const LoginScreen() : (kIsWeb ? const OrgHomeScreen() : const PublicHomeScreen()),
+      error: (_, _) => _isAdminPortalBuild ? const _AdminThemed(child: LoginScreen()) : (kIsWeb ? const OrgHomeScreen() : const PublicHomeScreen()),
       data: (state) {
         // Supabase Flutter auto-detects a password-recovery token in the
         // URL fragment on web with no extra config -- intercept it here
@@ -61,16 +62,16 @@ class AuthGate extends ConsumerWidget {
         }
 
         final session = state.session;
-        if (session == null) return _isAdminPortalBuild ? const LoginScreen() : (kIsWeb ? const OrgHomeScreen() : const PublicHomeScreen());
+        if (session == null) return _isAdminPortalBuild ? const _AdminThemed(child: LoginScreen()) : (kIsWeb ? const OrgHomeScreen() : const PublicHomeScreen());
 
         final membershipAsync = ref.watch(currentMembershipProvider);
         return membershipAsync.when(
           loading: () => const _SplashScreen(),
-          error: (_, _) => _isAdminPortalBuild ? const LoginScreen() : (kIsWeb ? const OrgHomeScreen() : const PublicHomeScreen()),
+          error: (_, _) => _isAdminPortalBuild ? const _AdminThemed(child: LoginScreen()) : (kIsWeb ? const OrgHomeScreen() : const PublicHomeScreen()),
           data: (membership) {
             if (membership == null) return const _NoActiveMembershipRouter();
             if (_isAdminPortalBuild && membership.role != AppRole.wasaAdmin) {
-              return const _AdminPortalWrongRoleScreen();
+              return const _AdminThemed(child: _AdminPortalWrongRoleScreen());
             }
             // Admin access on the main site is intentionally being retired
             // now that the dedicated admin portal exists -- a wasa_admin
@@ -99,6 +100,21 @@ class AuthGate extends ConsumerWidget {
         );
       },
     );
+  }
+}
+
+/// Carries the admin portal's own theme (and its light/dark choice) onto the
+/// screens shown *before* AdminNavigation exists -- the login screen and the
+/// wrong-role notice. Without it, signing in visibly changed the colours,
+/// because those screens fell back to the theme the public website uses.
+class _AdminThemed extends ConsumerWidget {
+  const _AdminThemed({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Theme(data: adminThemeDataFor(ref.watch(adminThemeProvider)), child: child);
   }
 }
 

@@ -9,6 +9,7 @@ import 'user_management_screen.dart';
 import 'website_content_screen.dart';
 import 'worker_clearance_screen.dart';
 import '../../constants/admin_theme.dart';
+import '../../providers/admin_theme_provider.dart';
 import '../../providers/admin_queue_provider.dart';
 import '../../widgets/responsive_nav_shell.dart';
 
@@ -24,7 +25,7 @@ class AdminNavigation extends ConsumerWidget {
     final counts = ref.watch(adminQueueCountsProvider).value;
 
     return Theme(
-      data: AdminTheme.themeData,
+      data: adminThemeDataFor(ref.watch(adminThemeProvider)),
       // No outer AppBar: every admin page already renders its own
       // AdminPageHeader, and stacking the two produced a second navy bar
       // above it with the gold rule only under the lower one. Sign-out

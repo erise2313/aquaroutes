@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../constants/admin_theme.dart';
 import '../services/admin_analytics_service.dart';
+import '../constants/admin_palette.dart';
 
 /// Titled container every dashboard chart sits in, so they share one frame
 /// instead of each inventing its own heading treatment.
@@ -44,7 +45,7 @@ class AdminChartCard extends StatelessWidget {
             Text(title, style: Theme.of(context).textTheme.titleMedium),
             if (subtitle != null) ...[
               const SizedBox(height: 2),
-              Text(subtitle!, style: TextStyle(color: AdminTheme.inkNavy.withValues(alpha: 0.6), fontSize: 13)),
+              Text(subtitle!, style: TextStyle(color: AdminPalette.of(context).ink.withValues(alpha: 0.6), fontSize: 13)),
             ],
             const SizedBox(height: 16),
             SizedBox(
@@ -56,7 +57,7 @@ class AdminChartCard extends StatelessWidget {
                         child: Text(
                           emptyMessage ?? 'Nothing to show yet.',
                           textAlign: TextAlign.center,
-                          style: TextStyle(color: AdminTheme.inkNavy.withValues(alpha: 0.55)),
+                          style: TextStyle(color: AdminPalette.of(context).ink.withValues(alpha: 0.55)),
                         ),
                       ),
                     )
@@ -66,7 +67,7 @@ class AdminChartCard extends StatelessWidget {
               const SizedBox(height: 8),
               Text(
                 footnote!,
-                style: TextStyle(fontSize: 12, color: AdminTheme.inkNavy.withValues(alpha: 0.5), fontStyle: FontStyle.italic),
+                style: TextStyle(fontSize: 12, color: AdminPalette.of(context).ink.withValues(alpha: 0.5), fontStyle: FontStyle.italic),
               ),
             ],
           ],
@@ -102,7 +103,7 @@ class AdminMonthBarChart extends StatelessWidget {
           show: true,
           drawVerticalLine: false,
           horizontalInterval: step,
-          getDrawingHorizontalLine: (_) => FlLine(color: AdminTheme.chartGrid, strokeWidth: 1),
+          getDrawingHorizontalLine: (_) => FlLine(color: AdminPalette.of(context).chartGrid, strokeWidth: 1),
         ),
         borderData: FlBorderData(show: false),
         titlesData: FlTitlesData(
@@ -115,7 +116,7 @@ class AdminMonthBarChart extends StatelessWidget {
               reservedSize: 32,
               getTitlesWidget: (value, _) => Text(
                 value.toInt().toString(),
-                style: TextStyle(color: AdminTheme.chartAxis, fontSize: 12),
+                style: TextStyle(color: AdminPalette.of(context).chartAxis, fontSize: 12),
               ),
             ),
           ),
@@ -130,7 +131,7 @@ class AdminMonthBarChart extends StatelessWidget {
                   padding: const EdgeInsets.only(top: 6),
                   child: Text(
                     buckets[i].label,
-                    style: TextStyle(color: AdminTheme.chartAxis, fontSize: 12, fontWeight: FontWeight.w600),
+                    style: TextStyle(color: AdminPalette.of(context).chartAxis, fontSize: 12, fontWeight: FontWeight.w600),
                   ),
                 );
               },
@@ -231,7 +232,7 @@ class AdminDonutChart extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                      Text('${entries[i].value}', style: TextStyle(fontSize: 13, color: AdminTheme.chartAxis)),
+                      Text('${entries[i].value}', style: TextStyle(fontSize: 13, color: AdminPalette.of(context).chartAxis)),
                     ],
                   ),
                 ),

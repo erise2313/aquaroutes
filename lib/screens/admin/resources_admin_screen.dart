@@ -2,7 +2,6 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
-import '../../constants/admin_theme.dart';
 import '../../models/resource.dart';
 import '../../services/resource_service.dart';
 import '../../services/supabase_service.dart';
@@ -11,6 +10,7 @@ import '../../widgets/confirm_dialog.dart';
 import '../../widgets/error_state.dart';
 import '../../widgets/skeleton_loader.dart';
 import '../../utils/error_text.dart';
+import '../../constants/admin_palette.dart';
 
 /// WASA admin upload/manage screen for the public resources library
 /// (permit checklists, floor-price schedule, etc.) -- reuses the same
@@ -160,15 +160,15 @@ class _ResourcesAdminScreenState extends State<ResourcesAdminScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.folder_open_outlined, size: 56, color: AdminTheme.inkNavy.withValues(alpha: 0.25)),
+            Icon(Icons.folder_open_outlined, size: 56, color: AdminPalette.of(context).ink.withValues(alpha: 0.25)),
             const SizedBox(height: 16),
-            const Text('No resources uploaded yet',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: AdminTheme.inkNavy)),
+            Text('No resources uploaded yet',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: AdminPalette.of(context).ink)),
             const SizedBox(height: 8),
             Text(
               'Anything you upload here appears on the public website\'s Resources page for members to download.',
               textAlign: TextAlign.center,
-              style: TextStyle(color: AdminTheme.inkNavy.withValues(alpha: 0.6)),
+              style: TextStyle(color: AdminPalette.of(context).ink.withValues(alpha: 0.6)),
             ),
           ],
         ),

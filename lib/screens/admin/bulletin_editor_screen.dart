@@ -15,6 +15,7 @@ import '../../widgets/error_state.dart';
 import '../../widgets/skeleton_loader.dart';
 import '../public/bulletin_feed.dart';
 import '../../utils/error_text.dart';
+import '../../constants/admin_palette.dart';
 
 /// Validates a container code typed by the admin: lower-case letters,
 /// digits and underscores, like the seeded `slim_5gal`. Codes are stored on
@@ -218,7 +219,7 @@ class _BulletinEditorScreenState extends State<BulletinEditorScreen> {
           if (_floorPrices.isEmpty)
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-              child: Text('No floor prices set yet.', style: TextStyle(color: Colors.grey.shade600)),
+              child: Text('No floor prices set yet.', style: TextStyle(color: AdminPalette.of(context).inkMuted)),
             ),
           ..._floorPrices.map((fp) => ListTile(
                 leading: const Icon(Icons.water_drop, color: Colors.blue),

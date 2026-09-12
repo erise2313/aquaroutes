@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import 'admin_palette.dart';
+
 /// Design tokens for the WASA Admin portal (lib/screens/admin/, both the
 /// mobile-app admin login and the standalone admin portal website --
 /// AdminNavigation is the same widget tree either way).
@@ -10,18 +12,24 @@ import 'package:google_fonts/google_fonts.dart';
 /// coincidence: WASA's whole identity is about certifying which stations
 /// are trustworthy, and admin is the team that actually does that
 /// certifying -- a more literal fit for the "seal" language than the
-/// marketing site itself. Now that admin has its own portal site
-/// (deploy_admin_web.ps1), sharing this identity is a real uniformity
-/// story, not a cosmetic one.
+/// marketing site itself.
 ///
 /// Tuned larger/higher-contrast than the mobile app's default theme --
-/// mirrors the precedent already set by AppColors.driver* (its own tuned
-/// palette for daylight-road readability): admin's users skew older, so
-/// this scales text and touch targets up rather than using Material's
-/// compact defaults.
+/// mirrors the precedent already set by the driver palette: admin's users
+/// skew older, so this scales text and touch targets up rather than using
+/// Material's compact defaults.
+///
+/// **Light and dark.** The portal is pinned to its own theme (AdminNavigation
+/// and adminRoute both wrap in it) so it can never inherit the public site's
+/// theme and render white cards on a dark page. The mode itself comes from
+/// the admin's own switch in the header (providers/admin_theme_provider.dart),
+/// not the browser: an association officer opening the portal on a PC that
+/// happens to be set to dark shouldn't have the tool change appearance
+/// without asking.
 class AdminTheme {
   AdminTheme._();
 
+  // -- Brand accents: identical in both modes. --------------------------
   static const inkNavy = Color(0xFF0B2545);
   static const harborBlue = Color(0xFF1565C0);
   static const sealGold = Color(0xFFC99A3B);
@@ -39,29 +47,49 @@ class AdminTheme {
     Color(0xFF8E6BAF),
   ];
 
-  /// Axis labels, gridlines and other chart furniture -- deliberately low
-  /// contrast so the data, not the scaffolding, is what reads first.
+  /// Kept for any call site still reading the old constants; the mode-aware
+  /// values live on [AdminPalette] (`AdminPalette.of(context).chartAxis`).
   static Color chartAxis = inkNavy.withValues(alpha: 0.55);
   static Color chartGrid = inkNavy.withValues(alpha: 0.08);
 
-  static ThemeData get themeData {
+  /// The header band stays navy in both modes -- it's the portal's
+  /// identity, and white-on-navy is legible either way.
+  static const headerBand = inkNavy;
+
+  static ThemeData get light => themeFor(Brightness.light);
+  static ThemeData get dark => themeFor(Brightness.dark);
+
+  /// Existing call sites that predate dark mode.
+  static ThemeData get themeData => light;
+
+  static ThemeData themeFor(Brightness brightness) {
+    final isDark = brightness == Brightness.dark;
+    final palette = isDark ? AdminPalette.dark : AdminPalette.light;
+
+    // Lightened on dark so the brand blue stays legible on navy; light mode
+    // keeps the exact blue the portal already used.
+    final primary = isDark ? const Color(0xFF6FB1F0) : harborBlue;
+
     final colorScheme = ColorScheme.fromSeed(
       seedColor: harborBlue,
-      brightness: Brightness.light,
+      brightness: brightness,
     ).copyWith(
-      primary: harborBlue,
-      onPrimary: Colors.white,
+      primary: primary,
+      onPrimary: isDark ? const Color(0xFF04243F) : Colors.white,
       secondary: sealGold,
-      onSecondary: inkNavy,
-      surface: Colors.white,
-      onSurface: inkNavy,
+      onSecondary: isDark ? Colors.black : inkNavy,
+      surface: palette.card,
+      onSurface: palette.ink,
+      onSurfaceVariant: palette.inkMuted,
+      outline: palette.border,
     );
 
     final base = ThemeData(
       colorScheme: colorScheme,
+      brightness: brightness,
       useMaterial3: true,
       visualDensity: VisualDensity.comfortable,
-      scaffoldBackgroundColor: foam,
+      scaffoldBackgroundColor: palette.paper,
     );
 
     // ThemeData's textTheme carries colors but NOT sizes: every fontSize is
@@ -78,14 +106,15 @@ class AdminTheme {
     ).englishLike.merge(base.textTheme);
 
     return base.copyWith(
+      extensions: [palette],
       textTheme: sized
-          .apply(fontSizeFactor: 1.12, bodyColor: inkNavy, displayColor: inkNavy)
+          .apply(fontSizeFactor: 1.12, bodyColor: palette.ink, displayColor: palette.ink)
           .copyWith(
-            titleLarge: GoogleFonts.fraunces(fontSize: 22, fontWeight: FontWeight.w600, color: inkNavy),
-            titleMedium: GoogleFonts.fraunces(fontSize: 18, fontWeight: FontWeight.w600, color: inkNavy),
+            titleLarge: GoogleFonts.fraunces(fontSize: 22, fontWeight: FontWeight.w600, color: palette.ink),
+            titleMedium: GoogleFonts.fraunces(fontSize: 18, fontWeight: FontWeight.w600, color: palette.ink),
           ),
       appBarTheme: AppBarTheme(
-        backgroundColor: inkNavy,
+        backgroundColor: headerBand,
         foregroundColor: Colors.white,
         elevation: 0,
         centerTitle: false,
@@ -97,22 +126,25 @@ class AdminTheme {
         shape: const Border(bottom: BorderSide(color: sealGold, width: 3)),
       ),
       cardTheme: CardThemeData(
-        elevation: 1,
-        color: Colors.white,
+        elevation: isDark ? 0 : 1,
+        color: palette.card,
         surfaceTintColor: Colors.transparent,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
+          side: isDark ? BorderSide(color: palette.border) : BorderSide.none,
+        ),
         margin: const EdgeInsets.symmetric(vertical: 6),
       ),
       listTileTheme: ListTileThemeData(
-        iconColor: harborBlue,
-        titleTextStyle: const TextStyle(fontSize: 16.5, fontWeight: FontWeight.w600, color: inkNavy),
-        subtitleTextStyle: TextStyle(fontSize: 14, color: inkNavy.withValues(alpha: 0.65)),
+        iconColor: primary,
+        titleTextStyle: TextStyle(fontSize: 16.5, fontWeight: FontWeight.w600, color: palette.ink),
+        subtitleTextStyle: TextStyle(fontSize: 14, color: palette.inkMuted),
         minVerticalPadding: 14,
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: harborBlue,
-          foregroundColor: Colors.white,
+          backgroundColor: primary,
+          foregroundColor: colorScheme.onPrimary,
           minimumSize: const Size(64, 52),
           textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -120,8 +152,8 @@ class AdminTheme {
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          foregroundColor: harborBlue,
-          side: const BorderSide(color: harborBlue, width: 1.5),
+          foregroundColor: primary,
+          side: BorderSide(color: primary, width: 1.5),
           minimumSize: const Size(64, 52),
           textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -129,12 +161,12 @@ class AdminTheme {
       ),
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
-          foregroundColor: harborBlue,
+          foregroundColor: primary,
           minimumSize: const Size(48, 48),
           textStyle: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w600),
         ),
       ),
-      iconTheme: const IconThemeData(color: harborBlue, size: 26),
+      iconTheme: IconThemeData(color: primary, size: 26),
       switchTheme: SwitchThemeData(
         thumbColor: WidgetStateProperty.resolveWith(
           (states) => states.contains(WidgetState.selected) ? sealGold : null,
@@ -144,22 +176,24 @@ class AdminTheme {
         ),
       ),
       navigationRailTheme: NavigationRailThemeData(
-        backgroundColor: Colors.white,
-        selectedIconTheme: const IconThemeData(color: harborBlue, size: 28),
-        selectedLabelTextStyle: const TextStyle(color: harborBlue, fontWeight: FontWeight.w700, fontSize: 13),
-        unselectedIconTheme: IconThemeData(color: inkNavy.withValues(alpha: 0.5), size: 26),
-        unselectedLabelTextStyle: TextStyle(color: inkNavy.withValues(alpha: 0.5), fontSize: 13),
+        backgroundColor: palette.card,
+        selectedIconTheme: IconThemeData(color: primary, size: 28),
+        selectedLabelTextStyle: TextStyle(color: primary, fontWeight: FontWeight.w700, fontSize: 13),
+        unselectedIconTheme: IconThemeData(color: palette.inkMuted, size: 26),
+        unselectedLabelTextStyle: TextStyle(color: palette.inkMuted, fontSize: 13),
       ),
       bottomNavigationBarTheme: BottomNavigationBarThemeData(
-        backgroundColor: Colors.white,
-        selectedItemColor: harborBlue,
-        unselectedItemColor: inkNavy.withValues(alpha: 0.4),
+        backgroundColor: palette.card,
+        selectedItemColor: primary,
+        unselectedItemColor: palette.inkMuted,
         selectedLabelStyle: const TextStyle(fontWeight: FontWeight.w700),
       ),
-      dividerTheme: DividerThemeData(color: inkNavy.withValues(alpha: 0.12)),
+      dividerTheme: DividerThemeData(color: palette.border),
+      dialogTheme: DialogThemeData(backgroundColor: palette.card),
       chipTheme: base.chipTheme.copyWith(
-        backgroundColor: foam,
-        labelStyle: const TextStyle(color: inkNavy),
+        backgroundColor: palette.foam,
+        labelStyle: TextStyle(color: palette.ink),
+        side: BorderSide(color: palette.border),
       ),
     );
   }

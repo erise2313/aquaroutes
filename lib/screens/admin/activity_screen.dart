@@ -11,6 +11,7 @@ import '../../widgets/skeleton_loader.dart';
 import '../../utils/error_text.dart';
 import '../../utils/csv_download.dart';
 import '../../utils/csv_export.dart';
+import '../../constants/admin_palette.dart';
 
 /// Narrows activity rows by free-text search over who/what, plus category.
 /// Top-level and pure so the matching rules are unit-testable.
@@ -216,7 +217,7 @@ class _ActivityScreenState extends State<ActivityScreen> {
                         padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
                         child: Text(
                           'Showing the $_limit most recent entries.',
-                          style: TextStyle(fontSize: 12, fontStyle: FontStyle.italic, color: AdminTheme.inkNavy.withValues(alpha: 0.5)),
+                          style: TextStyle(fontSize: 12, fontStyle: FontStyle.italic, color: AdminPalette.of(context).ink.withValues(alpha: 0.5)),
                         ),
                       ),
                   ],
@@ -243,7 +244,7 @@ class _ActivityScreenState extends State<ActivityScreen> {
         subtitle: Text(
           '${row['actor_name'] ?? 'Unknown'}'
           '${occurredAt == null ? '' : ' · ${DateFormat('MMM d, yyyy h:mm a').format(occurredAt.toLocal())}'}',
-          style: TextStyle(color: AdminTheme.inkNavy.withValues(alpha: 0.6)),
+          style: TextStyle(color: AdminPalette.of(context).ink.withValues(alpha: 0.6)),
         ),
       ),
     );
@@ -256,11 +257,11 @@ class _ActivityScreenState extends State<ActivityScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 56, color: AdminTheme.inkNavy.withValues(alpha: 0.25)),
+            Icon(icon, size: 56, color: AdminPalette.of(context).ink.withValues(alpha: 0.25)),
             const SizedBox(height: 16),
-            Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: AdminTheme.inkNavy)),
+            Text(title, style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: AdminPalette.of(context).ink)),
             const SizedBox(height: 8),
-            Text(message, textAlign: TextAlign.center, style: TextStyle(color: AdminTheme.inkNavy.withValues(alpha: 0.6))),
+            Text(message, textAlign: TextAlign.center, style: TextStyle(color: AdminPalette.of(context).ink.withValues(alpha: 0.6))),
             if (action != null) ...[const SizedBox(height: 16), action],
           ],
         ),

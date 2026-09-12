@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../constants/admin_theme.dart';
+import '../constants/admin_palette.dart';
 
 /// One row of mutually-exclusive filter choices (e.g. Role: Any / Owner /
 /// Driver). [options] maps the value stored in [selected] to its label; a
@@ -82,7 +83,7 @@ class AdminFilterBar extends StatelessWidget {
                     group.label,
                     style: TextStyle(
                       fontWeight: FontWeight.w600,
-                      color: AdminTheme.inkNavy.withValues(alpha: 0.7),
+                      color: AdminPalette.of(context).ink.withValues(alpha: 0.7),
                     ),
                   ),
                 ),
@@ -98,7 +99,7 @@ class AdminFilterBar extends StatelessWidget {
                               selectedColor: AdminTheme.harborBlue.withValues(alpha: 0.16),
                               labelStyle: TextStyle(
                                 fontWeight: group.selected == e.key ? FontWeight.w700 : FontWeight.w500,
-                                color: AdminTheme.inkNavy,
+                                color: AdminPalette.of(context).ink,
                               ),
                             ))
                         .toList(),
@@ -112,7 +113,7 @@ class AdminFilterBar extends StatelessWidget {
               padding: const EdgeInsets.only(top: 10),
               child: Text(
                 resultSummary!,
-                style: TextStyle(color: AdminTheme.inkNavy.withValues(alpha: 0.6)),
+                style: TextStyle(color: AdminPalette.of(context).ink.withValues(alpha: 0.6)),
               ),
             ),
         ],
