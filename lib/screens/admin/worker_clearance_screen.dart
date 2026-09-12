@@ -10,6 +10,7 @@ import '../../widgets/admin_page_header.dart';
 import '../../widgets/admin_status_pill.dart';
 import '../../widgets/confirm_dialog.dart';
 import '../../widgets/error_state.dart';
+import '../../widgets/portal/portal.dart';
 import '../../widgets/skeleton_loader.dart';
 import '../../utils/error_text.dart';
 import '../../constants/admin_palette.dart';
@@ -225,7 +226,9 @@ class _WorkerClearanceScreenState extends State<WorkerClearanceScreen> {
       child: Column(
         children: [
           AdminPageHeader(
+            eyebrow: 'Association',
             title: 'Worker Clearance Review',
+            subtitle: 'Incidents filed by stations, and credentials waiting on a decision',
             bottom: TabBar(
               labelColor: Colors.white,
               unselectedLabelColor: Colors.white70,
@@ -245,7 +248,11 @@ class _WorkerClearanceScreenState extends State<WorkerClearanceScreen> {
                 : TabBarView(
                     children: [
                       _incidents.isEmpty
-                          ? const Center(child: Text('No incidents awaiting review.'))
+                          ? const PortalEmptyState(
+                              icon: Icons.verified_user_outlined,
+                              title: 'No incidents awaiting review',
+                              message: 'Every incident a station has filed has been confirmed or dismissed.',
+                            )
                           : RefreshIndicator(
                               onRefresh: _fetchAll,
                               child: ListView.builder(
@@ -255,7 +262,11 @@ class _WorkerClearanceScreenState extends State<WorkerClearanceScreen> {
                               ),
                             ),
                       _credentials.isEmpty
-                          ? const Center(child: Text('No credentials awaiting review.'))
+                          ? const PortalEmptyState(
+                              icon: Icons.badge_outlined,
+                              title: 'No credentials awaiting review',
+                              message: 'Every ID and licence submitted so far has been approved or rejected.',
+                            )
                           : Column(
                               children: [
                                 _buildSelectionBar(),
@@ -321,10 +332,10 @@ class _WorkerClearanceScreenState extends State<WorkerClearanceScreen> {
                 child: const Text('Reject'),
               ),
               const SizedBox(width: 8),
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(backgroundColor: AppColors.cleared, minimumSize: const Size(0, 44)),
+              FilledButton(
+                style: FilledButton.styleFrom(backgroundColor: AppColors.cleared, minimumSize: const Size(0, 44)),
                 onPressed: count == 0 ? null : () => _bulkReviewCredentials(true),
-                child: const Text('Approve', style: TextStyle(color: Colors.white)),
+                child: const Text('Approve'),
               ),
             ],
           ],
@@ -338,47 +349,48 @@ class _WorkerClearanceScreenState extends State<WorkerClearanceScreen> {
     final station = worker?['water_stations'] as Map<String, dynamic>?;
     final amount = incident['amount_involved'];
 
-    return Card(
+    final palette = AdminPalette.of(context);
+
+    return PortalCard(
+      lift: false,
+      accent: AppColors.pendingClearance,
       margin: const EdgeInsets.only(bottom: 12),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(child: Text(worker?['full_name'] ?? 'Unknown Worker', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16))),
-                const AdminStatusPill(label: 'PENDING REVIEW', color: AppColors.pendingClearance),
-              ],
-            ),
-            Text('${worker?['worker_code'] ?? ''} · ${station?['station_name'] ?? 'Unknown Station'}', style: TextStyle(color: AdminPalette.of(context).inkMuted)),
-            const SizedBox(height: 8),
-            Text('Type: ${incident['incident_type']}'),
-            if (amount != null) Text('Amount involved: ₱$amount'),
-            const SizedBox(height: 4),
-            Text(incident['description'] ?? ''),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () => _resolveIncident(incident['id'] as String, false),
-                    child: const Text('Dismiss'),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(backgroundColor: AppColors.flagged),
-                    onPressed: () => _resolveIncident(incident['id'] as String, true),
-                    child: const Text('Confirm Flag', style: TextStyle(color: Colors.white)),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            worker?['full_name'] ?? 'Unknown Worker',
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: palette.ink),
+          ),
+          Text(
+            '${worker?['worker_code'] ?? ''} · ${station?['station_name'] ?? 'Unknown Station'}',
+            style: TextStyle(color: palette.inkMuted),
+          ),
+          const SizedBox(height: 8),
+          // The pill was a non-flexible child of a Row beside an Expanded
+          // name, so it was laid out with unbounded width and its label could
+          // never wrap. Here its width is bounded.
+          const AdminStatusPill(label: 'PENDING REVIEW', color: AppColors.pendingClearance),
+          const SizedBox(height: 8),
+          Text('Type: ${incident['incident_type']}'),
+          if (amount != null) Text('Amount involved: ₱$amount'),
+          const SizedBox(height: 4),
+          Text(incident['description'] ?? ''),
+          const SizedBox(height: 12),
+          PortalActionRow(
+            children: [
+              OutlinedButton(
+                onPressed: () => _resolveIncident(incident['id'] as String, false),
+                child: const Text('Dismiss'),
+              ),
+              FilledButton(
+                style: FilledButton.styleFrom(backgroundColor: AppColors.flagged),
+                onPressed: () => _resolveIncident(incident['id'] as String, true),
+                child: const Text('Confirm flag'),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -390,67 +402,74 @@ class _WorkerClearanceScreenState extends State<WorkerClearanceScreen> {
     final id = credential['id'] as String;
     final selected = _selectedCredentials.contains(id);
 
-    return Card(
+    final palette = AdminPalette.of(context);
+
+    return PortalCard(
+      lift: false,
+      accent: selected ? AdminTheme.harborBlue : AppColors.pendingClearance,
       margin: const EdgeInsets.only(bottom: 12),
-      color: selected ? AdminTheme.harborBlue.withValues(alpha: 0.06) : null,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Checkbox(
-                  value: selected,
-                  onChanged: _bulkInProgress
-                      ? null
-                      : (v) => setState(() {
-                            if (v == true) {
-                              _selectedCredentials.add(id);
-                            } else {
-                              _selectedCredentials.remove(id);
-                            }
-                          }),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Checkbox(
+                value: selected,
+                onChanged: _bulkInProgress
+                    ? null
+                    : (v) => setState(() {
+                          if (v == true) {
+                            _selectedCredentials.add(id);
+                          } else {
+                            _selectedCredentials.remove(id);
+                          }
+                        }),
+              ),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      worker?['full_name'] ?? 'Unknown Worker',
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: palette.ink),
+                    ),
+                    Text(worker?['worker_code'] ?? '', style: TextStyle(color: palette.inkMuted)),
+                  ],
                 ),
-                Expanded(child: Text(worker?['full_name'] ?? 'Unknown Worker', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16))),
-                const AdminStatusPill(label: 'PENDING REVIEW', color: AppColors.pendingClearance),
-              ],
-            ),
-            Text(worker?['worker_code'] ?? '', style: TextStyle(color: AdminPalette.of(context).inkMuted)),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(child: Text('Document: $label')),
-                if (storagePath != null)
-                  TextButton.icon(
-                    onPressed: () => _viewCredentialDocument(storagePath),
-                    icon: const Icon(Icons.visibility_outlined, size: 18),
-                    label: const Text('View'),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () => _reviewCredential(credential['id'] as String, false),
-                    child: const Text('Reject'),
-                  ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          const AdminStatusPill(label: 'PENDING REVIEW', color: AppColors.pendingClearance),
+          const SizedBox(height: 8),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Expanded(child: Text('Document: $label')),
+              if (storagePath != null)
+                TextButton.icon(
+                  onPressed: () => _viewCredentialDocument(storagePath),
+                  icon: const Icon(Icons.visibility_outlined, size: 18),
+                  label: const Text('View'),
                 ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(backgroundColor: AppColors.cleared),
-                    onPressed: () => _reviewCredential(credential['id'] as String, true),
-                    child: const Text('Approve', style: TextStyle(color: Colors.white)),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          PortalActionRow(
+            children: [
+              OutlinedButton(
+                onPressed: () => _reviewCredential(credential['id'] as String, false),
+                child: const Text('Reject'),
+              ),
+              FilledButton(
+                style: FilledButton.styleFrom(backgroundColor: AppColors.cleared),
+                onPressed: () => _reviewCredential(credential['id'] as String, true),
+                child: const Text('Approve'),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }

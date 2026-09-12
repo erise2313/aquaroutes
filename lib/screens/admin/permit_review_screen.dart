@@ -9,9 +9,11 @@ import '../../services/permit_service.dart';
 import '../../services/station_service.dart';
 import '../../services/supabase_service.dart';
 import '../../constants/app_colors.dart';
+import '../../widgets/admin_page_header.dart';
 import '../../widgets/admin_status_pill.dart';
 import '../../widgets/confirm_dialog.dart';
 import '../../widgets/error_state.dart';
+import '../../widgets/portal/portal.dart';
 import '../../widgets/skeleton_loader.dart';
 import '../../utils/error_text.dart';
 
@@ -217,57 +219,81 @@ class _PermitReviewScreenState extends State<PermitReviewScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Scaffold(
-      appBar: AppBar(title: Text(widget.stationName)),
-      body: _isLoading
-          ? const Padding(padding: EdgeInsets.all(16), child: SkeletonList(count: 4))
-          : _error != null
-          ? ErrorState(message: _error!, onRetry: _load)
-          : ListView(
-              padding: const EdgeInsets.all(16),
-              children: [
-                Card(
-                  color: _isAccredited ? Colors.green.shade50 : Colors.grey.shade100,
-                  child: ListTile(
-                    leading: Icon(_isAccredited ? Icons.verified : Icons.hourglass_top, color: _isAccredited ? AppColors.cleared : Colors.grey),
-                    title: Text(_isAccredited ? 'Accredited' : 'Not yet accredited'),
-                    subtitle: Text(
-                      _isAccreditationOverridden
-                          ? 'Manually certified by ${_overriddenByName ?? 'a WASA admin'}'
-                              '${_overriddenAt != null ? ' on ${DateFormat('MMM d, yyyy \'at\' h:mm a').format(_overriddenAt!)}' : ''} '
-                              '-- won\'t change automatically until the override below is cleared.'
-                          : 'Flips automatically once every required permit below is approved.',
-                    ),
+      // An in-body header rather than an AppBar: this was the one admin screen
+      // still stacking a page AppBar under the nav shell's, which is exactly
+      // the two-navy-bars problem AdminPageHeader exists to prevent. Pushed
+      // from Station Accreditation, so it gets a back button automatically.
+      body: Column(
+        children: [
+          AdminPageHeader(
+            eyebrow: 'Station review',
+            title: widget.stationName,
+            subtitle: 'Permits, accreditation, and the public verification seal',
+          ),
+          Expanded(
+            child: _isLoading
+                ? const Padding(padding: EdgeInsets.all(16), child: SkeletonList(count: 4))
+                : _error != null
+                ? ErrorState(message: _error!, onRetry: _load)
+                : ListView(
+                    padding: const EdgeInsets.all(16),
+                    children: [
+                      // Was a Card filled with green.shade50 or grey.shade100:
+                      // a pale block that stayed pale in dark mode.
+                      StatusCallout(
+                        accent: _isAccredited ? AppColors.cleared : AppColors.inkMuted,
+                        icon: _isAccredited ? Icons.verified : Icons.hourglass_top,
+                        title: _isAccredited ? 'Accredited' : 'Not yet accredited',
+                        message: _isAccreditationOverridden
+                            ? 'Manually certified by ${_overriddenByName ?? 'a WASA admin'}'
+                                '${_overriddenAt != null ? ' on ${DateFormat('MMM d, yyyy \'at\' h:mm a').format(_overriddenAt!)}' : ''} '
+                                '-- won\'t change automatically until the override below is cleared.'
+                            : 'Flips automatically once every required permit below is approved.',
+                      ),
+                      const SizedBox(height: 10),
+                      PortalCard(
+                        lift: false,
+                        padding: EdgeInsets.zero,
+                        accent: _isAccreditationOverridden ? AppColors.pendingClearance : null,
+                        child: SwitchListTile(
+                          title: const Text('Manually certify (override)'),
+                          subtitle: Text(
+                            'Accredit this station even with missing or rejected required permits. '
+                            'A future permit change won\'t undo this until you turn it back off.',
+                            style: theme.textTheme.bodySmall,
+                          ),
+                          value: _isAccreditationOverridden,
+                          onChanged: _toggleAccreditationOverride,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      PortalCard(
+                        lift: false,
+                        padding: EdgeInsets.zero,
+                        child: SwitchListTile(
+                          title: const Text('Colorum verification seal'),
+                          subtitle: Text(
+                            'Marks this station as a legitimate, licensed operator on the public map.',
+                            style: theme.textTheme.bodySmall,
+                          ),
+                          value: _isColorumVerified,
+                          onChanged: _toggleColorumVerified,
+                        ),
+                      ),
+                      const SizedBox(height: 28),
+                      PortalSection(
+                        title: 'Permits',
+                        subtitle: 'Every permit for this station, including ones not required here',
+                        child: Column(children: _permits.map(_buildPermitTile).toList()),
+                      ),
+                    ],
                   ),
-                ),
-                const SizedBox(height: 8),
-                Card(
-                  color: _isAccreditationOverridden ? Colors.amber.shade50 : null,
-                  child: SwitchListTile(
-                    title: const Text('Manually Certify (Override)'),
-                    subtitle: const Text(
-                      'Accredit this station even with missing or rejected required permits. A future permit change won\'t undo this until you turn it back off.',
-                      style: TextStyle(fontSize: 12),
-                    ),
-                    value: _isAccreditationOverridden,
-                    onChanged: _toggleAccreditationOverride,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Card(
-                  child: SwitchListTile(
-                    title: const Text('Colorum Verification Seal'),
-                    subtitle: const Text('Marks this station as a legitimate, licensed operator on the public map.'),
-                    value: _isColorumVerified,
-                    onChanged: _toggleColorumVerified,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                const Text('Permits', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 8),
-                ..._permits.map(_buildPermitTile),
-              ],
-            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -281,86 +307,90 @@ class _PermitReviewScreenState extends State<PermitReviewScreen> {
   }
 
   Widget _buildPermitTile(Permit permit) {
+    final theme = Theme.of(context);
+
     final (statusColor, statusLabel) = switch (permit.status) {
-      PermitStatus.approved => (AppColors.cleared, 'Approved'),
-      PermitStatus.pendingReview => (AppColors.pendingClearance, 'Pending Review'),
-      PermitStatus.rejected => (AppColors.flagged, 'Rejected'),
-      PermitStatus.missing => (Colors.grey, 'Not Uploaded'),
+      PermitStatus.approved => (AppColors.cleared, 'APPROVED'),
+      PermitStatus.pendingReview => (AppColors.pendingClearance, 'PENDING REVIEW'),
+      PermitStatus.rejected => (AppColors.flagged, 'REJECTED'),
+      PermitStatus.missing => (AppColors.inkMuted, 'NOT UPLOADED'),
     };
 
     final isPending = permit.isRequired && permit.status == PermitStatus.pendingReview;
 
     return Opacity(
       opacity: permit.isRequired ? 1.0 : 0.55,
-      child: Card(
-        margin: const EdgeInsets.only(bottom: 8),
+      child: PortalCard(
+        lift: false,
+        accent: permit.isRequired ? statusColor : AppColors.inkMuted,
+        margin: const EdgeInsets.only(bottom: 10),
         child: Column(
-          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            ListTile(
-              title: Text(_labels[permit.permitType]?.label ?? permit.permitType.name, style: const TextStyle(fontWeight: FontWeight.w600)),
-              subtitle: Padding(
-                padding: const EdgeInsets.only(top: 6),
-                child: Wrap(
-                  spacing: 6,
-                  runSpacing: 6,
-                  children: [
-                    if (permit.isRequired)
-                      AdminStatusPill(label: statusLabel.toUpperCase(), color: statusColor)
-                    else
-                      const AdminStatusPill(label: 'NOT REQUIRED HERE', color: Colors.grey),
-                    if (permit.isRenewalDueSoon) const AdminStatusPill(label: 'RENEWAL DUE', color: AppColors.pendingClearance),
-                  ],
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Text(
+                    _labels[permit.permitType]?.label ?? permit.permitType.name,
+                    style: theme.textTheme.titleMedium,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Tooltip(
+                  message: 'Required for this station',
+                  child: Switch(value: permit.isRequired, onChanged: (v) => _setRequired(permit, v)),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [
+                if (permit.isRequired)
+                  AdminStatusPill(label: statusLabel, color: statusColor)
+                else
+                  const AdminStatusPill(label: 'NOT REQUIRED HERE', color: AppColors.inkMuted),
+                if (permit.isRenewalDueSoon)
+                  const AdminStatusPill(label: 'RENEWAL DUE', color: AppColors.pendingClearance),
+              ],
+            ),
+            if (permit.storagePath != null) ...[
+              const SizedBox(height: 4),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton.icon(
+                  onPressed: () => _viewDocument(permit),
+                  icon: const Icon(Icons.visibility_outlined, size: 18),
+                  label: const Text('View document'),
                 ),
               ),
-              trailing: Row(
-                mainAxisSize: MainAxisSize.min,
+            ],
+            // Approve/Reject are labeled buttons, not bare icons -- these are
+            // consequential, permanent decisions, and a green check next to a
+            // red X says nothing on its own. Matches worker_clearance_screen,
+            // so one action looks the same in both places.
+            if (isPending) ...[
+              const SizedBox(height: 10),
+              PortalActionRow(
                 children: [
-                  Tooltip(
-                    message: 'Required for this station',
-                    child: Switch(
-                      value: permit.isRequired,
-                      onChanged: (v) => _setRequired(permit, v),
+                  OutlinedButton(
+                    onPressed: () => _review(permit, false),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.flagged,
+                      side: const BorderSide(color: AppColors.flagged),
                     ),
+                    child: const Text('Reject'),
                   ),
-                  if (permit.storagePath != null)
-                    IconButton(
-                      icon: const Icon(Icons.visibility_outlined, color: Colors.blueGrey),
-                      tooltip: 'View Document',
-                      onPressed: () => _viewDocument(permit),
-                    ),
+                  FilledButton(
+                    style: FilledButton.styleFrom(backgroundColor: AppColors.cleared),
+                    onPressed: () => _review(permit, true),
+                    child: const Text('Approve'),
+                  ),
                 ],
               ),
-            ),
-            // Approve/Reject are labeled buttons, not bare icons -- these
-            // are consequential, permanent decisions, and a green check
-            // next to a red X says nothing on its own. Also matches how
-            // worker_clearance_screen.dart already renders the same
-            // approve/reject choice, so one action looks the same in both
-            // places.
-            if (isPending)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: () => _review(permit, false),
-                        style: OutlinedButton.styleFrom(foregroundColor: AppColors.flagged, side: const BorderSide(color: AppColors.flagged)),
-                        child: const Text('Reject'),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(backgroundColor: AppColors.cleared),
-                        onPressed: () => _review(permit, true),
-                        child: const Text('Approve', style: TextStyle(color: Colors.white)),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+            ],
           ],
         ),
       ),

@@ -7,6 +7,7 @@ import '../../constants/app_colors.dart';
 import '../../widgets/admin_filter_bar.dart';
 import '../../widgets/admin_page_header.dart';
 import '../../widgets/error_state.dart';
+import '../../widgets/portal/portal.dart';
 import '../../widgets/skeleton_loader.dart';
 import '../../utils/error_text.dart';
 import '../../utils/csv_download.dart';
@@ -146,6 +147,7 @@ class _ActivityScreenState extends State<ActivityScreen> {
     return Column(
       children: [
         AdminPageHeader(
+          eyebrow: 'Association',
           title: 'Activity',
           subtitle: 'Recent decisions and edits across the portal',
           actions: [
@@ -233,39 +235,41 @@ class _ActivityScreenState extends State<ActivityScreen> {
     final icon = _categoryIcons[category] ?? Icons.history;
     final occurredAt = DateTime.tryParse(row['occurred_at'] as String? ?? '');
 
-    return Card(
+    final palette = AdminPalette.of(context);
+
+    return PortalCard(
+      lift: false,
+      accent: color,
       margin: const EdgeInsets.only(bottom: 8),
-      child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: color.withValues(alpha: 0.14),
-          child: Icon(icon, color: color, size: 22),
-        ),
-        title: Text('${row['action'] ?? ''} ${row['subject'] ?? ''}'.trim()),
-        subtitle: Text(
-          '${row['actor_name'] ?? 'Unknown'}'
-          '${occurredAt == null ? '' : ' · ${DateFormat('MMM d, yyyy h:mm a').format(occurredAt.toLocal())}'}',
-          style: TextStyle(color: AdminPalette.of(context).ink.withValues(alpha: 0.6)),
-        ),
+      child: Row(
+        children: [
+          CircleAvatar(
+            backgroundColor: StatusTint.surface(context, color),
+            child: Icon(icon, color: StatusTint.onTint(context, color), size: 22),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('${row['action'] ?? ''} ${row['subject'] ?? ''}'.trim(), style: TextStyle(color: palette.ink)),
+                const SizedBox(height: 2),
+                Text(
+                  '${row['actor_name'] ?? 'Unknown'}'
+                  '${occurredAt == null ? '' : ' · ${DateFormat('MMM d, yyyy h:mm a').format(occurredAt.toLocal())}'}',
+                  style: TextStyle(fontSize: 12.5, color: palette.inkMuted),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
 
+  /// One empty state for the whole portal now -- admin had four near-identical
+  /// copies of this helper.
   Widget _emptyState({required IconData icon, required String title, required String message, Widget? action}) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 56, color: AdminPalette.of(context).ink.withValues(alpha: 0.25)),
-            const SizedBox(height: 16),
-            Text(title, style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: AdminPalette.of(context).ink)),
-            const SizedBox(height: 8),
-            Text(message, textAlign: TextAlign.center, style: TextStyle(color: AdminPalette.of(context).ink.withValues(alpha: 0.6))),
-            if (action != null) ...[const SizedBox(height: 16), action],
-          ],
-        ),
-      ),
-    );
+    return PortalEmptyState(icon: icon, title: title, message: message, action: action);
   }
 }
