@@ -159,9 +159,9 @@ class _MerchantProfileScreenState extends State<MerchantProfileScreen> {
       if (mounted) {
         setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("Failed to load profile data"),
-            backgroundColor: Colors.redAccent,
+          SnackBar(
+            content: const Text('Failed to load profile data'),
+            backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );
       }

@@ -3,9 +3,11 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 
+import '../../constants/app_colors.dart';
 import '../../widgets/custom_map_marker.dart';
 import '../../widgets/permission_rationale_dialog.dart';
 import '../../widgets/app_map_tiles.dart';
+import '../../widgets/portal/portal.dart';
 import '../../utils/error_text.dart';
 
 class LocationPickerScreen extends StatefulWidget {
@@ -169,7 +171,8 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
             right: 16,
             child: FloatingActionButton(
               onPressed: _isLoadingLocation ? null : _getCurrentLocation,
-              backgroundColor: Colors.blue,
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
               child: _isLoadingLocation
                   ? const SizedBox(
                       width: 24,
@@ -195,48 +198,27 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
+                  // Was a blue.shade50 fill with bold Colors.blue text: a pale
+                  // block that stayed pale in dark mode, with light text on
+                  // it. StatusCallout tints from the theme instead.
                   if (_selectedLocation != null)
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.blue.shade50,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.blue.shade200),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  'Selected Location',
-                                  style: TextStyle(fontSize: 12, color: Colors.blue, fontWeight: FontWeight.bold),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  '${_selectedLocation!.latitude.toStringAsFixed(4)}, ${_selectedLocation!.longitude.toStringAsFixed(4)}',
-                                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
+                    StatusCallout(
+                      accent: AppColors.primary,
+                      icon: Icons.place_outlined,
+                      title: 'Selected location',
+                      message: '${_selectedLocation!.latitude.toStringAsFixed(4)}, '
+                          '${_selectedLocation!.longitude.toStringAsFixed(4)}',
                     ),
                   const SizedBox(height: 12),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton.icon(
-                      onPressed: _confirmLocation,
-                      icon: const Icon(Icons.check_circle),
-                      label: const Text('Confirm Location'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green.shade600,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
+                  PortalActionRow(
+                    children: [
+                      FilledButton.icon(
+                        onPressed: _confirmLocation,
+                        icon: const Icon(Icons.check_circle),
+                        label: const Text('Confirm location'),
+                        style: FilledButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 12)),
                       ),
-                    ),
+                    ],
                   ),
                 ],
               ),

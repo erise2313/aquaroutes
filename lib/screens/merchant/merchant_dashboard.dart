@@ -374,7 +374,7 @@ class _MerchantDashboardScreenState extends State<MerchantDashboardScreen> {
   /// (insert_quick_order refuses it), so this says so up front.
   Widget _buildNoProductsBanner() {
     return StatusCallout(
-      accent: Colors.orange,
+      accent: AppColors.pendingClearance,
       icon: Icons.sell_outlined,
       title: "Customers can't order from you yet",
       message: 'Add at least one product with a price so your station can take orders.',
@@ -429,7 +429,7 @@ class _MerchantDashboardScreenState extends State<MerchantDashboardScreen> {
 
   Widget _buildRenewalBanner() {
     return StatusCallout(
-      accent: Colors.amber,
+      accent: AppColors.pendingClearance,
       icon: Icons.warning_amber_rounded,
       title: _renewalDueCount == 1 ? '1 permit needs renewal soon' : '$_renewalDueCount permits need renewal soon',
       message: 'Expiring within 30 days, or already expired.',

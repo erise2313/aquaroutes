@@ -26,6 +26,7 @@ class AdminPageHeader extends StatelessWidget {
   const AdminPageHeader({
     super.key,
     required this.title,
+    this.eyebrow,
     this.subtitle,
     this.actions = const [],
     this.bottom,
@@ -33,6 +34,12 @@ class AdminPageHeader extends StatelessWidget {
   });
 
   final String title;
+
+  /// Small caps above the title -- which part of the portal this page
+  /// belongs to. The same rhythm the public site and the owner portal use
+  /// (widgets/portal/portal_page_header.dart), in admin's own gold.
+  final String? eyebrow;
+
   final String? subtitle;
   final List<Widget> actions;
   final Widget? bottom;
@@ -74,6 +81,18 @@ class AdminPageHeader extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        if (eyebrow != null) ...[
+                          Text(
+                            eyebrow!.toUpperCase(),
+                            style: const TextStyle(
+                              color: AdminTheme.sealGold,
+                              fontSize: 11,
+                              letterSpacing: 1.6,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                        ],
                         Text(title, style: GoogleFonts.fraunces(fontSize: 24, fontWeight: FontWeight.w600, color: Colors.white)),
                         if (subtitle != null) ...[
                           const SizedBox(height: 4),
