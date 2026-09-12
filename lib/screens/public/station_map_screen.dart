@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
@@ -59,20 +61,7 @@ class _StationMapScreenState extends State<StationMapScreen> {
       _error = null;
     });
     try {
-      var stations = await _stationService.fetchPublicStations();
-
-      if (mounted) {
-        await maybeShowLocationRationale(
-          context,
-          'GenTri: WASA can use your location to show and sort nearby water stations.',
-        );
-      }
-      final position = await _nearbyService.getCurrentPositionOrNull();
-      if (position != null) {
-        stations = _nearbyService.sortByDistance(stations, position.latitude, position.longitude);
-        _userLat = position.latitude;
-        _userLng = position.longitude;
-      }
+      final stations = await _stationService.fetchPublicStations();
 
       if (mounted) {
         setState(() {
@@ -80,6 +69,14 @@ class _StationMapScreenState extends State<StationMapScreen> {
           _isLoading = false;
         });
       }
+
+      // Deliberately outside the loading gate above. Asking for a location
+      // means a rationale dialog the user has to dismiss and then a GPS fix,
+      // and the map used to sit behind both -- so the tiles had not even
+      // begun downloading while you waited, which is why this screen felt
+      // slow to open. The map now draws on the default centre immediately
+      // and the "near me" sort drops in later, if a position ever arrives.
+      unawaited(_locateAndSort());
     } catch (e) {
       if (mounted) {
         setState(() {
@@ -88,6 +85,24 @@ class _StationMapScreenState extends State<StationMapScreen> {
         });
       }
     }
+  }
+
+  /// Best-effort "near me" sort. Never gates the map: a denial, a timeout or
+  /// no fix at all simply leaves the list in the order the server returned.
+  Future<void> _locateAndSort() async {
+    if (mounted) {
+      await maybeShowLocationRationale(
+        context,
+        'GenTri: WASA can use your location to show and sort nearby water stations.',
+      );
+    }
+    final position = await _nearbyService.getCurrentPositionOrNull();
+    if (position == null || !mounted) return;
+    setState(() {
+      _userLat = position.latitude;
+      _userLng = position.longitude;
+      _stations = _nearbyService.sortByDistance(_stations, position.latitude, position.longitude);
+    });
   }
 
   List<PublicStation> get _filteredStations {

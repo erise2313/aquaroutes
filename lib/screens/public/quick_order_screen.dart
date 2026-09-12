@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
@@ -123,6 +124,12 @@ class _QuickOrderScreenState extends ConsumerState<QuickOrderScreen> {
 
   List<PublicStation> _availableStations = [];
   String? _selectedStationId;
+
+  /// The station this screen picked on the customer's behalf, if any. The
+  /// "near me" sort now resolves after the form is already on screen, so a
+  /// late position needs to know whether it may still re-pick the nearest
+  /// station -- it must never overrule one the customer chose themselves.
+  String? _autoSelectedStationId;
   bool _hasInitializedForSession = false;
 
   // Products are loaded per station on demand and cached; containers once.
@@ -257,22 +264,7 @@ class _QuickOrderScreenState extends ConsumerState<QuickOrderScreen> {
       _fetchError = null;
     });
     try {
-      var stations = await _stationService.fetchPublicStations();
-
-      // Best-effort "near me" sort -- if location is unavailable/denied,
-      // fall back to the unsorted list rather than blocking ordering on it.
-      if (mounted) {
-        await maybeShowLocationRationale(
-          context,
-          'GenTri: WASA can use your location to show and sort nearby water stations.',
-        );
-      }
-      final position = await _nearbyService.getCurrentPositionOrNull();
-      if (position != null) {
-        stations = _nearbyService.sortByDistance(stations, position.latitude, position.longitude);
-        _userLat = position.latitude;
-        _userLng = position.longitude;
-      }
+      final stations = await _stationService.fetchPublicStations();
 
       if (mounted) {
         final prefill = widget.prefill;
@@ -285,12 +277,19 @@ class _QuickOrderScreenState extends ConsumerState<QuickOrderScreen> {
           } else if (stations.isNotEmpty) {
             _selectedStationId =
                 stations.firstWhere((s) => s.isOrderable && _hasProducts(s), orElse: () => stations.first).id;
+            _autoSelectedStationId = _selectedStationId;
             if (prefill != null) _prefillNotice = "That station isn't listed any more. Pick another one.";
           }
           _isFetchingStations = false;
         });
         if (_selectedStationId != null) _loadProductsFor(_selectedStationId!);
       }
+
+      // Deliberately outside the gate above. The rationale dialog and the GPS
+      // fix used to run before _isFetchingStations cleared, so the entire form
+      // -- the map with it -- waited on a position that indoors may never
+      // arrive. Ordering no longer waits on location at all.
+      unawaited(_locateAndSortStations());
     } catch (e) {
       if (mounted) {
         setState(() {
@@ -299,6 +298,47 @@ class _QuickOrderScreenState extends ConsumerState<QuickOrderScreen> {
         });
       }
     }
+  }
+
+  /// Best-effort "near me" sort, resolved after the form is already usable.
+  /// A denial, a timeout, or no fix at all simply leaves the list in the
+  /// order the server returned.
+  Future<void> _locateAndSortStations() async {
+    if (mounted) {
+      await maybeShowLocationRationale(
+        context,
+        'GenTri: WASA can use your location to show and sort nearby water stations.',
+      );
+    }
+    final position = await _nearbyService.getCurrentPositionOrNull();
+    if (position == null || !mounted) return;
+
+    final sorted = _nearbyService.sortByDistance(_availableStations, position.latitude, position.longitude);
+
+    // Preserves what the blocking version gave for free: the sort ran before
+    // the default pick, so the preselected station was the nearest orderable
+    // one. Re-pick only while the selection is still this screen's own, and
+    // only before a product has been chosen -- otherwise a position arriving
+    // mid-interaction would swap the station out from under a product that
+    // belongs to the previous one.
+    final canRepick = sorted.isNotEmpty &&
+        _selectedStationId != null &&
+        _selectedStationId == _autoSelectedStationId &&
+        _selectedProductId == null;
+    final nearest = canRepick
+        ? sorted.firstWhere((s) => s.isOrderable && _hasProducts(s), orElse: () => sorted.first).id
+        : null;
+
+    setState(() {
+      _userLat = position.latitude;
+      _userLng = position.longitude;
+      _availableStations = sorted;
+      if (nearest != null) {
+        _selectedStationId = nearest;
+        _autoSelectedStationId = nearest;
+      }
+    });
+    if (nearest != null) _loadProductsFor(nearest);
   }
 
   Future<void> _loadProductsFor(String stationId, {bool force = false}) async {

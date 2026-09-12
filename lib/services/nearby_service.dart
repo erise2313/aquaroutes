@@ -21,7 +21,16 @@ class NearbyService {
         return null;
       }
       return await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(accuracy: LocationAccuracy.medium),
+        // A hard ceiling. getCurrentPosition waits indefinitely for a fix
+        // otherwise, and indoors -- or on an emulator with no location
+        // injected -- one may never arrive, which left the station map
+        // stuck behind it. The timeout throws, the catch below turns that
+        // into null, and null is the same "no location" path a denied
+        // permission already takes: an unsorted list, not an error.
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.medium,
+          timeLimit: Duration(seconds: 8),
+        ),
       );
     } catch (_) {
       return null;
