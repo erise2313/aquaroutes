@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -14,6 +15,17 @@ import 'web_router.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Android 15 began enforcing edge-to-edge at targetSdk 35, and Android 16
+  // (targetSdk 36, which this app inherits from the Flutter SDK) removes the
+  // opt-out entirely -- so the app already draws under the status and
+  // navigation bars on current devices whether or not it asks to. Declaring
+  // it makes that explicit, and the bars themselves are styled per theme in
+  // each ThemeData's appBarTheme: a global setSystemUIOverlayStyle call here
+  // would be overridden by every AppBar on build.
+  if (!kIsWeb) {
+    await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+  }
 
   final String supabaseUrl;
   final String supabaseAnonKey;

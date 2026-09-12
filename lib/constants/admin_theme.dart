@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import 'admin_palette.dart';
@@ -120,6 +121,18 @@ class AdminTheme {
         centerTitle: false,
         titleTextStyle: GoogleFonts.fraunces(fontSize: 22, fontWeight: FontWeight.w600, color: Colors.white),
         iconTheme: const IconThemeData(color: Colors.white, size: 26),
+        // Under edge-to-edge the status bar sits over this band, and the band
+        // is navy in *both* modes -- so its icons are always light, unlike
+        // AppTheme's, which follow the surface. The navigation bar is over the
+        // scaffold instead, so that one does follow the palette.
+        systemOverlayStyle: SystemUiOverlayStyle(
+          statusBarColor: Colors.transparent,
+          statusBarIconBrightness: Brightness.light,
+          statusBarBrightness: Brightness.dark,
+          systemNavigationBarColor: Colors.transparent,
+          systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+          systemNavigationBarDividerColor: Colors.transparent,
+        ),
         // Same gold rule AdminPageHeader draws, so a pushed screen's real
         // AppBar (which keeps its back button) and a tab page's in-body
         // header terminate identically.
