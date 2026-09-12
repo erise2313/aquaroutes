@@ -10,6 +10,8 @@ import '../public/info/about_wasa_hub_screen.dart';
 import '../app_route.dart';
 import 'products_screen.dart';
 import '../../widgets/account_settings_section.dart';
+import '../../widgets/app_theme_toggle.dart';
+import '../../widgets/status_callout.dart';
 import '../../utils/error_text.dart';
 
 /// Builds the `profiles` table update payload (trimmed). Split from
@@ -294,6 +296,7 @@ class _MerchantProfileScreenState extends State<MerchantProfileScreen> {
           style: TextStyle(fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurface),
         ),
         elevation: 0,
+        actions: const [AppThemeToggle()],
       ),
       body: _isLoading ? const Center(child: CircularProgressIndicator()) : _buildProfileContent(),
     );
@@ -477,34 +480,19 @@ class _MerchantProfileScreenState extends State<MerchantProfileScreen> {
 
   Widget _buildAccreditationBanner(bool isAccredited) {
     if (isAccredited) {
-      return Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.green.shade50,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.green.shade200),
-        ),
-        child: Row(
-          children: [
-            Icon(Icons.verified, color: Colors.green.shade600),
-            const SizedBox(width: 12),
-            const Expanded(
-              child: Text(
-                "WASA Accredited. Your station is visible to the public.",
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-            ),
-          ],
-        ),
+      return const StatusCallout(
+        accent: Colors.green,
+        icon: Icons.verified,
+        title: 'WASA Accredited. Your station is visible to the public.',
       );
     }
 
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.amber.shade50,
+        color: StatusTint.surface(context, Colors.amber),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.amber.shade300),
+        border: Border.all(color: StatusTint.border(context, Colors.amber)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

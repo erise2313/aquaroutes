@@ -149,10 +149,14 @@ class _WebsiteContentScreenState extends State<WebsiteContentScreen> {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       decoration: BoxDecoration(
-        color: selected ? Colors.white : Colors.transparent,
+        // Was Colors.white, which in dark mode put near-white text on a white
+        // pill -- the selected page was the one you couldn't read.
+        color: selected ? AdminPalette.of(context).card : Colors.transparent,
         borderRadius: BorderRadius.circular(10),
         border: selected ? Border(left: BorderSide(color: AdminTheme.sealGold, width: 4)) : null,
-        boxShadow: selected ? [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 6)] : null,
+        boxShadow: selected && !AdminPalette.of(context).isDark
+            ? [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 6)]
+            : null,
       ),
       child: ListTile(
         contentPadding: EdgeInsets.only(left: selected ? 12 : 16, right: 16),

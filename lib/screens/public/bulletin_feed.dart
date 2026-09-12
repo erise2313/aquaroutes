@@ -19,6 +19,7 @@ import '../../utils/formatters.dart';
 import '../../widgets/bulletin_comments.dart';
 import '../../widgets/confirm_dialog.dart';
 import '../../widgets/error_state.dart';
+import '../../widgets/status_callout.dart';
 import '../auth/login_screen.dart';
 import '../auth/registration_screen.dart';
 import '../app_route.dart';
@@ -445,7 +446,9 @@ class _BulletinFeedState extends ConsumerState<BulletinFeed> {
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
-      color: bulletin.isPinned ? Colors.amber.shade50 : null,
+      // A pale amber wash assumed dark text; in dark mode it swallowed the
+      // pinned post's title and body entirely.
+      color: bulletin.isPinned ? StatusTint.surface(context, Colors.amber) : null,
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(

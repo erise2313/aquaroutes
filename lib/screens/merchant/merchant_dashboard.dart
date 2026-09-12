@@ -11,7 +11,9 @@ import 'package:aquaroute/services/supabase_service.dart';
 import 'package:aquaroute/utils/formatters.dart';
 import '../app_route.dart';
 import 'products_screen.dart';
+import '../../widgets/app_theme_toggle.dart';
 import '../../widgets/notification_bell.dart';
+import '../../widgets/status_callout.dart';
 
 /// 'assigned' rolls into "active" alongside 'active' (both mean a driver is
 /// on it, just not picked up yet vs. en route); 'done' is counted on its
@@ -163,7 +165,7 @@ class _MerchantDashboardScreenState extends State<MerchantDashboardScreen> {
       appBar: AppBar(
         title: Text('Station Dashboard', style: TextStyle(fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurface)),
         elevation: 0,
-        actions: const [NotificationBell()],
+        actions: const [AppThemeToggle(), NotificationBell()],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -187,11 +189,11 @@ class _MerchantDashboardScreenState extends State<MerchantDashboardScreen> {
                   const SizedBox(height: 16),
                   Row(
                     children: [
-                      Expanded(child: _buildStatCard('Pending', _pendingCount, Colors.red.shade100, Colors.red.shade700)),
+                      Expanded(child: _buildStatCard('Pending', _pendingCount, Colors.red)),
                       const SizedBox(width: 8),
-                      Expanded(child: _buildStatCard('Active', _activeCount, Colors.orange.shade100, Colors.orange.shade700)),
+                      Expanded(child: _buildStatCard('Active', _activeCount, Colors.orange)),
                       const SizedBox(width: 8),
-                      Expanded(child: _buildStatCard('Done', _doneCount, Colors.green.shade100, Colors.green.shade700)),
+                      Expanded(child: _buildStatCard('Done', _doneCount, Colors.green)),
                     ],
                   ),
                   const SizedBox(height: 24),
@@ -311,19 +313,13 @@ class _MerchantDashboardScreenState extends State<MerchantDashboardScreen> {
   /// A station with no available product can't take orders at all
   /// (insert_quick_order refuses it), so this says so up front.
   Widget _buildNoProductsBanner() {
-    return Card(
-      color: Colors.orange.shade50,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: Colors.orange.shade200),
-      ),
-      child: ListTile(
-        leading: Icon(Icons.sell_outlined, color: Colors.orange.shade800),
-        title: const Text("Customers can't order from you yet", style: TextStyle(fontWeight: FontWeight.bold)),
-        subtitle: const Text('Add at least one product with a price so your station can take orders.'),
-        trailing: const Icon(Icons.chevron_right),
-        onTap: () => Navigator.push(context, appRoute(const ProductsScreen())).then((_) => _fetchDashboardData()),
-      ),
+    return StatusCallout(
+      accent: Colors.orange,
+      icon: Icons.sell_outlined,
+      title: "Customers can't order from you yet",
+      message: 'Add at least one product with a price so your station can take orders.',
+      trailing: const Icon(Icons.chevron_right),
+      onTap: () => Navigator.push(context, appRoute(const ProductsScreen())).then((_) => _fetchDashboardData()),
     );
   }
 
@@ -349,20 +345,13 @@ class _MerchantDashboardScreenState extends State<MerchantDashboardScreen> {
   }
 
   Widget _buildRenewalBanner() {
-    return Card(
-      elevation: 1,
-      color: Colors.amber.shade50,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: ListTile(
-        leading: Icon(Icons.warning_amber_rounded, color: Colors.amber.shade800),
-        title: Text(
-          _renewalDueCount == 1 ? '1 permit needs renewal soon' : '$_renewalDueCount permits need renewal soon',
-          style: const TextStyle(fontWeight: FontWeight.bold),
-        ),
-        subtitle: const Text('Expiring within 30 days, or already expired.'),
-        trailing: Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey.shade700),
-        onTap: () => Navigator.push(context, appRoute(const PermitVaultScreen())).then((_) => _fetchDashboardData()),
-      ),
+    return StatusCallout(
+      accent: Colors.amber,
+      icon: Icons.warning_amber_rounded,
+      title: _renewalDueCount == 1 ? '1 permit needs renewal soon' : '$_renewalDueCount permits need renewal soon',
+      message: 'Expiring within 30 days, or already expired.',
+      trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+      onTap: () => Navigator.push(context, appRoute(const PermitVaultScreen())).then((_) => _fetchDashboardData()),
     );
   }
 
@@ -407,14 +396,18 @@ class _MerchantDashboardScreenState extends State<MerchantDashboardScreen> {
     );
   }
 
-  Widget _buildStatCard(String title, int count, Color bgColor, Color textColor) {
+  Widget _buildStatCard(String title, int count, Color accent) {
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(color: bgColor, borderRadius: BorderRadius.circular(12)),
+      decoration: BoxDecoration(
+        color: StatusTint.surface(context, accent),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: StatusTint.border(context, accent)),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: TextStyle(color: textColor, fontWeight: FontWeight.bold)),
+          Text(title, style: TextStyle(color: StatusTint.onTint(context, accent), fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
           Text('$count', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurface)),
         ],

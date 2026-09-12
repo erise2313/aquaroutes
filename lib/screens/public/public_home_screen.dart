@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../constants/app_colors.dart';
 import '../../models/membership.dart';
 import '../../providers/app_state.dart';
+import '../../widgets/app_theme_toggle.dart';
 import '../../widgets/notification_bell.dart';
 import '../../widgets/wasa_shield_logo.dart';
 import '../auth/login_screen.dart';
@@ -68,6 +69,7 @@ class _PublicHomeScreenState extends ConsumerState<PublicHomeScreen> {
         elevation: 0,
         iconTheme: IconThemeData(color: onSurface),
         actions: [
+          const AppThemeToggle(),
           if (isSignedInCustomer) const NotificationBell(),
           IconButton(
             tooltip: 'About WASA',
