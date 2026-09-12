@@ -3,10 +3,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import 'package:supabase_flutter/supabase_flutter.dart';
+
 import '../constants/web_theme.dart';
 import '../web_router.dart';
+import '../providers/app_state.dart';
 import '../providers/web_locale_provider.dart';
 import '../providers/web_theme_provider.dart';
+import 'account_settings_section.dart';
 import '../screens/auth/login_screen.dart';
 import '../screens/auth/registration_screen.dart';
 import '../screens/web/about_screen.dart';
@@ -96,6 +100,14 @@ class WebNavBar extends ConsumerWidget implements PreferredSizeWidget {
   /// browser's own back/forward buttons work. [screen] is kept for the
   /// non-routed builds (the mobile app's info screens reuse these widgets),
   /// where there is no GoRouter to fall back on.
+  /// The portal now has its own URL, so signing in no longer swallows the
+  /// public site: `/` stays the marketing home and `/portal` is the dashboard.
+  void _goToPortal(BuildContext context) {
+    if (GoRouter.maybeOf(context) != null) {
+      context.go(WebRoutes.portal);
+    }
+  }
+
   void _go(BuildContext context, WebPage page, Widget screen) {
     if (page == currentPage) return;
     final path = WebRoutes.forPage[page];
@@ -107,10 +119,30 @@ class WebNavBar extends ConsumerWidget implements PreferredSizeWidget {
     Navigator.of(context).push(webPageRoute(screen));
   }
 
+  /// Opens the same account block every other signed-in surface uses
+  /// (AdminPageHeader opens it identically), rather than inventing a second
+  /// account surface for the website.
+  void _openAccount(BuildContext context, String title) {
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(title),
+        contentPadding: const EdgeInsets.fromLTRB(8, 16, 8, 0),
+        content: const SizedBox(width: 420, child: AccountSettingsSection()),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Close')),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final locale = ref.watch(webLocaleProvider);
     String t(String key) => WebStrings.t(locale, key);
+    // Session, not membership: waiting for the role to resolve would flash
+    // Login/Register on every page load for someone already signed in.
+    final isSignedIn = ref.watch(isSignedInProvider);
 
     final links = <(WebPage, String, Widget)>[
       (WebPage.home, t('nav_home'), const OrgHomeScreen()),
@@ -146,12 +178,18 @@ class WebNavBar extends ConsumerWidget implements PreferredSizeWidget {
                   const bold14 = TextStyle(fontSize: 14, fontWeight: FontWeight.w600);
                   const code13 = TextStyle(fontSize: 13, fontWeight: FontWeight.w700);
                   final toggleWidth = 20 + _textWidth('EN', code13) + _textWidth('  |  ', const TextStyle(fontSize: 13)) + _textWidth('TL', code13);
+                  // Measures whichever action set is actually rendered. The
+                  // signed-in pair (account icon + Dashboard) is narrower than
+                  // Login + Register a Station, and using the wrong one here
+                  // is exactly how links got silently clipped before.
+                  final signedInActionsWidth = 44 + 8 + 40 + _textWidth(t('nav_dashboard'), bold14);
+                  final signedOutActionsWidth =
+                      32 + _textWidth(t('nav_login'), bold14) + 8 + 40 + _textWidth(t('nav_register'), bold14);
                   final actionsWidth = 12 + // gap before the toggle
                       toggleWidth +
                       44 + // light/dark toggle button
                       21 + // divider + its margins
-                      32 + _textWidth(t('nav_login'), bold14) +
-                      8 + 40 + _textWidth(t('nav_register'), bold14);
+                      (isSignedIn ? signedInActionsWidth : signedOutActionsWidth);
 
                   final isWide = constraints.maxWidth >= brandWidth + 20 + _linksWidth(links) + actionsWidth + 16;
                   // The Register CTA is the site's primary conversion and
@@ -260,30 +298,78 @@ class WebNavBar extends ConsumerWidget implements PreferredSizeWidget {
                           margin: const EdgeInsets.symmetric(horizontal: 10),
                           color: WebTheme.of(context).border,
                         ),
-                      TextButton(
-                        onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const LoginScreen())),
-                        style: TextButton.styleFrom(
-                          foregroundColor: WebTheme.of(context).ink,
-                          textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-                          padding: EdgeInsets.symmetric(horizontal: compact ? 8 : 16),
+                      if (isSignedIn) ...[
+                        PopupMenuButton<String>(
+                          tooltip: t('nav_account_tooltip'),
+                          icon: Icon(Icons.account_circle_outlined, color: WebTheme.of(context).ink),
+                          onSelected: (value) {
+                            if (value == 'account') {
+                              _openAccount(context, t('nav_account'));
+                            } else {
+                              Supabase.instance.client.auth.signOut();
+                            }
+                          },
+                          itemBuilder: (_) => [
+                            PopupMenuItem(
+                              value: 'account',
+                              child: ListTile(
+                                leading: const Icon(Icons.manage_accounts_outlined),
+                                title: Text(t('nav_account')),
+                              ),
+                            ),
+                            PopupMenuItem(
+                              value: 'signout',
+                              child: ListTile(
+                                leading: const Icon(Icons.logout),
+                                title: Text(t('nav_sign_out')),
+                              ),
+                            ),
+                          ],
                         ),
-                        child: Text(t('nav_login')),
-                      ),
-                      if (showRegister) ...[
-                        const SizedBox(width: 8),
-                        ElevatedButton(
-                          onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const RegistrationScreen())),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: WebTheme.harborBlue,
-                            foregroundColor: Colors.white,
-                            elevation: 0,
-                            padding: const EdgeInsets.symmetric(horizontal: 20),
-                            minimumSize: const Size(0, 44),
-                            textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                        if (showRegister) ...[
+                          const SizedBox(width: 8),
+                          // The way back into the portal, and the counterpart
+                          // to the brand mark being the way back out of it.
+                          ElevatedButton(
+                            onPressed: () => _goToPortal(context),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: WebTheme.harborBlue,
+                              foregroundColor: Colors.white,
+                              elevation: 0,
+                              padding: const EdgeInsets.symmetric(horizontal: 20),
+                              minimumSize: const Size(0, 44),
+                              textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                            ),
+                            child: Text(t('nav_dashboard')),
                           ),
-                          child: Text(t('nav_register')),
+                        ],
+                      ] else ...[
+                        TextButton(
+                          onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const LoginScreen())),
+                          style: TextButton.styleFrom(
+                            foregroundColor: WebTheme.of(context).ink,
+                            textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                            padding: EdgeInsets.symmetric(horizontal: compact ? 8 : 16),
+                          ),
+                          child: Text(t('nav_login')),
                         ),
+                        if (showRegister) ...[
+                          const SizedBox(width: 8),
+                          ElevatedButton(
+                            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const RegistrationScreen())),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: WebTheme.harborBlue,
+                              foregroundColor: Colors.white,
+                              elevation: 0,
+                              padding: const EdgeInsets.symmetric(horizontal: 20),
+                              minimumSize: const Size(0, 44),
+                              textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                            ),
+                            child: Text(t('nav_register')),
+                          ),
+                        ],
                       ],
                     ],
                   );

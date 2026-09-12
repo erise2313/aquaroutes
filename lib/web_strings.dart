@@ -25,6 +25,13 @@ class WebStrings {
     'nav_login': {WebLocale.en: 'Login', WebLocale.tl: 'Mag-login'},
     'nav_register': {WebLocale.en: 'Register a Station', WebLocale.tl: 'Magparehistro ng Istasyon'},
     'nav_menu_tooltip': {WebLocale.en: 'Open menu', WebLocale.tl: 'Buksan ang menu'},
+    // Shown in place of Login/Register once someone is signed in. The bar
+    // used to render Login and Register a Station unconditionally, so a
+    // signed-in owner browsing the site had no sign they were logged in.
+    'nav_dashboard': {WebLocale.en: 'Dashboard', WebLocale.tl: 'Dashboard'},
+    'nav_account': {WebLocale.en: 'Account & password', WebLocale.tl: 'Account at password'},
+    'nav_sign_out': {WebLocale.en: 'Sign out', WebLocale.tl: 'Mag-sign out'},
+    'nav_account_tooltip': {WebLocale.en: 'Your account', WebLocale.tl: 'Ang iyong account'},
     // Always names the language you'd switch TO, so the toggle says what it
     // does rather than just showing two codes with no indication of which is
     // currently active.

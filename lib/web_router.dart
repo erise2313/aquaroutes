@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'providers/app_state.dart';
 import 'screens/auth/auth_gate.dart';
+import 'screens/web/org_home_screen.dart';
+import 'screens/web/reset_password_screen.dart';
 import 'screens/web/about_screen.dart';
 import 'screens/web/account_deletion_screen.dart';
 import 'screens/web/contact_screen.dart';
@@ -24,6 +29,12 @@ class WebRoutes {
   WebRoutes._();
 
   static const home = '/';
+
+  /// The signed-in dashboard. Split out from `/` so the marketing home stays
+  /// reachable while signed in -- previously `/` was AuthGate, so a signed-in
+  /// owner pressing Home was swapped into the portal with no way back.
+  static const portal = '/portal';
+
   static const about = '/about';
   static const accreditation = '/accreditation';
   static const forOwners = '/for-owners';
@@ -81,6 +92,24 @@ CustomTransitionPage<void> _page(Widget child) {
   );
 }
 
+/// `/` -- the marketing home, whether or not anyone is signed in.
+///
+/// It still has to intercept Supabase's password-recovery event first.
+/// Recovery links land on the site root with the token in the URL fragment,
+/// and AuthGate used to be what caught them here (auth_gate.dart); moving the
+/// portal to its own route would otherwise have quietly broken every reset
+/// link, since a recovery session looks like a normal one.
+class _PublicHome extends ConsumerWidget {
+  const _PublicHome();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isRecovery = ref.watch(authStateProvider).value?.event == AuthChangeEvent.passwordRecovery;
+    if (isRecovery) return const ResetPasswordScreen();
+    return const OrgHomeScreen();
+  }
+}
+
 /// Router for the public website build only.
 ///
 /// The site previously had exactly one URL: every page was a
@@ -97,7 +126,8 @@ GoRouter buildWebRouter() {
   return GoRouter(
     initialLocation: WebRoutes.home,
     routes: [
-      GoRoute(path: WebRoutes.home, pageBuilder: (_, _) => _page(const AuthGate())),
+      GoRoute(path: WebRoutes.home, pageBuilder: (_, _) => _page(const _PublicHome())),
+      GoRoute(path: WebRoutes.portal, pageBuilder: (_, _) => _page(const AuthGate())),
       GoRoute(path: WebRoutes.about, pageBuilder: (_, _) => _page(const AboutScreen())),
       GoRoute(path: WebRoutes.accreditation, pageBuilder: (_, _) => _page(const HowAccreditationWorksScreen())),
       GoRoute(path: WebRoutes.forOwners, pageBuilder: (_, _) => _page(const ForStationOwnersScreen())),

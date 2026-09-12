@@ -31,6 +31,24 @@ final currentMembershipProvider = FutureProvider<Membership?>((ref) async {
   );
 });
 
+/// Whether anyone is signed in at all.
+///
+/// Deliberately keyed on the session rather than the membership: the nav bar
+/// uses this to decide whether to show Login/Register or the account menu, and
+/// waiting for currentMembershipProvider would flash the signed-out actions on
+/// every page load while that query is still in flight.
+final isSignedInProvider = Provider<bool>((ref) {
+  return ref.watch(authStateProvider).value?.session != null;
+});
+
+/// The signed-in user's role once it resolves, or null while it is still
+/// loading or nobody is signed in. One source of truth for "what are they",
+/// so the shell doesn't re-derive it from two async providers at each use.
+final signedInRoleProvider = Provider<AppRole?>((ref) {
+  if (!ref.watch(isSignedInProvider)) return null;
+  return ref.watch(currentMembershipProvider).value?.role;
+});
+
 /// Only evaluated by AuthGate when currentMembershipProvider resolves to
 /// null, to distinguish "no membership row at all" (null here too) from
 /// "a membership row exists but isn't active" (the raw status string) --
