@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 
+import '../../../constants/app_colors.dart';
 import '../../../models/web_content.dart';
 import '../../../services/supabase_service.dart';
 import '../../../services/web_content_service.dart';
 import '../../../widgets/error_state.dart';
+import '../../../widgets/portal/portal.dart';
 import '../../../utils/error_text.dart';
 
 /// In-app mirror of jug_clearinghouse_explainer_screen.dart -- same
@@ -59,14 +61,17 @@ class _JugClearinghouseInfoScreenState extends State<JugClearinghouseInfoScreen>
           : _error != null
               ? ErrorState(message: _error!, onRetry: _load)
               : ListView(
-                  padding: const EdgeInsets.all(16),
+                  padding: PortalDensity.of(context).pagePadding,
                   children: [
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(color: Colors.blue.shade50, borderRadius: BorderRadius.circular(10), border: Border(left: BorderSide(color: Colors.amber.shade700, width: 4))),
-                      child: Text(_intro, style: const TextStyle(height: 1.5)),
+                    // Was a blue.shade50 fill with an amber rule -- a pale
+                    // block that stayed pale in dark mode.
+                    StatusCallout(
+                      accent: AppColors.primary,
+                      icon: Icons.swap_horiz,
+                      title: 'How jug settlement works',
+                      message: _intro,
                     ),
-                    const SizedBox(height: 24),
+                    SizedBox(height: PortalSection.gapAfter(context)),
                     for (var i = 0; i < _steps.length; i++) _stepTile(i + 1, _steps[i].title, _steps[i].body),
                   ],
                 ),
@@ -74,20 +79,30 @@ class _JugClearinghouseInfoScreenState extends State<JugClearinghouseInfoScreen>
   }
 
   Widget _stepTile(int number, String title, String description) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
+    final theme = Theme.of(context);
+
+    return PortalCard(
+      lift: false,
+      margin: const EdgeInsets.only(bottom: 10),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          CircleAvatar(radius: 14, backgroundColor: Colors.blue.shade700, child: Text('$number', style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold))),
+          CircleAvatar(
+            radius: 14,
+            backgroundColor: AppColors.primary,
+            child: Text('$number', style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+          ),
           const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+                Text(title, style: theme.textTheme.titleMedium),
                 const SizedBox(height: 2),
-                Text(description, style: const TextStyle(color: Colors.grey, height: 1.4)),
+                Text(
+                  description,
+                  style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant, height: 1.4),
+                ),
               ],
             ),
           ),

@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 
+import '../../../constants/app_colors.dart';
 import '../../../models/web_content.dart';
 import '../../../services/supabase_service.dart';
 import '../../../services/web_content_service.dart';
 import '../../../widgets/error_state.dart';
+import '../../../widgets/portal/portal.dart';
 import '../../../utils/error_text.dart';
 
 /// In-app mirror of about_screen.dart -- same admin-editable content
@@ -60,33 +62,48 @@ class _AboutInfoScreenState extends State<AboutInfoScreen> {
           : _error != null
               ? ErrorState(message: _error!, onRetry: _load)
               : ListView(
-                  padding: const EdgeInsets.all(16),
+                  padding: PortalDensity.of(context).pagePadding,
                   children: [
-                    const Text('What WASA Does', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 12),
-                    for (final item in _whatWasaDoes)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Padding(padding: EdgeInsets.only(top: 2, right: 10), child: Icon(Icons.check_circle, size: 18, color: Colors.blue)),
-                            Expanded(child: Text(item.body, style: const TextStyle(height: 1.4))),
-                          ],
-                        ),
+                    PortalSection(
+                      title: 'What WASA does',
+                      subtitle: 'Why the association exists, in its own words',
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          for (final item in _whatWasaDoes) _bulletPoint(item.body),
+                        ],
                       ),
-                    const SizedBox(height: 20),
-                    const Text('Coverage Area', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 4),
-                    const Text('GENTRI WASA covers all barangays of General Trias, Cavite:', style: TextStyle(color: Colors.grey)),
-                    const SizedBox(height: 12),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: _barangays.map((b) => Chip(label: Text(b, style: const TextStyle(fontSize: 12)))).toList(),
+                    ),
+                    SizedBox(height: PortalSection.gapAfter(context)),
+                    PortalSection(
+                      title: 'Coverage area',
+                      subtitle: 'GENTRI WASA covers all barangays of General Trias, Cavite',
+                      child: Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: _barangays.map((b) => Chip(label: Text(b, style: const TextStyle(fontSize: 12)))).toList(),
+                      ),
                     ),
                   ],
                 ),
+    );
+  }
+
+  Widget _bulletPoint(String text) {
+    final theme = Theme.of(context);
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(top: 2, right: 10),
+            child: Icon(Icons.check_circle, size: 18, color: StatusTint.onTint(context, AppColors.cleared)),
+          ),
+          Expanded(child: Text(text, style: theme.textTheme.bodyMedium?.copyWith(height: 1.5))),
+        ],
+      ),
     );
   }
 }

@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 
+import '../../../constants/app_colors.dart';
 import '../../../models/web_content.dart';
 import '../../../services/permit_service.dart';
 import '../../../services/supabase_service.dart';
 import '../../../services/web_content_service.dart';
 import '../../../widgets/error_state.dart';
+import '../../../widgets/portal/portal.dart';
 import '../../../utils/error_text.dart';
 
 /// In-app mirror of how_accreditation_works_screen.dart -- same
@@ -62,42 +64,96 @@ class _HowAccreditationWorksInfoScreenState extends State<HowAccreditationWorksI
           ? const Center(child: CircularProgressIndicator())
           : _error != null
               ? ErrorState(message: _error!, onRetry: _load)
+              : _steps.isEmpty && _permitLabels.isEmpty
+              ? const PortalEmptyState(
+                  icon: Icons.verified_outlined,
+                  title: 'Nothing published yet',
+                  message: 'The association has not published the accreditation steps yet. Check back soon.',
+                )
               : ListView(
-                  padding: const EdgeInsets.all(16),
+                  padding: PortalDensity.of(context).pagePadding,
                   children: [
-                    for (var i = 0; i < _steps.length; i++) _stepTile(i + 1, _steps[i].title, _steps[i].body),
-                    const SizedBox(height: 16),
-                    const Text('Required Documents', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 8),
-                    for (final p in _permitLabels)
-                      Card(
-                        margin: const EdgeInsets.only(bottom: 6),
-                        child: ListTile(
-                          leading: const Icon(Icons.description_outlined, color: Colors.blueGrey),
-                          title: Text(p.label, style: const TextStyle(fontWeight: FontWeight.w600)),
-                          subtitle: Text(p.conditionNote),
+                    if (_steps.isNotEmpty) ...[
+                      PortalSection(
+                        title: 'How it works',
+                        subtitle: 'Every accredited station goes through the same review',
+                        child: Column(
+                          children: [
+                            for (var i = 0; i < _steps.length; i++) _stepTile(i + 1, _steps[i].title, _steps[i].body),
+                          ],
                         ),
                       ),
+                      SizedBox(height: PortalSection.gapAfter(context)),
+                    ],
+                    PortalSection(
+                      title: 'Required documents',
+                      subtitle: 'The same checklist the Permit Vault asks a station for',
+                      child: Column(
+                        children: [
+                          for (final p in _permitLabels) _permitTile(p),
+                        ],
+                      ),
+                    ),
                   ],
                 ),
     );
   }
 
   Widget _stepTile(int number, String title, String description) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 18),
+    final theme = Theme.of(context);
+
+    return PortalCard(
+      lift: false,
+      margin: const EdgeInsets.only(bottom: 10),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          CircleAvatar(radius: 14, backgroundColor: Colors.blue.shade700, child: Text('$number', style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold))),
+          CircleAvatar(
+            radius: 14,
+            backgroundColor: AppColors.primary,
+            child: Text('$number', style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+          ),
           const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+                Text(title, style: theme.textTheme.titleMedium),
                 const SizedBox(height: 2),
-                Text(description, style: const TextStyle(color: Colors.grey, height: 1.4)),
+                Text(
+                  description,
+                  style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant, height: 1.4),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _permitTile(PermitTypeLabel permit) {
+    final theme = Theme.of(context);
+
+    return PortalCard(
+      lift: false,
+      accent: AppColors.seal,
+      margin: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.description_outlined, color: StatusTint.onTint(context, AppColors.seal)),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(permit.label, style: theme.textTheme.titleMedium),
+                const SizedBox(height: 2),
+                Text(
+                  permit.conditionNote,
+                  style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                ),
               ],
             ),
           ),

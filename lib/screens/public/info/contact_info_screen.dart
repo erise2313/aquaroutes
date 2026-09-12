@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../constants/app_colors.dart';
 import '../../../services/supabase_service.dart';
 import '../../../services/web_content_service.dart';
 import '../../../widgets/error_state.dart';
+import '../../../widgets/portal/portal.dart';
 import '../../../utils/error_text.dart';
 
 /// In-app mirror of contact_screen.dart -- same admin-editable content
@@ -57,11 +59,12 @@ class _ContactInfoScreenState extends State<ContactInfoScreen> {
           : _error != null
               ? ErrorState(message: _error!, onRetry: _load)
               : ListView(
-                  padding: const EdgeInsets.all(16),
+                  padding: PortalDensity.of(context).pagePadding,
                   children: [
-                    Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(16),
+                    PortalSection(
+                      title: 'Contact the association',
+                      child: PortalCard(
+                        lift: false,
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -83,14 +86,20 @@ class _ContactInfoScreenState extends State<ContactInfoScreen> {
   }
 
   Widget _contactRow(IconData icon, String text, {bool isLink = false}) {
+    final theme = Theme.of(context);
+
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(icon, color: Colors.blue.shade700),
+        Icon(icon, color: AppColors.primary),
         const SizedBox(width: 12),
         Expanded(
           child: Text(
             text,
-            style: TextStyle(fontSize: 15, decoration: isLink ? TextDecoration.underline : null, color: isLink ? Colors.blue.shade700 : null),
+            style: theme.textTheme.bodyLarge?.copyWith(
+              decoration: isLink ? TextDecoration.underline : null,
+              color: isLink ? theme.colorScheme.primary : null,
+            ),
           ),
         ),
       ],

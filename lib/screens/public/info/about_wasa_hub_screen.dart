@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../constants/app_colors.dart';
+import '../../../widgets/portal/portal.dart';
 import '../../app_route.dart';
 import 'about_info_screen.dart';
 import 'contact_info_screen.dart';
@@ -31,22 +32,53 @@ class AboutWasaHubScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(title: const Text('About WASA')),
-      body: ListView.separated(
-        padding: const EdgeInsets.all(12),
-        itemCount: entries.length,
-        separatorBuilder: (context, index) => const SizedBox(height: 8),
-        itemBuilder: (context, index) {
-          final (icon, title, subtitle, builder) = entries[index];
-          return Card(
-            child: ListTile(
-              leading: Icon(icon, color: AppColors.primary),
-              title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
-              subtitle: Text(subtitle),
-              trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-              // The destination comes from `entries` as a WidgetBuilder, so
-              // it's built here and handed to appRoute like any other screen.
-              onTap: () => Navigator.push(context, appRoute(Builder(builder: builder))),
-            ),
+      body: Builder(
+        builder: (context) {
+          final theme = Theme.of(context);
+          final density = PortalDensity.of(context);
+
+          return ListView.separated(
+            padding: density.pagePadding,
+            itemCount: entries.length,
+            separatorBuilder: (context, index) => SizedBox(height: density.gap),
+            itemBuilder: (context, index) {
+              final (icon, title, subtitle, builder) = entries[index];
+              return PortalCard(
+                accent: AppColors.primary,
+                // The destination comes from `entries` as a WidgetBuilder, so
+                // it's built here and handed to appRoute like any other screen.
+                onTap: () => Navigator.push(context, appRoute(Builder(builder: builder))),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 42,
+                      height: 42,
+                      decoration: BoxDecoration(
+                        color: StatusTint.surface(context, AppColors.primary),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(icon, color: StatusTint.onTint(context, AppColors.primary), size: 21),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(title, style: theme.textTheme.titleMedium),
+                          const SizedBox(height: 2),
+                          Text(
+                            subtitle,
+                            style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Icon(Icons.chevron_right, color: theme.colorScheme.onSurfaceVariant),
+                  ],
+                ),
+              );
+            },
           );
         },
       ),
