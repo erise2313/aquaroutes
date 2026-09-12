@@ -10,6 +10,7 @@ import '../../widgets/admin_page_header.dart';
 import '../../widgets/admin_status_pill.dart';
 import '../../widgets/confirm_dialog.dart';
 import '../../widgets/error_state.dart';
+import '../../widgets/portal/portal.dart';
 import '../../widgets/skeleton_loader.dart';
 import '../../utils/csv_download.dart';
 import '../../utils/csv_export.dart';
@@ -165,6 +166,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
     return Column(
       children: [
         AdminPageHeader(
+          eyebrow: 'Association',
           title: 'User Management',
           subtitle: _memberships.isEmpty ? null : '${_memberships.length} accounts',
           actions: [
@@ -246,56 +248,57 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
     );
   }
 
+  /// One empty state for the whole portal now -- admin had four near-identical
+  /// copies of this helper.
   Widget _emptyState({required IconData icon, required String title, required String message, Widget? action}) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 56, color: AdminPalette.of(context).ink.withValues(alpha: 0.25)),
-            const SizedBox(height: 16),
-            Text(title, style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: AdminPalette.of(context).ink)),
-            const SizedBox(height: 8),
-            Text(message, textAlign: TextAlign.center, style: TextStyle(color: AdminPalette.of(context).ink.withValues(alpha: 0.6))),
-            if (action != null) ...[const SizedBox(height: 16), action],
-          ],
-        ),
-      ),
-    );
+    return PortalEmptyState(icon: icon, title: title, message: message, action: action);
   }
 
   Widget _buildMembershipTile(Map<String, dynamic> membership) {
+    final palette = AdminPalette.of(context);
     final isActive = membership['status'] == 'active';
     final name = (membership['profiles']?['full_name'] as String?) ?? 'Unknown';
     final role = membership['role'] == 'station_owner' ? 'Station Owner' : 'Driver / Helper';
     final stationName = membership['water_stations']?['station_name'] as String?;
+    final tone = isActive ? AppColors.cleared : AppColors.flagged;
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      child: ListTile(
-        leading: CircleAvatar(
-          radius: 26,
-          backgroundColor: (isActive ? AppColors.cleared : AppColors.flagged).withValues(alpha: 0.14),
-          child: Icon(Icons.person, color: isActive ? AppColors.cleared : AppColors.flagged, size: 26),
-        ),
-        title: Text(name, style: const TextStyle(fontWeight: FontWeight.w600)),
-        subtitle: Padding(
-          padding: const EdgeInsets.only(top: 4),
-          child: Wrap(
-            spacing: 6,
-            runSpacing: 6,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              Text('$role${stationName != null ? ' · $stationName' : ''}', style: TextStyle(color: AdminPalette.of(context).inkMuted)),
-              AdminStatusPill(label: isActive ? 'ACTIVE' : 'SUSPENDED', color: isActive ? AppColors.cleared : AppColors.flagged),
-            ],
+    return PortalCard(
+      lift: false,
+      accent: tone,
+      margin: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          CircleAvatar(
+            radius: 24,
+            backgroundColor: StatusTint.surface(context, tone),
+            child: Icon(Icons.person, color: StatusTint.onTint(context, tone), size: 24),
           ),
-        ),
-        trailing: TextButton(
-          onPressed: () => _toggleStatus(membership),
-          child: Text(isActive ? 'Suspend' : 'Reactivate'),
-        ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(name, style: TextStyle(fontWeight: FontWeight.w600, color: palette.ink)),
+                const SizedBox(height: 4),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    Text('$role${stationName != null ? ' · $stationName' : ''}', style: TextStyle(color: palette.inkMuted)),
+                    AdminStatusPill(label: isActive ? 'ACTIVE' : 'SUSPENDED', color: tone),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          TextButton(
+            onPressed: () => _toggleStatus(membership),
+            child: Text(isActive ? 'Suspend' : 'Reactivate'),
+          ),
+        ],
       ),
     );
   }

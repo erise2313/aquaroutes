@@ -10,6 +10,7 @@ import '../../widgets/admin_page_header.dart';
 import '../../widgets/admin_status_pill.dart';
 import '../../widgets/confirm_dialog.dart';
 import '../../widgets/error_state.dart';
+import '../../widgets/portal/portal.dart';
 import '../../widgets/skeleton_loader.dart';
 import 'admin_route.dart';
 import 'permit_review_screen.dart';
@@ -185,6 +186,7 @@ class _StationAccreditationScreenState extends State<StationAccreditationScreen>
         return Column(
           children: [
             AdminPageHeader(
+              eyebrow: 'Association',
               title: 'Station Accreditation',
               subtitle: _isLoading ? null : '$accreditedCount of ${_stations.length} stations accredited',
               actions: [
@@ -315,26 +317,14 @@ class _StationAccreditationScreenState extends State<StationAccreditationScreen>
     );
   }
 
+  /// One empty state for the whole portal now -- admin had four near-identical
+  /// copies of this helper.
   Widget _emptyState({required IconData icon, required String title, required String message, Widget? action}) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 56, color: AdminPalette.of(context).ink.withValues(alpha: 0.25)),
-            const SizedBox(height: 16),
-            Text(title, style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: AdminPalette.of(context).ink)),
-            const SizedBox(height: 8),
-            Text(message, textAlign: TextAlign.center, style: TextStyle(color: AdminPalette.of(context).ink.withValues(alpha: 0.6))),
-            if (action != null) ...[const SizedBox(height: 16), action],
-          ],
-        ),
-      ),
-    );
+    return PortalEmptyState(icon: icon, title: title, message: message, action: action);
   }
 
   Widget _buildStationCard(Map<String, dynamic> station) {
+    final palette = AdminPalette.of(context);
     final isAccredited = station['is_accredited'] as bool? ?? false;
     final isVerified = station['is_colorum_verified'] as bool? ?? false;
     final isActive = station['is_active'] as bool? ?? true;
@@ -342,89 +332,83 @@ class _StationAccreditationScreenState extends State<StationAccreditationScreen>
 
     return Opacity(
       opacity: isActive ? 1.0 : 0.6,
-      child: Card(
+      child: PortalCard(
+        accent: statusColor,
         margin: const EdgeInsets.only(bottom: 12),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(14),
-          onTap: () async {
-            await Navigator.push(
-              context,
-              adminRoute(
-                PermitReviewScreen(
-                  stationId: station['id'] as String,
-                  stationName: station['station_name'] as String? ?? 'Station',
-                ),
+        onTap: () async {
+          await Navigator.push(
+            context,
+            adminRoute(
+              PermitReviewScreen(
+                stationId: station['id'] as String,
+                stationName: station['station_name'] as String? ?? 'Station',
               ),
-            );
-            _fetchStations();
-          },
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                CircleAvatar(
-                  radius: 26,
-                  backgroundColor: statusColor.withValues(alpha: 0.15),
-                  child: Icon(isAccredited ? Icons.verified : Icons.hourglass_top, color: statusColor, size: 26),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+            ),
+          );
+          _fetchStations();
+        },
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            CircleAvatar(
+              radius: 26,
+              backgroundColor: StatusTint.surface(context, statusColor),
+              child: Icon(
+                isAccredited ? Icons.verified : Icons.hourglass_top,
+                color: StatusTint.onTint(context, statusColor),
+                size: 26,
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    station['station_name'] as String? ?? 'Unnamed Station',
+                    style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: palette.ink),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    station['station_address'] as String? ?? '',
+                    style: TextStyle(color: palette.inkMuted, fontSize: 14),
+                  ),
+                  const SizedBox(height: 10),
+                  // DEACTIVATED joins the other pills here rather than sitting
+                  // beside the name: in that Row it was a non-flexible child
+                  // laid out with unbounded width, so its label could never
+                  // wrap. A Wrap bounds it.
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
                     children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              station['station_name'] as String? ?? 'Unnamed Station',
-                              style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
-                            ),
-                          ),
-                          if (!isActive) ...[
-                            const SizedBox(width: 8),
-                            const AdminStatusPill(label: 'DEACTIVATED', color: AppColors.flagged),
-                          ],
-                        ],
+                      AdminStatusPill(label: isAccredited ? 'ACCREDITED' : 'PENDING REVIEW', color: statusColor),
+                      AdminStatusPill(
+                        label: isVerified ? 'COLORUM VERIFIED' : 'NOT YET VERIFIED',
+                        color: isVerified ? AdminTheme.harborBlue : palette.inkMuted,
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        station['station_address'] as String? ?? '',
-                        style: TextStyle(color: AdminPalette.of(context).inkMuted, fontSize: 14),
-                      ),
-                      const SizedBox(height: 10),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: [
-                          AdminStatusPill(label: isAccredited ? 'ACCREDITED' : 'PENDING REVIEW', color: statusColor),
-                          AdminStatusPill(
-                            label: isVerified ? 'COLORUM VERIFIED' : 'NOT YET VERIFIED',
-                            color: isVerified ? AdminTheme.harborBlue : AdminPalette.of(context).inkMuted,
-                          ),
-                        ],
-                      ),
+                      if (!isActive) const AdminStatusPill(label: 'DEACTIVATED', color: AppColors.flagged),
                     ],
                   ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Switch(
+                  value: isActive,
+                  activeTrackColor: AppColors.cleared,
+                  onChanged: (_) => _toggleActive(station),
                 ),
-                const SizedBox(width: 8),
-                Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Switch(
-                      value: isActive,
-                      activeTrackColor: AppColors.cleared,
-                      onChanged: (_) => _toggleActive(station),
-                    ),
-                    Text(
-                      isActive ? 'Active' : 'Inactive',
-                      style: TextStyle(fontSize: 11, color: AdminPalette.of(context).inkMuted, fontWeight: FontWeight.w600),
-                    ),
-                  ],
+                Text(
+                  isActive ? 'Active' : 'Inactive',
+                  style: TextStyle(fontSize: 11, color: palette.inkMuted, fontWeight: FontWeight.w600),
                 ),
               ],
             ),
-          ),
+          ],
         ),
       ),
     );

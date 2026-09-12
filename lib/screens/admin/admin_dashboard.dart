@@ -13,6 +13,7 @@ import '../../services/admin_analytics_service.dart';
 import '../../widgets/admin_charts.dart';
 import '../../widgets/admin_page_header.dart';
 import '../../widgets/error_state.dart';
+import '../../widgets/portal/portal.dart';
 import '../../widgets/skeleton_loader.dart';
 import '../../widgets/web_seal.dart';
 import '../../utils/error_text.dart';
@@ -130,7 +131,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             subtitle: (p['water_stations']?['station_name'] as String?) ?? 'Unknown station',
             createdAt: DateTime.parse(p['created_at'] as String),
             icon: Icons.description_outlined,
-            color: Colors.blue,
+            color: AdminTheme.harborBlue,
             onTap: () => Navigator.push(
               context,
               adminRoute(
@@ -147,7 +148,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             subtitle: (i['workers']?['full_name'] as String?) ?? 'Unknown worker',
             createdAt: DateTime.parse(i['created_at'] as String),
             icon: Icons.warning_amber_rounded,
-            color: Colors.deepOrange,
+            color: AppColors.pendingClearance,
             onTap: () => Navigator.push(context, adminRoute(const WorkerClearanceScreen(initialTabIndex: 0)))
                 .then((_) => _fetchStats()),
           ),
@@ -157,7 +158,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             subtitle: (c['workers']?['full_name'] as String?) ?? 'Unknown worker',
             createdAt: DateTime.parse(c['uploaded_at'] as String? ?? DateTime.now().toIso8601String()),
             icon: Icons.badge_outlined,
-            color: Colors.purple,
+            color: AdminTheme.sealGold,
             onTap: () => Navigator.push(context, adminRoute(const WorkerClearanceScreen(initialTabIndex: 1)))
                 .then((_) => _fetchStats()),
           ),
@@ -194,146 +195,243 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        const AdminPageHeader(title: 'GENTRI WASA Overview'),
+        const AdminPageHeader(
+          eyebrow: 'Association',
+          title: 'GENTRI WASA Overview',
+          subtitle: 'What needs your attention today, and how the association is trending',
+        ),
         Expanded(
           child: _isLoading
               ? const Padding(padding: EdgeInsets.all(16), child: SkeletonList(count: 4, cardHeight: 110))
               : _error != null
               ? ErrorState(message: _error!, onRetry: _fetchStats)
-              : RefreshIndicator(
-              onRefresh: _fetchStats,
-              child: ListView(
-                padding: const EdgeInsets.all(16),
-                children: [
-                  const Text('Station accreditation', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 12),
-                  // The one loud element on this page -- WASA's actual gold
-                  // seal (widgets/web_seal.dart, used everywhere the site
-                  // communicates verification) carries the headline number
-                  // instead of a generic colored box. Pending sits beside it
-                  // as the quieter, secondary figure.
-                  Card(
-                    elevation: 2,
-                    child: Padding(
-                      padding: const EdgeInsets.all(20),
-                      child: Row(
+              : Builder(
+                  builder: (context) {
+                    final density = PortalDensity.of(context);
+                    return RefreshIndicator(
+                      onRefresh: _fetchStats,
+                      child: ListView(
+                        padding: density.pagePadding,
                         children: [
-                          const WebSeal(size: 64),
-                          const SizedBox(width: 18),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                          PortalSection(
+                            title: 'Station accreditation',
+                            child: _buildAccreditationCard(),
+                          ),
+                          SizedBox(height: density.sectionGap),
+                          PortalSection(
+                            title: 'Needs your attention',
+                            subtitle: 'Queues that stay open until somebody works them',
+                            child: Wrap(
+                              spacing: 12,
+                              runSpacing: 12,
                               children: [
-                                Text('Accredited stations', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AdminPalette.of(context).inkMuted)),
-                                const SizedBox(height: 4),
-                                Text('$_accreditedCount', style: TextStyle(fontSize: 40, fontWeight: FontWeight.w700, color: AdminPalette.of(context).ink)),
+                                _kpiTile(icon: Icons.description_outlined, label: 'Permits to review', value: _pendingPermits, color: AdminTheme.harborBlue),
+                                _kpiTile(icon: Icons.warning_amber_rounded, label: 'Open incidents', value: _openIncidents, color: AppColors.pendingClearance),
+                                _kpiTile(icon: Icons.flag_outlined, label: 'Flagged workers', value: _flaggedWorkers, color: AppColors.flagged),
+                                // When no approved permit carries an expiry date at
+                                // all, "0 expiring soon" is not an all-clear -- it means
+                                // expiry isn't being tracked. Showing the reassuring
+                                // number would be the same silent-zero trap the failed
+                                // load above is guarded against.
+                                _kpiTile(
+                                  icon: Icons.hourglass_bottom,
+                                  label: 'Permits expiring soon',
+                                  value: _expiringSoonPermits,
+                                  color: AppColors.pendingClearance,
+                                  overrideValue: (_analytics?.expiryUntracked ?? false) ? '--' : null,
+                                  note: (_analytics?.expiryUntracked ?? false) ? 'No expiry dates recorded' : null,
+                                ),
                               ],
                             ),
                           ),
-                          Container(width: 1, height: 52, color: AdminPalette.of(context).border),
-                          const SizedBox(width: 18),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text('Pending', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AdminPalette.of(context).inkMuted)),
-                              const SizedBox(height: 4),
-                              Text('$_pendingCount', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w700, color: AppColors.pendingClearance)),
-                            ],
+                          SizedBox(height: density.sectionGap),
+                          if (_analytics != null) ...[
+                            PortalSection(
+                              title: 'Trends',
+                              subtitle: 'The last six months across the association',
+                              child: _buildCharts(_analytics!),
+                            ),
+                            SizedBox(height: density.sectionGap),
+                          ],
+                          PortalSection(
+                            title: 'Needs your review',
+                            subtitle: 'Permits, incidents and credentials waiting on a decision',
+                            child: _reviewItems.isEmpty
+                                ? const PortalEmptyState(
+                                    icon: Icons.inbox_outlined,
+                                    title: 'Nothing pending review',
+                                    message: 'Every permit, incident and credential submitted so far has been decided.',
+                                  )
+                                : Column(
+                                    children: [
+                                      // Capped: these build eagerly, and a large
+                                      // backlog would build hundreds of rows before
+                                      // the page could paint.
+                                      ..._reviewItems.take(_reviewItemLimit).map(_buildReviewItemTile),
+                                      if (_reviewItems.length > _reviewItemLimit)
+                                        Padding(
+                                          padding: const EdgeInsets.only(top: 4),
+                                          child: Text(
+                                            'Showing the $_reviewItemLimit most recent of ${_reviewItems.length} items awaiting review. '
+                                            'Open Stations or Workers to work through the rest.',
+                                            style: TextStyle(color: AdminPalette.of(context).inkMuted, fontStyle: FontStyle.italic),
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                          ),
+                          SizedBox(height: density.sectionGap),
+                          PortalSection(
+                            title: 'Content management',
+                            subtitle: 'What the association publishes to the public site',
+                            child: Column(
+                              children: [
+                                _buildContentLink(
+                                  icon: Icons.folder_outlined,
+                                  tone: AdminTheme.harborBlue,
+                                  title: 'Resources Library',
+                                  subtitle: 'Upload permit checklists, pricing schedules, and other downloads',
+                                  onTap: () => Navigator.push(context, adminRoute(const ResourcesAdminScreen())),
+                                ),
+                                _buildContentLink(
+                                  icon: Icons.event_outlined,
+                                  tone: AdminTheme.sealGold,
+                                  title: 'Events',
+                                  subtitle: 'Create and manage upcoming association events',
+                                  onTap: () => Navigator.push(context, adminRoute(const EventsAdminScreen())),
+                                  last: true,
+                                ),
+                              ],
+                            ),
                           ),
                         ],
                       ),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  const Text('Needs your attention', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 12),
-                  Wrap(
-                    spacing: 12,
-                    runSpacing: 12,
-                    children: [
-                      _kpiTile(icon: Icons.description_outlined, label: 'Permits to review', value: _pendingPermits, color: AdminTheme.harborBlue),
-                      _kpiTile(icon: Icons.warning_amber_rounded, label: 'Open incidents', value: _openIncidents, color: Colors.deepOrange),
-                      _kpiTile(icon: Icons.flag_outlined, label: 'Flagged workers', value: _flaggedWorkers, color: AppColors.flagged),
-                      // When no approved permit carries an expiry date at
-                      // all, "0 expiring soon" is not an all-clear -- it means
-                      // expiry isn't being tracked. Showing the reassuring
-                      // number would be the same silent-zero trap the failed
-                      // load above is guarded against.
-                      _kpiTile(
-                        icon: Icons.hourglass_bottom,
-                        label: 'Permits expiring soon',
-                        value: _expiringSoonPermits,
-                        color: AppColors.pendingClearance,
-                        overrideValue: (_analytics?.expiryUntracked ?? false) ? '--' : null,
-                        note: (_analytics?.expiryUntracked ?? false) ? 'No expiry dates recorded' : null,
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 24),
-                  if (_analytics != null) ...[
-                    const Text('Trends', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 12),
-                    _buildCharts(_analytics!),
-                    const SizedBox(height: 24),
-                  ],
-                  const Text('Needs Your Review', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 12),
-                  if (_reviewItems.isEmpty)
-                    Text('Nothing pending review right now.', style: TextStyle(color: AdminPalette.of(context).inkMuted))
-                  else ...[
-                    // Capped: these are spread into the surrounding ListView,
-                    // so every row is built eagerly. A large backlog would
-                    // build hundreds of tiles before the page could paint.
-                    ..._reviewItems.take(_reviewItemLimit).map(_buildReviewItemTile),
-                    if (_reviewItems.length > _reviewItemLimit)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 4),
-                        child: Text(
-                          'Showing the $_reviewItemLimit most recent of ${_reviewItems.length} items awaiting review. '
-                          'Open Stations or Workers to work through the rest.',
-                          style: TextStyle(color: AdminPalette.of(context).inkMuted, fontStyle: FontStyle.italic),
-                        ),
-                      ),
-                  ],
-                  const SizedBox(height: 24),
-                  const Text('Content management', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 12),
-                  Card(
-                    child: ListTile(
-                      leading: const CircleAvatar(backgroundColor: Color(0x1A2196F3), child: Icon(Icons.folder_outlined, color: Colors.blue)),
-                      title: const Text('Resources Library'),
-                      subtitle: const Text('Upload permit checklists, pricing schedules, and other downloads'),
-                      trailing: const Icon(Icons.arrow_forward_ios, size: 14),
-                      onTap: () => Navigator.push(context, adminRoute(const ResourcesAdminScreen())),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Card(
-                    child: ListTile(
-                      leading: const CircleAvatar(backgroundColor: Color(0x1A3F51B5), child: Icon(Icons.event_outlined, color: Colors.indigo)),
-                      title: const Text('Events'),
-                      subtitle: const Text('Create and manage upcoming association events'),
-                      trailing: const Icon(Icons.arrow_forward_ios, size: 14),
-                      onTap: () => Navigator.push(context, adminRoute(const EventsAdminScreen())),
-                    ),
-                  ),
-                ],
-              ),
-            ),
+                    );
+                  },
+                ),
         ),
       ],
     );
   }
 
+  /// The one loud element on this page -- WASA's actual gold seal
+  /// (widgets/web_seal.dart, used everywhere the site communicates
+  /// verification) carries the headline number instead of a generic coloured
+  /// box. Pending sits beside it as the quieter, secondary figure.
+  Widget _buildAccreditationCard() {
+    final palette = AdminPalette.of(context);
+
+    return PortalCard(
+      lift: false,
+      padding: const EdgeInsets.all(20),
+      child: Row(
+        children: [
+          const WebSeal(size: 64),
+          const SizedBox(width: 18),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Accredited stations', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: palette.inkMuted)),
+                const SizedBox(height: 4),
+                // The seal's own figure, counting up like the public site's.
+                CountUpText(
+                  value: _accreditedCount,
+                  start: true,
+                  style: TextStyle(fontSize: 40, fontWeight: FontWeight.w700, color: palette.ink),
+                ),
+              ],
+            ),
+          ),
+          Container(width: 1, height: 52, color: palette.border),
+          const SizedBox(width: 18),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Pending', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: palette.inkMuted)),
+              const SizedBox(height: 4),
+              CountUpText(
+                value: _pendingCount,
+                start: true,
+                style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w700, color: AppColors.pendingClearance),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildContentLink({
+    required IconData icon,
+    required Color tone,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+    bool last = false,
+  }) {
+    final palette = AdminPalette.of(context);
+
+    return PortalCard(
+      onTap: onTap,
+      accent: tone,
+      margin: EdgeInsets.only(bottom: last ? 0 : 10),
+      child: Row(
+        children: [
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(color: StatusTint.surface(context, tone), shape: BoxShape.circle),
+            child: Icon(icon, color: StatusTint.onTint(context, tone), size: 21),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: TextStyle(fontWeight: FontWeight.w600, color: palette.ink)),
+                const SizedBox(height: 2),
+                Text(subtitle, style: TextStyle(fontSize: 12.5, color: palette.inkMuted, height: 1.2)),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          Icon(Icons.chevron_right, color: palette.inkMuted),
+        ],
+      ),
+    );
+  }
+
   Widget _buildReviewItemTile(_ReviewItem item) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      child: ListTile(
-        leading: CircleAvatar(backgroundColor: item.color.withValues(alpha: 0.15), child: Icon(item.icon, color: item.color)),
-        title: Text(item.label),
-        subtitle: Text('${item.subtitle} · ${DateFormat('MMM d, yyyy').format(item.createdAt)}'),
-        trailing: const Icon(Icons.arrow_forward_ios, size: 14),
-        onTap: item.onTap,
+    final palette = AdminPalette.of(context);
+
+    return PortalCard(
+      onTap: item.onTap,
+      accent: item.color,
+      margin: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        children: [
+          CircleAvatar(
+            backgroundColor: StatusTint.surface(context, item.color),
+            child: Icon(item.icon, color: StatusTint.onTint(context, item.color)),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(item.label, style: TextStyle(fontWeight: FontWeight.w600, color: palette.ink)),
+                const SizedBox(height: 2),
+                Text(
+                  '${item.subtitle} · ${DateFormat('MMM d, yyyy').format(item.createdAt)}',
+                  style: TextStyle(fontSize: 12.5, color: palette.inkMuted, height: 1.2),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          Icon(Icons.chevron_right, color: palette.inkMuted),
+        ],
       ),
     );
   }
@@ -351,38 +449,51 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     String? overrideValue,
     String? note,
   }) {
+    final palette = AdminPalette.of(context);
+
     return SizedBox(
       width: 190,
-      child: Card(
-        child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              CircleAvatar(radius: 21, backgroundColor: color.withValues(alpha: 0.14), child: Icon(icon, color: color, size: 21)),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
+      child: PortalCard(
+        lift: false,
+        padding: const EdgeInsets.all(14),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            CircleAvatar(
+              radius: 21,
+              backgroundColor: StatusTint.surface(context, color),
+              child: Icon(icon, color: StatusTint.onTint(context, color), size: 21),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // "--" when expiry isn't tracked at all: a counting zero
+                  // would read as a genuine all-clear.
+                  overrideValue != null
+                      ? Text(
+                          overrideValue,
+                          style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: palette.ink),
+                        )
+                      : CountUpText(
+                          value: value,
+                          start: true,
+                          style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: palette.ink),
+                        ),
+                  const SizedBox(height: 2),
+                  Text(label, style: TextStyle(fontSize: 12.5, color: palette.inkMuted, height: 1.2)),
+                  if (note != null) ...[
+                    const SizedBox(height: 4),
                     Text(
-                      overrideValue ?? '$value',
-                      style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: AdminPalette.of(context).ink),
+                      note,
+                      style: TextStyle(fontSize: 11, height: 1.2, fontStyle: FontStyle.italic, color: AppColors.pendingClearance),
                     ),
-                    const SizedBox(height: 2),
-                    Text(label, style: TextStyle(fontSize: 12.5, color: AdminPalette.of(context).inkMuted, height: 1.2)),
-                    if (note != null) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        note,
-                        style: TextStyle(fontSize: 11, height: 1.2, fontStyle: FontStyle.italic, color: AppColors.pendingClearance),
-                      ),
-                    ],
                   ],
-                ),
+                ],
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

@@ -12,6 +12,7 @@ library;
 // are built on the tint, and any screen composing them needs the same tint for
 // its own icons and banners. Exporting it here saves every screen a second
 // import for what is really one vocabulary.
+export '../count_up_text.dart';
 export '../status_callout.dart';
 export 'portal_action_row.dart';
 export 'portal_card.dart';
