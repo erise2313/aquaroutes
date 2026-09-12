@@ -10,6 +10,7 @@ import '../../widgets/hover_scale.dart';
 import '../../widgets/wasa_shield_logo.dart';
 import '../../widgets/web_page_route.dart';
 import 'registration_screen.dart';
+import '../../utils/error_text.dart';
 
 /// Signs the user in and lets AuthGate (screens/auth/auth_gate.dart) handle
 /// routing based on their resolved membership. Shared by every role on
@@ -94,7 +95,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Could not send reset email: $e'), backgroundColor: Colors.redAccent),
+          SnackBar(content: Text('Could not send reset email. ${describeError(e)}'), backgroundColor: Colors.redAccent),
         );
       }
     }

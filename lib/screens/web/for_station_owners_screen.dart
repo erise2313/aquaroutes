@@ -18,6 +18,7 @@ import '../../widgets/web_page_header.dart';
 import '../../widgets/web_page_route.dart';
 import '../auth/registration_screen.dart';
 import 'how_accreditation_works_screen.dart';
+import '../../utils/error_text.dart';
 
 /// IconData is not persistable, so `web_content_items.icon` for this page's
 /// benefit cards stores a short string key (see patch_website_content_cms.sql's
@@ -76,7 +77,7 @@ class _ForStationOwnersScreenState extends ConsumerState<ForStationOwnersScreen>
         });
       }
     } catch (e) {
-      if (mounted) setState(() { _error = 'Could not load this page: $e'; _isLoading = false; });
+      if (mounted) setState(() { _error = 'Could not load this page. ${describeError(e)}'; _isLoading = false; });
     }
   }
 

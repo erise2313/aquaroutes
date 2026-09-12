@@ -16,6 +16,7 @@ import '../../widgets/skeleton_loader.dart';
 import '../../widgets/web_footer.dart';
 import '../../widgets/web_nav_bar.dart';
 import '../../widgets/web_page_header.dart';
+import '../../utils/error_text.dart';
 
 /// Sorted-by-event_date list of association events -- a list rather than a
 /// calendar-grid widget, which keeps scope realistic while still reading as
@@ -57,7 +58,7 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
       final events = await _eventService.fetchEvents();
       if (mounted) setState(() { _events = events; _isLoading = false; });
     } catch (e) {
-      if (mounted) setState(() { _error = 'Could not load events: $e'; _isLoading = false; });
+      if (mounted) setState(() { _error = 'Could not load events. ${describeError(e)}'; _isLoading = false; });
     }
   }
 

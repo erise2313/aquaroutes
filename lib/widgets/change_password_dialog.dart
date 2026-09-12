@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../services/account_service.dart';
+import '../utils/error_text.dart';
 
 /// Asks for the current password and a new one (twice). [onSubmit] does the
 /// change; an [AccountException] it throws is shown in the dialog. Pops with
@@ -47,7 +48,7 @@ class _ChangePasswordDialogState extends State<ChangePasswordDialog> {
     } on AccountException catch (e) {
       if (mounted) setState(() => _error = e.message);
     } catch (e) {
-      if (mounted) setState(() => _error = 'Could not change your password: $e');
+      if (mounted) setState(() => _error = 'Could not change your password. ${describeError(e)}');
     } finally {
       if (mounted) setState(() => _saving = false);
     }

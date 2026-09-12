@@ -4,6 +4,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../services/supabase_service.dart';
 import '../../../services/web_content_service.dart';
 import '../../../widgets/error_state.dart';
+import '../../../utils/error_text.dart';
 
 /// In-app mirror of contact_screen.dart -- same admin-editable content
 /// (web_page_sections, page 'contact').
@@ -41,7 +42,7 @@ class _ContactInfoScreenState extends State<ContactInfoScreen> {
         });
       }
     } catch (e) {
-      if (mounted) setState(() { _error = 'Could not load this page: $e'; _isLoading = false; });
+      if (mounted) setState(() { _error = 'Could not load this page. ${describeError(e)}'; _isLoading = false; });
     }
   }
 

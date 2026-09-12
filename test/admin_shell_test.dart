@@ -1,8 +1,19 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:aquaroute/constants/admin_theme.dart';
+import 'package:aquaroute/models/app_notification.dart';
+import 'package:aquaroute/providers/app_state.dart';
 import 'package:aquaroute/screens/admin/admin_route.dart';
 import 'package:aquaroute/widgets/admin_page_header.dart';
+
+/// The header carries the notification bell, which reads
+/// notificationsProvider -- stubbed here so these layout tests don't need a
+/// signed-in Supabase session.
+Widget _scoped(Widget home) => ProviderScope(
+      overrides: [notificationsProvider.overrideWith((ref) => Stream.value(const <AppNotification>[]))],
+      child: MaterialApp(home: home),
+    );
 
 /// Guards the three things that make the admin portal feel like one product:
 /// pushed screens keep the navy/gold theme, the header adapts to how the page
@@ -29,9 +40,7 @@ void main() {
   });
 
   testWidgets('header: account menu on a tab page, back button when pushed', (tester) async {
-    await tester.pumpWidget(const MaterialApp(
-      home: Scaffold(body: AdminPageHeader(title: 'Tab Page')),
-    ));
+    await tester.pumpWidget(_scoped(const Scaffold(body: AdminPageHeader(title: 'Tab Page'))));
     expect(find.byTooltip('Account'), findsOneWidget);
     expect(find.byTooltip('Back'), findsNothing);
 
@@ -43,15 +52,13 @@ void main() {
     await tester.tapAt(Offset.zero); // close the menu
     await tester.pumpAndSettle();
 
-    await tester.pumpWidget(MaterialApp(
-      home: Builder(builder: (context) => Scaffold(
-        body: ElevatedButton(
-          onPressed: () => Navigator.push(context, adminRoute(
-            const Scaffold(body: AdminPageHeader(title: 'Pushed Page')))),
-          child: const Text('go'),
-        ),
-      )),
-    ));
+    await tester.pumpWidget(_scoped(Builder(builder: (context) => Scaffold(
+      body: ElevatedButton(
+        onPressed: () => Navigator.push(context, adminRoute(
+          const Scaffold(body: AdminPageHeader(title: 'Pushed Page')))),
+        child: const Text('go'),
+      ),
+    ))));
     await tester.tap(find.text('go'));
     await tester.pumpAndSettle();
     expect(find.byTooltip('Back'), findsOneWidget, reason: 'pushed page needs a way back');

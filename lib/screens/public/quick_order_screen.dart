@@ -6,8 +6,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../models/customer_address.dart';
 import '../../models/product.dart';
 import '../../models/station.dart';
+import '../../services/address_service.dart';
 import '../../providers/app_state.dart';
 import '../../services/nearby_service.dart';
 import '../../services/order_service.dart';
@@ -20,10 +22,12 @@ import '../../widgets/error_state.dart';
 import '../../widgets/permission_rationale_dialog.dart';
 import '../auth/login_screen.dart';
 import '../auth/registration_screen.dart';
+import 'addresses_screen.dart';
 import 'order_confirmation_screen.dart';
 import 'track_order_screen.dart';
 import '../app_route.dart';
 import '../../widgets/app_map_tiles.dart';
+import '../../utils/error_text.dart';
 
 /// Most a single order may contain. Mirrors v_max_qty in insert_quick_order
 /// (supabase/patch_product_catalog.sql) so the form says so before the
@@ -46,6 +50,22 @@ List<StationProduct> orderableProducts(
       .toList();
 }
 
+/// What "Order again" carries over from a past order. [unitPrice] is the
+/// price that order was charged, so the form can say when it has changed.
+class OrderPrefill {
+  const OrderPrefill({
+    required this.stationId,
+    required this.productId,
+    required this.quantity,
+    this.unitPrice,
+  });
+
+  final String stationId;
+  final String productId;
+  final int quantity;
+  final double? unitPrice;
+}
+
 /// Quick-order form for the Public Consumer Portal. Placing an order
 /// requires a signed-in customer account (public_consumer membership,
 /// registration_screen.dart) -- browsing/bulletin stay no-login, but
@@ -57,7 +77,11 @@ List<StationProduct> orderableProducts(
 /// refill or new). The price shown is a preview; the server computes the
 /// amount actually stored on the order.
 class QuickOrderScreen extends ConsumerStatefulWidget {
-  const QuickOrderScreen({super.key});
+  const QuickOrderScreen({super.key, this.prefill});
+
+  /// Set by "Order again" (my_orders_screen.dart) to reopen this form on the
+  /// same station, product and quantity.
+  final OrderPrefill? prefill;
 
   @override
   ConsumerState<QuickOrderScreen> createState() => _QuickOrderScreenState();
@@ -77,8 +101,16 @@ class _QuickOrderScreenState extends ConsumerState<QuickOrderScreen> {
 
   static const _initialCenter = LatLng(14.3868, 120.8817);
 
+  final _addressService = AddressService(SupabaseService.instance);
+  final _mapController = MapController();
+  List<CustomerAddress> _addresses = [];
+  String? _selectedAddressId;
+
   LatLng? _selectedLocation;
   String? _waterTypeFilter;
+
+  /// Shown when "Order again" can't reproduce the order exactly.
+  String? _prefillNotice;
   DateTime? _scheduledFor;
   bool _isJugExchange = false;
   String? _jugExchangeOriginStationId;
@@ -137,6 +169,7 @@ class _QuickOrderScreenState extends ConsumerState<QuickOrderScreen> {
       if (!mounted) return;
       _fetchStations();
       _prefillContactPhone();
+      _loadAddresses();
     });
   }
 
@@ -163,6 +196,53 @@ class _QuickOrderScreenState extends ConsumerState<QuickOrderScreen> {
       // Best-effort convenience prefill -- silently skip on failure rather
       // than surfacing an error for a non-critical field.
     }
+  }
+
+  /// Saved addresses, with the default pre-selected so the common case --
+  /// ordering to the same house every week -- needs no map at all.
+  Future<void> _loadAddresses() async {
+    try {
+      final addresses = await _addressService.fetchAddresses();
+      if (!mounted) return;
+      setState(() {
+        _addresses = addresses;
+        final preferred = preferredAddress(addresses);
+        if (preferred != null && _selectedLocation == null) {
+          _selectedAddressId = preferred.id;
+          _selectedLocation = LatLng(preferred.latitude, preferred.longitude);
+        }
+      });
+      final location = _selectedLocation;
+      if (location != null) {
+        // The map is built by now; centring it on the saved pin saves the
+        // customer hunting for their own street.
+        try {
+          _mapController.move(location, 16);
+        } catch (_) {}
+      }
+    } catch (_) {
+      // Saved addresses are a convenience; the map still works without them.
+    }
+  }
+
+  void _useAddress(CustomerAddress address) {
+    setState(() {
+      _selectedAddressId = address.id;
+      _selectedLocation = LatLng(address.latitude, address.longitude);
+    });
+    try {
+      _mapController.move(LatLng(address.latitude, address.longitude), 16);
+    } catch (_) {}
+  }
+
+  Future<void> _saveCurrentPin() async {
+    final location = _selectedLocation;
+    if (location == null) return;
+    final saved = await Navigator.push<bool>(
+      context,
+      appRoute(AddressEditorScreen(initialPoint: location, isFirst: _addresses.isEmpty)),
+    );
+    if (saved == true) await _loadAddresses();
   }
 
   /// A station with no products has a derived "from" price of 0 and can't
@@ -193,11 +273,17 @@ class _QuickOrderScreenState extends ConsumerState<QuickOrderScreen> {
       }
 
       if (mounted) {
+        final prefill = widget.prefill;
         setState(() {
           _availableStations = stations;
-          if (stations.isNotEmpty) {
+          if (prefill != null && stations.any((s) => s.id == prefill.stationId)) {
+            _selectedStationId = prefill.stationId;
+            _selectedProductId = prefill.productId;
+            _jugCountController.text = '${prefill.quantity}';
+          } else if (stations.isNotEmpty) {
             _selectedStationId =
                 stations.firstWhere((s) => s.isOrderable && _hasProducts(s), orElse: () => stations.first).id;
+            if (prefill != null) _prefillNotice = "That station isn't listed any more. Pick another one.";
           }
           _isFetchingStations = false;
         });
@@ -206,7 +292,7 @@ class _QuickOrderScreenState extends ConsumerState<QuickOrderScreen> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          _fetchError = 'Could not load water stations: $e';
+          _fetchError = 'Could not load water stations. ${describeError(e)}';
           _isFetchingStations = false;
         });
       }
@@ -226,6 +312,7 @@ class _QuickOrderScreenState extends ConsumerState<QuickOrderScreen> {
       setState(() {
         _productsByStation[stationId] = products;
         _isLoadingProducts = false;
+        _prefillNotice ??= _noticeForPrefill(stationId, products);
       });
     } catch (e) {
       if (!mounted) return;
@@ -234,6 +321,25 @@ class _QuickOrderScreenState extends ConsumerState<QuickOrderScreen> {
         _isLoadingProducts = false;
       });
     }
+  }
+
+  /// "Order again" is a convenience, not a promise: the product may be gone
+  /// or cost something else now, and the customer should see that before
+  /// they order rather than after.
+  String? _noticeForPrefill(String stationId, List<StationProduct> products) {
+    final prefill = widget.prefill;
+    if (prefill == null || stationId != prefill.stationId) return null;
+    StationProduct? previous;
+    for (final product in products) {
+      if (product.id == prefill.productId) previous = product;
+    }
+    if (previous == null || !previous.isAvailable) {
+      return "What you ordered last time isn't available any more. Pick something else below.";
+    }
+    if (prefill.unitPrice != null && prefill.unitPrice != previous.price) {
+      return 'The price changed since your last order: ${formatPeso(prefill.unitPrice!)} → ${formatPeso(previous.price)}.';
+    }
+    return null;
   }
 
   Map<String, ContainerType> get _containerByCode => {for (final c in _containers) c.code: c};
@@ -369,7 +475,7 @@ class _QuickOrderScreenState extends ConsumerState<QuickOrderScreen> {
       // written for customers, so they're shown as-is.
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not place the order: $e')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not place the order. ${describeError(e)}')));
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -404,10 +510,16 @@ class _QuickOrderScreenState extends ConsumerState<QuickOrderScreen> {
                   child: Stack(
                     children: [
                       FlutterMap(
+                        mapController: _mapController,
                         options: MapOptions(
-                          initialCenter: _initialCenter,
-                          initialZoom: 14,
-                          onTap: (tapPosition, point) => setState(() => _selectedLocation = point),
+                          initialCenter: _selectedLocation ?? _initialCenter,
+                          initialZoom: _selectedLocation == null ? 14 : 16,
+                          onTap: (tapPosition, point) => setState(() {
+                            _selectedLocation = point;
+                            // A pin dropped by hand is no longer one of the
+                            // saved addresses.
+                            _selectedAddressId = null;
+                          }),
                         ),
                         children: [
                           const AppMapTiles(),
@@ -449,6 +561,11 @@ class _QuickOrderScreenState extends ConsumerState<QuickOrderScreen> {
                       child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
+                        if (_prefillNotice != null) ...[
+                          _buildNotice(_prefillNotice!),
+                          const SizedBox(height: 12),
+                        ],
+                        _buildAddressPicker(),
                         DropdownButtonFormField<String?>(
                           initialValue: _waterTypeFilter,
                           decoration: const InputDecoration(labelText: 'Water Type', border: OutlineInputBorder(), prefixIcon: Icon(Icons.water_drop_outlined)),
@@ -655,6 +772,54 @@ class _QuickOrderScreenState extends ConsumerState<QuickOrderScreen> {
                 ),
               ],
             ),
+    );
+  }
+
+  Widget _buildAddressPicker() {
+    final hasPin = _selectedLocation != null;
+    if (_addresses.isEmpty && !hasPin) return const SizedBox.shrink();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Expanded(child: Text('Deliver to', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600))),
+            if (_addresses.isNotEmpty)
+              TextButton.icon(
+                onPressed: () async {
+                  await Navigator.push(context, appRoute(const AddressesScreen()));
+                  await _loadAddresses();
+                },
+                icon: const Icon(Icons.edit_location_alt_outlined, size: 18),
+                label: const Text('Manage'),
+              ),
+          ],
+        ),
+        Wrap(
+          spacing: 6,
+          runSpacing: 6,
+          children: [
+            for (final address in _addresses)
+              ChoiceChip(
+                label: Text(address.label),
+                selected: address.id == _selectedAddressId,
+                onSelected: (_) => _useAddress(address),
+              ),
+            if (_selectedAddressId == null && hasPin)
+              InputChip(
+                avatar: const Icon(Icons.push_pin, size: 16),
+                label: const Text('Pin on the map'),
+                selected: true,
+                onSelected: (_) {},
+                onDeleted: _saveCurrentPin,
+                deleteIcon: const Icon(Icons.bookmark_add_outlined, size: 18),
+                deleteButtonTooltipMessage: 'Save this pin as an address',
+              ),
+          ],
+        ),
+        const SizedBox(height: 12),
+      ],
     );
   }
 

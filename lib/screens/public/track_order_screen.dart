@@ -9,6 +9,7 @@ import '../../utils/formatters.dart';
 import '../../widgets/confirm_dialog.dart';
 import 'order_tracking_screen.dart';
 import '../app_route.dart';
+import '../../utils/error_text.dart';
 
 /// Guest order tracking. No account exists for a guest order, so the phone
 /// number doubles as the access credential (lookup_guest_order() RPC,
@@ -88,7 +89,7 @@ class _TrackOrderScreenState extends State<TrackOrderScreen> {
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _error = 'Could not look up this order: $e';
+        _error = 'Could not look up this order. ${describeError(e)}';
         _isLoading = false;
       });
     }
@@ -168,7 +169,7 @@ class _TrackOrderScreenState extends State<TrackOrderScreen> {
       _lookup();
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not cancel order: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not cancel order. ${describeError(e)}')));
       }
     }
   }

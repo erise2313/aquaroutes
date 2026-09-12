@@ -5,6 +5,7 @@ import '../../constants/app_colors.dart';
 import '../../models/worker.dart';
 import '../../services/supabase_service.dart';
 import '../../services/worker_service.dart';
+import '../../utils/error_text.dart';
 
 /// Search a prospective driver's clearance history across the whole
 /// association before hiring them -- directly addresses the "driver
@@ -50,7 +51,7 @@ class _HireCheckScreenState extends State<HireCheckScreen> {
       if (mounted) setState(() => _results = results);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(describeError(e))));
       }
     } finally {
       if (mounted) setState(() => _isSearching = false);
@@ -64,7 +65,7 @@ class _HireCheckScreenState extends State<HireCheckScreen> {
       history = await _workerService.fetchStationHistory(result.workerId);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not load station history: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not load station history. ${describeError(e)}')));
       }
       return;
     } finally {

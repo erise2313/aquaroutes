@@ -14,6 +14,7 @@ import '../../widgets/skeleton_loader.dart';
 import '../../widgets/web_footer.dart';
 import '../../widgets/web_nav_bar.dart';
 import '../../widgets/web_page_header.dart';
+import '../../utils/error_text.dart';
 
 class FaqScreen extends ConsumerStatefulWidget {
   const FaqScreen({super.key});
@@ -51,7 +52,7 @@ class _FaqScreenState extends ConsumerState<FaqScreen> {
       final faqs = await _webContentService.fetchFaqs();
       if (mounted) setState(() { _faqs = faqs; _isLoading = false; });
     } catch (e) {
-      if (mounted) setState(() { _error = 'Could not load the FAQ: $e'; _isLoading = false; });
+      if (mounted) setState(() { _error = 'Could not load the FAQ. ${describeError(e)}'; _isLoading = false; });
     }
   }
 

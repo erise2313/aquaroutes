@@ -5,8 +5,10 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../providers/app_state.dart';
 import '../../widgets/account_settings_section.dart';
 import '../../widgets/error_state.dart';
+import 'addresses_screen.dart';
 import 'my_orders_screen.dart';
 import '../app_route.dart';
+import '../../utils/error_text.dart';
 
 /// Account screen for a signed-in customer (public_consumer membership) --
 /// reachable from PublicHomeScreen's app bar once authenticated. Just a
@@ -60,7 +62,7 @@ class _CustomerAccountScreenState extends ConsumerState<CustomerAccountScreen> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          _error = 'Could not load your account: $e';
+          _error = 'Could not load your account. ${describeError(e)}';
           _isLoading = false;
         });
       }
@@ -76,7 +78,7 @@ class _CustomerAccountScreenState extends ConsumerState<CustomerAccountScreen> {
           );
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Profile updated.')));
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(describeError(e))));
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
@@ -116,6 +118,13 @@ class _CustomerAccountScreenState extends ConsumerState<CustomerAccountScreen> {
                       : const Text('Save Changes'),
                 ),
                 const SizedBox(height: 24),
+                ListTile(
+                  leading: const Icon(Icons.place_outlined),
+                  title: const Text('Delivery addresses'),
+                  subtitle: const Text('Save home and work so ordering is one tap'),
+                  trailing: const Icon(Icons.arrow_forward_ios, size: 14),
+                  onTap: () => Navigator.push(context, appRoute(const AddressesScreen())),
+                ),
                 ListTile(
                   leading: const Icon(Icons.receipt_long_outlined),
                   title: const Text('My Orders'),

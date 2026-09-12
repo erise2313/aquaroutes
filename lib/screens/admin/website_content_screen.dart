@@ -11,6 +11,7 @@ import '../../widgets/admin_page_header.dart';
 import '../../widgets/confirm_dialog.dart';
 import '../../widgets/error_state.dart';
 import '../../widgets/skeleton_loader.dart';
+import '../../utils/error_text.dart';
 
 /// wasa_admin editor for the website's static-page content (About, FAQ,
 /// Contact, For Station Owners, How Accreditation Works, Jug Clearinghouse
@@ -234,7 +235,7 @@ class _SectionsEditorState extends State<_SectionsEditor> {
       }
       if (mounted) setState(() => _isLoading = false);
     } catch (e) {
-      if (mounted) setState(() { _error = 'Could not load: $e'; _isLoading = false; });
+      if (mounted) setState(() { _error = 'Could not load. ${describeError(e)}'; _isLoading = false; });
     }
   }
 
@@ -251,7 +252,7 @@ class _SectionsEditorState extends State<_SectionsEditor> {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Saved.')));
       await _load();
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not save: $e')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not save. ${describeError(e)}')));
     } finally {
       if (mounted) setState(() => _saving.remove(sectionKey));
     }
@@ -322,7 +323,7 @@ class _ItemsEditorState extends State<_ItemsEditor> {
       final items = await _service.fetchItems(widget.pageKey, widget.itemKey);
       if (mounted) setState(() { _items = items; _isLoading = false; });
     } catch (e) {
-      if (mounted) setState(() { _error = 'Could not load: $e'; _isLoading = false; });
+      if (mounted) setState(() { _error = 'Could not load. ${describeError(e)}'; _isLoading = false; });
     }
   }
 
@@ -373,7 +374,7 @@ class _ItemsEditorState extends State<_ItemsEditor> {
                 if (context.mounted) Navigator.pop(context);
                 await _load();
               } catch (e) {
-                if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not save: $e')));
+                if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not save. ${describeError(e)}')));
               }
             },
             child: Text(editing == null ? 'Add' : 'Save'),
@@ -397,7 +398,7 @@ class _ItemsEditorState extends State<_ItemsEditor> {
       await _service.deleteItem(item.id);
       await _load();
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(describeError(e))));
     }
   }
 
@@ -462,7 +463,7 @@ class _FaqEditorState extends State<_FaqEditor> {
       final faqs = await _service.fetchFaqs();
       if (mounted) setState(() { _faqs = faqs; _isLoading = false; });
     } catch (e) {
-      if (mounted) setState(() { _error = 'Could not load: $e'; _isLoading = false; });
+      if (mounted) setState(() { _error = 'Could not load. ${describeError(e)}'; _isLoading = false; });
     }
   }
 
@@ -505,7 +506,7 @@ class _FaqEditorState extends State<_FaqEditor> {
                 if (context.mounted) Navigator.pop(context);
                 await _load();
               } catch (e) {
-                if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not save: $e')));
+                if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not save. ${describeError(e)}')));
               }
             },
             child: Text(editing == null ? 'Add' : 'Save'),
@@ -529,7 +530,7 @@ class _FaqEditorState extends State<_FaqEditor> {
       await _service.deleteFaq(faq.id);
       await _load();
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(describeError(e))));
     }
   }
 
@@ -595,7 +596,7 @@ class _PermitLabelsEditorState extends State<_PermitLabelsEditor> {
       final labels = await _service.fetchPermitLabels();
       if (mounted) setState(() { _labels = labels; _isLoading = false; });
     } catch (e) {
-      if (mounted) setState(() { _error = 'Could not load: $e'; _isLoading = false; });
+      if (mounted) setState(() { _error = 'Could not load. ${describeError(e)}'; _isLoading = false; });
     }
   }
 
@@ -635,7 +636,7 @@ class _PermitLabelsEditorState extends State<_PermitLabelsEditor> {
                 if (context.mounted) Navigator.pop(context);
                 await _load();
               } catch (e) {
-                if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not save: $e')));
+                if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not save. ${describeError(e)}')));
               }
             },
             child: const Text('Save'),

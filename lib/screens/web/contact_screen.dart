@@ -17,6 +17,7 @@ import '../../widgets/web_nav_bar.dart';
 import '../../widgets/web_page_header.dart';
 import '../../widgets/web_page_route.dart';
 import 'stations_directory_screen.dart';
+import '../../utils/error_text.dart';
 
 /// Address/hours/email are admin-editable (web_page_sections, page_key
 /// 'contact') -- still placeholder text by default until WASA supplies
@@ -69,7 +70,7 @@ class _ContactScreenState extends ConsumerState<ContactScreen> {
         });
       }
     } catch (e) {
-      if (mounted) setState(() { _error = 'Could not load this page: $e'; _isLoading = false; });
+      if (mounted) setState(() { _error = 'Could not load this page. ${describeError(e)}'; _isLoading = false; });
     }
   }
 

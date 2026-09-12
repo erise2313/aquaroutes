@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../services/route_optimization.dart';
 import '../../widgets/app_map_tiles.dart';
 import '../../widgets/custom_map_marker.dart';
+import '../../utils/error_text.dart';
 
 class TrackingScreen extends StatefulWidget {
   const TrackingScreen({super.key});
@@ -82,8 +83,8 @@ class _TrackingScreenState extends State<TrackingScreen> {
         _mapController.move(dynamicStationLocation, 14);
       }
     } catch (e) {
-      debugPrint('Error: $e');
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Routing Error: $e')));
+      debugPrint(describeError(e));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Routing Error. ${describeError(e)}')));
     } finally {
       if (mounted) setState(() => _isGeneratingRoute = false);
     }

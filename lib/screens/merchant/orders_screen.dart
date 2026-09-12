@@ -9,6 +9,7 @@ import '../../models/order.dart';
 import '../../services/order_service.dart';
 import '../../services/supabase_service.dart';
 import '../../widgets/confirm_dialog.dart';
+import '../../utils/error_text.dart';
 
 class MerchantOrdersScreen extends StatefulWidget {
   const MerchantOrdersScreen({super.key});
@@ -99,10 +100,10 @@ class _MerchantOrdersScreenState extends State<MerchantOrdersScreen> {
             }
           });
     } catch (e) {
-      debugPrint('Error: $e');
+      debugPrint(describeError(e));
       if (mounted) {
         setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(describeError(e))));
       }
     }
   }
@@ -149,7 +150,7 @@ class _MerchantOrdersScreenState extends State<MerchantOrdersScreen> {
       await _orderService.ownerCancelOrder(orderId);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error rejecting order: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error rejecting order. ${describeError(e)}')));
       }
     }
   }
@@ -167,7 +168,7 @@ class _MerchantOrdersScreenState extends State<MerchantOrdersScreen> {
       await _orderService.unassignOrder(orderId);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error unassigning order: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error unassigning order. ${describeError(e)}')));
       }
     }
   }
@@ -183,7 +184,7 @@ class _MerchantOrdersScreenState extends State<MerchantOrdersScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error assigning driver: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error assigning driver. ${describeError(e)}')));
       }
     }
   }

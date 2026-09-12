@@ -24,6 +24,7 @@ import '../../widgets/web_nav_bar.dart';
 import '../../widgets/web_page_header.dart';
 import '../../widgets/web_seal.dart';
 import '../../widgets/app_map_tiles.dart';
+import '../../utils/error_text.dart';
 
 /// Full station directory for the website -- search + water-type + barangay
 /// filters alongside a map, reusing the same StationService.fetchPublicStations
@@ -78,7 +79,7 @@ class _StationsDirectoryScreenState extends ConsumerState<StationsDirectoryScree
     } catch (e) {
       if (mounted) {
         setState(() {
-          _error = 'Could not load stations: $e';
+          _error = 'Could not load stations. ${describeError(e)}';
           _isLoading = false;
         });
       }

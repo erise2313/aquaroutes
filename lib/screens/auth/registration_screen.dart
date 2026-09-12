@@ -9,6 +9,7 @@ import '../../widgets/hover_scale.dart';
 import '../../widgets/wasa_shield_logo.dart';
 import '../../widgets/web_page_route.dart';
 import 'login_screen.dart';
+import '../../utils/error_text.dart';
 
 /// Self-registration for the three roles that can sign themselves up:
 /// station_owner, driver, and public_consumer (a resident/customer account).
@@ -200,7 +201,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text("Registration Error: $e"),
+            content: Text(describeError(e)),
             backgroundColor: Colors.redAccent,
           ),
         );

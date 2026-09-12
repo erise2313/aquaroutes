@@ -6,6 +6,7 @@ import '../../models/permit.dart';
 import '../../models/web_content.dart';
 import '../../services/permit_service.dart';
 import '../../services/supabase_service.dart';
+import '../../utils/error_text.dart';
 
 /// Multi-document permit upload for a station. Which permits show up as
 /// required is entirely server-driven (a Postgres trigger on
@@ -99,7 +100,7 @@ class _PermitVaultScreenState extends State<PermitVaultScreen> {
       await _load();
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Upload failed: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Upload failed. ${describeError(e)}')));
       }
     }
   }

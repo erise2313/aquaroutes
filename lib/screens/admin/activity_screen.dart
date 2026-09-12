@@ -8,6 +8,7 @@ import '../../widgets/admin_filter_bar.dart';
 import '../../widgets/admin_page_header.dart';
 import '../../widgets/error_state.dart';
 import '../../widgets/skeleton_loader.dart';
+import '../../utils/error_text.dart';
 
 /// Narrows activity rows by free-text search over who/what, plus category.
 /// Top-level and pure so the matching rules are unit-testable.
@@ -87,7 +88,7 @@ class _ActivityScreenState extends State<ActivityScreen> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          _error = 'Could not load activity: $e';
+          _error = 'Could not load activity. ${describeError(e)}';
           _isLoading = false;
         });
       }

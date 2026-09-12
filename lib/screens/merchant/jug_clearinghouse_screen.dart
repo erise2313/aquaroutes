@@ -7,6 +7,7 @@ import '../../services/jug_ledger_service.dart';
 import '../../services/supabase_service.dart';
 import '../../widgets/confirm_dialog.dart';
 import '../../widgets/error_state.dart';
+import '../../utils/error_text.dart';
 
 /// Inter-Station Jug Clearinghouse: shows net balances of 5-gallon Slim/Round
 /// jugs owed to/from other stations, and lets the owner propose a
@@ -74,7 +75,7 @@ class _JugClearinghouseScreenState extends State<JugClearinghouseScreen> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          _error = 'Could not load the jug clearinghouse: $e';
+          _error = 'Could not load the jug clearinghouse. ${describeError(e)}';
           _isLoading = false;
         });
       }
@@ -194,7 +195,7 @@ class _JugClearinghouseScreenState extends State<JugClearinghouseScreen> {
                   if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Jug transfer recorded.')));
                   _load();
                 } catch (e) {
-                  if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+                  if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(describeError(e))));
                 }
               },
               child: const Text('Record'),
@@ -222,7 +223,7 @@ class _JugClearinghouseScreenState extends State<JugClearinghouseScreen> {
       }
       _load();
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not propose settlement: $e')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not propose settlement. ${describeError(e)}')));
     }
   }
 
@@ -237,7 +238,7 @@ class _JugClearinghouseScreenState extends State<JugClearinghouseScreen> {
       // code: ..., ...)".
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(describeError(e))));
     }
     _load();
   }
@@ -255,7 +256,7 @@ class _JugClearinghouseScreenState extends State<JugClearinghouseScreen> {
       await _jugService.rejectSettlement(settlement.id);
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Settlement rejected.')));
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(describeError(e))));
     }
     _load();
   }

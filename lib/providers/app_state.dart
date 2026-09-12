@@ -1,9 +1,11 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../models/app_notification.dart';
 import '../models/membership.dart';
 import '../models/station.dart';
 import '../services/auth_service.dart';
+import '../services/notification_service.dart';
 import '../services/supabase_service.dart';
 
 final supabaseServiceProvider = Provider<SupabaseService>((ref) => SupabaseService.instance);
@@ -41,6 +43,25 @@ final rawMembershipStatusProvider = FutureProvider<String?>((ref) async {
     loading: () => null,
     error: (_, _) => null,
   );
+});
+
+final notificationServiceProvider = Provider<NotificationService>((ref) {
+  return NotificationService(ref.watch(supabaseServiceProvider));
+});
+
+/// The signed-in user's in-app notifications, newest first, kept live by
+/// Realtime. Re-subscribes on sign-in/out; empty for a signed-out visitor.
+final notificationsProvider = StreamProvider<List<AppNotification>>((ref) {
+  final authState = ref.watch(authStateProvider);
+  return authState.when(
+    data: (_) => ref.watch(notificationServiceProvider).watch(),
+    loading: () => Stream.value(const <AppNotification>[]),
+    error: (_, _) => Stream.value(const <AppNotification>[]),
+  );
+});
+
+final unreadNotificationCountProvider = Provider<int>((ref) {
+  return ref.watch(notificationsProvider).value?.where((n) => !n.isRead).length ?? 0;
 });
 
 /// The station the signed-in user (station_owner or driver) is scoped to,

@@ -22,6 +22,7 @@ import '../../widgets/error_state.dart';
 import '../auth/login_screen.dart';
 import '../auth/registration_screen.dart';
 import '../app_route.dart';
+import '../../utils/error_text.dart';
 
 /// Reusable feed body (not a full Scaffold) shared by the guest home
 /// (screens/public/public_home_screen.dart) and the authenticated
@@ -83,7 +84,7 @@ class _BulletinFeedState extends ConsumerState<BulletinFeed> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          _error = 'Could not load the bulletin board: $e';
+          _error = 'Could not load the bulletin board. ${describeError(e)}';
           _isLoading = false;
         });
       }
@@ -146,7 +147,7 @@ class _BulletinFeedState extends ConsumerState<BulletinFeed> {
         stationName = station?['station_name'] as String?;
       }
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not open the post form: $e')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not open the post form. ${describeError(e)}')));
       return;
     }
 
@@ -283,7 +284,7 @@ class _BulletinFeedState extends ConsumerState<BulletinFeed> {
                           }
                           setSheetState(() => isSubmitting = false);
                           if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(describeError(e))));
                           }
                         }
                       },
@@ -400,7 +401,7 @@ class _BulletinFeedState extends ConsumerState<BulletinFeed> {
         await _bulletinService.addReaction(bulletin.id, membership.profileId);
       }
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(describeError(e))));
       _load();
     } finally {
       _pendingReactionToggles.remove(bulletin.id);
@@ -412,7 +413,7 @@ class _BulletinFeedState extends ConsumerState<BulletinFeed> {
       await _bulletinService.togglePin(bulletin.id, !bulletin.isPinned);
       _load();
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(describeError(e))));
     }
   }
 
@@ -430,7 +431,7 @@ class _BulletinFeedState extends ConsumerState<BulletinFeed> {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Post deleted.')));
       _load();
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(describeError(e))));
     }
   }
 

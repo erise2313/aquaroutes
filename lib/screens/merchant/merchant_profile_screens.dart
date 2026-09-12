@@ -10,6 +10,7 @@ import '../public/info/about_wasa_hub_screen.dart';
 import '../app_route.dart';
 import 'products_screen.dart';
 import '../../widgets/account_settings_section.dart';
+import '../../utils/error_text.dart';
 
 /// Builds the `profiles` table update payload (trimmed). Split from
 /// [buildStationPayload] since profile identity and station business data
@@ -90,7 +91,7 @@ class _MerchantProfileScreenState extends State<MerchantProfileScreen> {
     try {
       await supabase.auth.signOut();
     } catch (e) {
-      debugPrint("Logout error: $e");
+      debugPrint("Logout error. ${describeError(e)}");
     } finally {
       if (mounted) {
         setState(() => _isLoggingOut = false);
@@ -151,7 +152,7 @@ class _MerchantProfileScreenState extends State<MerchantProfileScreen> {
         });
       }
     } catch (e) {
-      debugPrint("Error fetching profile: $e");
+      debugPrint("Error fetching profile. ${describeError(e)}");
       if (mounted) {
         setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
@@ -200,7 +201,7 @@ class _MerchantProfileScreenState extends State<MerchantProfileScreen> {
       await supabase.from('profiles').update({'avatar_url': url, 'updated_at': DateTime.now().toIso8601String()}).eq('id', userId);
       if (mounted) setState(() => _avatarUrl = url);
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Photo upload failed: $e')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Photo upload failed. ${describeError(e)}')));
     } finally {
       if (mounted) setState(() => _isUploadingAvatar = false);
     }
@@ -221,7 +222,7 @@ class _MerchantProfileScreenState extends State<MerchantProfileScreen> {
       await supabase.from('water_stations').update({'photo_url': url}).eq('id', _stationId!);
       if (mounted) setState(() => _stationPhotoUrl = url);
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Photo upload failed: $e')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Photo upload failed. ${describeError(e)}')));
     } finally {
       if (mounted) setState(() => _isUploadingStationPhoto = false);
     }
@@ -274,7 +275,7 @@ class _MerchantProfileScreenState extends State<MerchantProfileScreen> {
       debugPrint('Failed to update profile: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to update profile: $e')),
+          SnackBar(content: Text('Failed to update profile. ${describeError(e)}')),
         );
       }
     } finally {

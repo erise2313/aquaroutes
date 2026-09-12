@@ -11,6 +11,7 @@ import '../../widgets/admin_status_pill.dart';
 import '../../widgets/confirm_dialog.dart';
 import '../../widgets/error_state.dart';
 import '../../widgets/skeleton_loader.dart';
+import '../../utils/error_text.dart';
 
 /// wasa_admin review of worker security incidents AND worker credential
 /// submissions (Government ID / Driver's License), in two tabs. Confirming
@@ -82,7 +83,7 @@ class _WorkerClearanceScreenState extends State<WorkerClearanceScreen> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          _error = 'Could not load the review queue: $e';
+          _error = 'Could not load the review queue. ${describeError(e)}';
           _isLoading = false;
         });
       }
@@ -108,7 +109,7 @@ class _WorkerClearanceScreenState extends State<WorkerClearanceScreen> {
       }).eq('id', incidentId);
       await _fetchAll();
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not resolve incident: $e')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not resolve incident. ${describeError(e)}')));
     }
   }
 
@@ -127,7 +128,7 @@ class _WorkerClearanceScreenState extends State<WorkerClearanceScreen> {
       );
       await _fetchAll();
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not review credential: $e')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not review credential. ${describeError(e)}')));
     }
   }
 
@@ -167,7 +168,7 @@ class _WorkerClearanceScreenState extends State<WorkerClearanceScreen> {
         );
         succeeded++;
       } catch (e) {
-        failures.add('$id: $e');
+        failures.add('$id. ${describeError(e)}');
       }
     }
 
@@ -210,7 +211,7 @@ class _WorkerClearanceScreenState extends State<WorkerClearanceScreen> {
       await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not open document: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not open document. ${describeError(e)}')));
       }
     }
   }

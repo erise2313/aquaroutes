@@ -12,6 +12,7 @@ import '../../widgets/admin_status_pill.dart';
 import '../../widgets/confirm_dialog.dart';
 import '../../widgets/error_state.dart';
 import '../../widgets/skeleton_loader.dart';
+import '../../utils/error_text.dart';
 
 /// Narrows the loaded membership rows by free-text name/station search plus
 /// optional role and status. Kept as a top-level pure function (same pattern
@@ -96,7 +97,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          _error = 'Could not load accounts: $e';
+          _error = 'Could not load accounts. ${describeError(e)}';
           _isLoading = false;
         });
       }
@@ -122,7 +123,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
       await _supabase.from('memberships').update({'status': isActive ? 'suspended' : 'active'}).eq('id', membership['id'] as String);
       _fetchMemberships();
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(describeError(e))));
     }
   }
 
@@ -327,7 +328,7 @@ class _DeletionRequestsPanelState extends State<_DeletionRequestsPanel> {
     } on AccountException catch (e) {
       _snack(e.message);
     } catch (e) {
-      _snack('Error: $e');
+      _snack(describeError(e));
     } finally {
       if (mounted) setState(() => _busyId = null);
     }

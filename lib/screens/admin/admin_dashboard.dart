@@ -15,6 +15,7 @@ import '../../widgets/admin_page_header.dart';
 import '../../widgets/error_state.dart';
 import '../../widgets/skeleton_loader.dart';
 import '../../widgets/web_seal.dart';
+import '../../utils/error_text.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -181,7 +182,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       debugPrint('Error fetching admin stats: $e');
       if (mounted) {
         setState(() {
-          _error = 'Could not load the overview: $e';
+          _error = 'Could not load the overview. ${describeError(e)}';
           _isLoading = false;
         });
       }

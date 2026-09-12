@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../constants/admin_theme.dart';
 import 'account_settings_section.dart';
+import 'notification_bell.dart';
 
 /// The single header on an admin page -- an in-body header rather than an
 /// AppBar, so admin pages render exactly one navy bar instead of the two
@@ -91,6 +92,7 @@ class AdminPageHeader extends StatelessWidget {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           ...actions,
+                          if (showSignOut && !canPop) const NotificationBell(),
                           // An account menu rather than a bare sign-out button,
                           // so admins can also change their password.
                           if (showSignOut && !canPop)

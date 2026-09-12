@@ -11,6 +11,7 @@ import '../../services/supabase_service.dart';
 import '../../services/worker_credential_service.dart';
 import '../../services/worker_service.dart';
 import '../../widgets/account_settings_section.dart';
+import '../../utils/error_text.dart';
 
 /// Driver profile + the Digital WASA Worker QR Badge. Clearance status is
 /// read-only here -- it can only change via the worker_incidents review
@@ -94,7 +95,7 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
         });
       }
     } catch (e) {
-      debugPrint("Error fetching driver profile: $e");
+      debugPrint("Error fetching driver profile. ${describeError(e)}");
       if (mounted) setState(() => _isLoading = false);
     }
   }
@@ -117,9 +118,9 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
         );
       }
     } catch (e) {
-      debugPrint("Error saving profile: $e");
+      debugPrint("Error saving profile. ${describeError(e)}");
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to update profile: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to update profile. ${describeError(e)}')));
       }
     } finally {
       if (mounted) setState(() => _isSaving = false);
@@ -143,7 +144,7 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
       if (mounted) setState(() => _avatarUrl = url);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Photo upload failed: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Photo upload failed. ${describeError(e)}')));
       }
     } finally {
       if (mounted) setState(() => _isUploadingAvatar = false);
@@ -177,7 +178,7 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
       _fetchDriverProfile();
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Upload failed: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Upload failed. ${describeError(e)}')));
       }
     }
   }
@@ -262,7 +263,7 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
       _fetchDriverProfile();
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(describeError(e))));
       }
     }
   }

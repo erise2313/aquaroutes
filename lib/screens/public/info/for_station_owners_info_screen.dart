@@ -6,6 +6,7 @@ import '../../../services/web_content_service.dart';
 import '../../../widgets/error_state.dart';
 import '../../auth/registration_screen.dart';
 import '../../app_route.dart';
+import '../../../utils/error_text.dart';
 
 const _benefitIcons = {
   'verified': Icons.verified,
@@ -54,7 +55,7 @@ class _ForStationOwnersInfoScreenState extends State<ForStationOwnersInfoScreen>
         });
       }
     } catch (e) {
-      if (mounted) setState(() { _error = 'Could not load this page: $e'; _isLoading = false; });
+      if (mounted) setState(() { _error = 'Could not load this page. ${describeError(e)}'; _isLoading = false; });
     }
   }
 

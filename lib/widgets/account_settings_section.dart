@@ -7,6 +7,7 @@ import '../providers/app_state.dart';
 import '../services/account_service.dart';
 import '../services/supabase_service.dart';
 import 'change_password_dialog.dart';
+import '../utils/error_text.dart';
 
 /// "Account" block shared by every signed-in surface: change password, and
 /// either delete the account (customers) or request its deletion (station
@@ -77,7 +78,7 @@ class _AccountSettingsSectionState extends ConsumerState<AccountSettingsSection>
     } on AccountException catch (e) {
       _snack(e.message);
     } catch (e) {
-      _snack('Could not delete your account: $e');
+      _snack('Could not delete your account. ${describeError(e)}');
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -92,7 +93,7 @@ class _AccountSettingsSectionState extends ConsumerState<AccountSettingsSection>
       await _loadPending();
       _snack('Request sent. WASA admin will review it.');
     } catch (e) {
-      _snack('Could not send the request: $e');
+      _snack('Could not send the request. ${describeError(e)}');
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -107,7 +108,7 @@ class _AccountSettingsSectionState extends ConsumerState<AccountSettingsSection>
       if (mounted) setState(() => _pending = null);
       _snack('Deletion request withdrawn.');
     } catch (e) {
-      _snack('Could not withdraw the request: $e');
+      _snack('Could not withdraw the request. ${describeError(e)}');
     } finally {
       if (mounted) setState(() => _busy = false);
     }

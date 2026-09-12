@@ -21,6 +21,7 @@ import '../../widgets/web_nav_bar.dart';
 import '../../widgets/web_page_header.dart';
 import '../../widgets/web_page_route.dart';
 import '../auth/login_screen.dart';
+import '../../utils/error_text.dart';
 
 /// Full news history for the website -- reuses BulletinService.fetchBulletins()
 /// (the same query backing bulletin_feed.dart's mobile board) rather than a
@@ -85,7 +86,7 @@ class _NewsScreenState extends ConsumerState<NewsScreen> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          _error = 'Could not load news: $e';
+          _error = 'Could not load news. ${describeError(e)}';
           _isLoading = false;
         });
       }
@@ -120,7 +121,7 @@ class _NewsScreenState extends ConsumerState<NewsScreen> {
         await _bulletinService.addReaction(bulletinId, userId);
       }
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not update reaction: $e')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not update reaction. ${describeError(e)}')));
       await _load();
     }
   }

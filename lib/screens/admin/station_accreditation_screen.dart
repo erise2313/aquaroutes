@@ -14,6 +14,7 @@ import '../../widgets/skeleton_loader.dart';
 import 'admin_route.dart';
 import 'permit_review_screen.dart';
 import '../../widgets/app_map_tiles.dart';
+import '../../utils/error_text.dart';
 
 /// Narrows loaded station rows by name/address search and accreditation
 /// state. Top-level and pure so the matching rules are unit-testable.
@@ -115,7 +116,7 @@ class _StationAccreditationScreenState extends State<StationAccreditationScreen>
     } catch (e) {
       if (mounted) {
         setState(() {
-          _error = 'Could not load stations: $e';
+          _error = 'Could not load stations. ${describeError(e)}';
           _isLoading = false;
         });
       }
@@ -141,7 +142,7 @@ class _StationAccreditationScreenState extends State<StationAccreditationScreen>
       await _supabase.from('water_stations').update({'is_active': !isActive}).eq('id', station['id'] as String);
       _fetchStations();
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(describeError(e))));
     }
   }
 

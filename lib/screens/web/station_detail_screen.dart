@@ -18,6 +18,7 @@ import '../../widgets/web_footer.dart';
 import '../../widgets/web_nav_bar.dart';
 import '../../widgets/web_seal.dart';
 import '../../widgets/app_map_tiles.dart';
+import '../../utils/error_text.dart';
 
 /// A public page per station, at `/stations/<id>`.
 ///
@@ -89,7 +90,7 @@ class _StationDetailScreenState extends State<StationDetailScreen> {
         });
       }
     } catch (e) {
-      if (mounted) setState(() { _error = 'Could not load this station: $e'; _isLoading = false; });
+      if (mounted) setState(() { _error = 'Could not load this station. ${describeError(e)}'; _isLoading = false; });
     }
   }
 

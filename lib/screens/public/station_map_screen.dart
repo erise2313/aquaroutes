@@ -12,6 +12,7 @@ import '../../widgets/error_state.dart';
 import '../../widgets/permission_rationale_dialog.dart';
 import '../../widgets/star_rating.dart';
 import '../../widgets/app_map_tiles.dart';
+import '../../utils/error_text.dart';
 
 /// Public, no-login interactive map/list of every WASA-verified station.
 /// Alkaline stations get the animated glowing pulse pin (spec 4D); all pins
@@ -80,7 +81,7 @@ class _StationMapScreenState extends State<StationMapScreen> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          _error = 'Could not load the station map: $e';
+          _error = 'Could not load the station map. ${describeError(e)}';
           _isLoading = false;
         });
       }

@@ -11,7 +11,9 @@ import '../../widgets/confirm_dialog.dart';
 import '../../widgets/error_state.dart';
 import '../../widgets/star_rating.dart';
 import 'order_tracking_screen.dart';
+import 'quick_order_screen.dart';
 import '../app_route.dart';
+import '../../utils/error_text.dart';
 
 /// Authenticated customer's persistent order history -- the real fix for
 /// "order tracking is device-local only": orders.customer_profile_id +
@@ -51,7 +53,7 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
       final userId = _supabase.auth.currentUser!.id;
       final rows = await _supabase
           .from('orders')
-          .select('id, station_id, status, jugs_ordered, water_type, jug_type, product_kind, total_amount, created_at, water_stations(station_name)')
+          .select('id, station_id, status, jugs_ordered, water_type, jug_type, product_kind, product_id, unit_price, total_amount, created_at, water_stations(station_name)')
           .eq('customer_profile_id', userId)
           .order('created_at', ascending: false);
       if (mounted) {
@@ -63,7 +65,7 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          _error = 'Could not load your orders: $e';
+          _error = 'Could not load your orders. ${describeError(e)}';
           _isLoading = false;
         });
       }
@@ -108,7 +110,7 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
       _load();
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not cancel order: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not cancel order. ${describeError(e)}')));
       }
     }
   }
@@ -180,15 +182,36 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
                   ),
                 ),
               ],
-              if (status == OrderStatus.done) ...[
+              if (status == OrderStatus.done || status == OrderStatus.cancelled) ...[
                 const SizedBox(height: 8),
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: OutlinedButton.icon(
-                    onPressed: () => _showRatingDialog(order['station_id'] as String, stationName),
-                    icon: const Icon(Icons.star_border, size: 18),
-                    label: const Text('Rate this station'),
-                  ),
+                Wrap(
+                  spacing: 8,
+                  children: [
+                    // Water is a weekly repeat purchase; this reopens the
+                    // order form on the same station, product and quantity.
+                    if (order['product_id'] != null)
+                      FilledButton.tonalIcon(
+                        onPressed: () => Navigator.push(
+                          context,
+                          appRoute(QuickOrderScreen(
+                            prefill: OrderPrefill(
+                              stationId: order['station_id'] as String,
+                              productId: order['product_id'] as String,
+                              quantity: (order['jugs_ordered'] as num).toInt(),
+                              unitPrice: (order['unit_price'] as num?)?.toDouble(),
+                            ),
+                          )),
+                        ),
+                        icon: const Icon(Icons.refresh, size: 18),
+                        label: const Text('Order again'),
+                      ),
+                    if (status == OrderStatus.done)
+                      OutlinedButton.icon(
+                        onPressed: () => _showRatingDialog(order['station_id'] as String, stationName),
+                        icon: const Icon(Icons.star_border, size: 18),
+                        label: const Text('Rate this station'),
+                      ),
+                  ],
                 ),
               ],
             ],
@@ -234,7 +257,7 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
                         );
                         if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Thanks for your review!')));
                       } catch (e) {
-                        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not submit review: $e')));
+                        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not submit review. ${describeError(e)}')));
                       }
                     },
               child: const Text('Submit'),

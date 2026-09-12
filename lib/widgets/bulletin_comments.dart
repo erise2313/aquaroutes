@@ -9,6 +9,7 @@ import '../providers/app_state.dart';
 import '../services/comment_service.dart';
 import '../services/supabase_service.dart';
 import 'confirm_dialog.dart';
+import '../utils/error_text.dart';
 
 /// Whether the viewer may delete a comment: its author, or a WASA admin.
 /// Mirrors the bulletin_comments_self_or_admin_delete RLS policy, which is
@@ -73,7 +74,7 @@ class _BulletinCommentsState extends ConsumerState<BulletinComments> {
     } catch (e) {
       if (!mounted) return;
       setState(() => _loading = false);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not load comments: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not load comments. ${describeError(e)}')));
     }
   }
 
@@ -91,7 +92,7 @@ class _BulletinCommentsState extends ConsumerState<BulletinComments> {
       _controller.clear();
       await _load();
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not post comment: $e')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not post comment. ${describeError(e)}')));
     } finally {
       if (mounted) setState(() => _posting = false);
     }
@@ -110,7 +111,7 @@ class _BulletinCommentsState extends ConsumerState<BulletinComments> {
       await _service.deleteComment(comment.id);
       await _load();
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not delete the comment: $e')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not delete the comment. ${describeError(e)}')));
     }
   }
 

@@ -17,6 +17,7 @@ import '../../widgets/skeleton_loader.dart';
 import '../../widgets/web_footer.dart';
 import '../../widgets/web_nav_bar.dart';
 import '../../widgets/web_page_header.dart';
+import '../../utils/error_text.dart';
 
 /// Public downloadable resources -- reuses ResourceService.fetchResources(),
 /// the same query backing resources_admin_screen.dart's upload/manage view.
@@ -58,7 +59,7 @@ class _ResourcesScreenState extends ConsumerState<ResourcesScreen> {
       final resources = await _resourceService.fetchResources();
       if (mounted) setState(() { _resources = resources; _isLoading = false; });
     } catch (e) {
-      if (mounted) setState(() { _error = 'Could not load resources: $e'; _isLoading = false; });
+      if (mounted) setState(() { _error = 'Could not load resources. ${describeError(e)}'; _isLoading = false; });
     }
   }
 

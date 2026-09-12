@@ -10,6 +10,7 @@ import '../../models/order.dart';
 import '../../services/driver_tracking_service.dart';
 import '../../services/supabase_service.dart';
 import '../../widgets/app_map_tiles.dart';
+import '../../utils/error_text.dart';
 
 /// Per-order detail screen with a live driver map, shared by logged-in
 /// customers (my_orders_screen.dart, guestPhone omitted) and guests
@@ -79,7 +80,7 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          _error = 'Could not load driver info: $e';
+          _error = 'Could not load driver info. ${describeError(e)}';
           _isLoading = false;
         });
       }

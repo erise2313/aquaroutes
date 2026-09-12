@@ -1,3 +1,4 @@
+import 'package:aquaroute/models/app_notification.dart';
 import 'package:aquaroute/models/membership.dart';
 import 'package:aquaroute/services/account_service.dart';
 import 'package:aquaroute/widgets/bulletin_comments.dart';
@@ -26,6 +27,15 @@ void main() {
     expect(canDeleteComment(authorId: 'a', viewerId: 'b', viewerIsAdmin: false), isFalse);
     expect(canDeleteComment(authorId: 'a', viewerId: 'b', viewerIsAdmin: true), isTrue);
     expect(canDeleteComment(authorId: 'a', viewerId: null, viewerIsAdmin: true), isFalse);
+  });
+
+  test('notificationAge reads as a person would say it', () {
+    final now = DateTime(2026, 9, 12, 12, 0);
+    expect(notificationAge(now.subtract(const Duration(seconds: 20)), now: now), 'just now');
+    expect(notificationAge(now.subtract(const Duration(minutes: 5)), now: now), '5m ago');
+    expect(notificationAge(now.subtract(const Duration(hours: 3)), now: now), '3h ago');
+    expect(notificationAge(now.subtract(const Duration(days: 2)), now: now), '2d ago');
+    expect(notificationAge(DateTime(2026, 8, 1), now: now), '1/8/2026');
   });
 
   group('ChangePasswordDialog', () {

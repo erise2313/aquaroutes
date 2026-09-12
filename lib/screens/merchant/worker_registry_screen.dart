@@ -11,6 +11,7 @@ import '../../services/worker_service.dart';
 import '../../utils/formatters.dart';
 import '../../widgets/confirm_dialog.dart';
 import '../../widgets/error_state.dart';
+import '../../utils/error_text.dart';
 
 /// Station-owner side of the Worker Security Registry: share the station's
 /// invite code so a worker can self-register as a driver, and file
@@ -116,7 +117,7 @@ class _WorkerRegistryScreenState extends State<WorkerRegistryScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(describeError(e))));
       }
     }
   }
@@ -189,7 +190,7 @@ class _WorkerRegistryScreenState extends State<WorkerRegistryScreen> {
                   if (context.mounted) Navigator.pop(context);
                 } catch (e) {
                   if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not file incident: $e')));
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not file incident. ${describeError(e)}')));
                   }
                 }
               },

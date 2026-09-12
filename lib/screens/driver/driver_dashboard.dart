@@ -16,9 +16,11 @@ import '../../services/supabase_service.dart';
 import '../../services/worker_credential_service.dart';
 import '../../utils/formatters.dart';
 import '../../widgets/app_map_tiles.dart';
+import '../../widgets/notification_bell.dart';
 import '../../widgets/permission_rationale_dialog.dart';
 import '../public/bulletin_board_screen.dart';
 import 'driver_profile_screen.dart';
+import '../../utils/error_text.dart';
 
 
 class DriverDashboardScreen extends StatefulWidget {
@@ -131,7 +133,7 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
       debugPrint('Driver init error: $e');
       if (mounted) {
         setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(describeError(e))));
       }
     }
   }
@@ -279,7 +281,7 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
       debugPrint('Driver Fetch Error: $e');
       if (mounted) {
         setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(describeError(e))));
       }
     }
   }
@@ -453,6 +455,34 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
     );
   }
 
+  /// Hands the drop-off to a real navigation app. The in-app map shows the
+  /// planned route, but a driver on the road needs turn-by-turn: Google Maps
+  /// navigation first, then its web directions, then any app that handles a
+  /// geo: point.
+  Future<void> _navigateToDropOff() async {
+    final destination = _destination;
+    if (destination == null) return;
+    final lat = destination.latitude;
+    final lng = destination.longitude;
+
+    for (final uri in [
+      Uri.parse('google.navigation:q=$lat,$lng&mode=d'),
+      Uri.parse('https://www.google.com/maps/dir/?api=1&destination=$lat,$lng&travelmode=driving'),
+      Uri.parse('geo:$lat,$lng?q=$lat,$lng(Delivery)'),
+    ]) {
+      try {
+        if (await launchUrl(uri, mode: LaunchMode.externalApplication)) return;
+      } catch (_) {
+        // Try the next one -- a phone without Google Maps still has a browser.
+      }
+    }
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No navigation app could be opened on this phone.')),
+      );
+    }
+  }
+
   Future<void> _startDelivery() async {
     if (_currentActiveOrder == null) return;
     try {
@@ -460,7 +490,7 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
       _fetchActiveDelivery();
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(describeError(e))));
       }
     }
   }
@@ -490,7 +520,7 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
     } catch (e) {
       if (mounted) {
         setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(describeError(e))));
       }
     }
   }
@@ -503,6 +533,7 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
         title: const Text('Driver Dashboard', style: TextStyle(color: AppColors.driverText, fontWeight: FontWeight.bold)),
         backgroundColor: AppColors.driverSurface,
         actions: [
+          const NotificationBell(),
           IconButton(
             icon: const Icon(Icons.person, color: AppColors.driverText),
             tooltip: 'Driver Profile',
@@ -532,17 +563,30 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
                     ? _buildNoStationState()
                     : _currentActiveOrder == null
                         ? _buildEmptyState()
-                        : Column(
-                            children: [
-                              Expanded(flex: 5, child: _buildMap()),
-                              Expanded(
-                                flex: 4,
-                                child: Container(
-                                  decoration: const BoxDecoration(color: AppColors.driverSurface),
-                                  child: _buildActiveDeliveryCard(),
-                                ),
-                              ),
-                            ],
+                        : LayoutBuilder(
+                            builder: (context, constraints) {
+                              // Landscape (a phone in a windscreen cradle) puts
+                              // the map and the delivery card side by side;
+                              // stacked, both would be letterbox slivers.
+                              final card = Container(
+                                decoration: const BoxDecoration(color: AppColors.driverSurface),
+                                child: _buildActiveDeliveryCard(),
+                              );
+                              if (constraints.maxWidth > constraints.maxHeight) {
+                                return Row(
+                                  children: [
+                                    Expanded(child: _buildMap()),
+                                    Expanded(child: card),
+                                  ],
+                                );
+                              }
+                              return Column(
+                                children: [
+                                  Expanded(flex: 5, child: _buildMap()),
+                                  Expanded(flex: 4, child: card),
+                                ],
+                              );
+                            },
                           ),
           ),
         ],
@@ -582,11 +626,11 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.store_outlined, size: 80, color: Colors.grey.shade600),
+            Icon(Icons.store_outlined, size: 80, color: AppColors.driverText.withValues(alpha: 0.6)),
             const SizedBox(height: 16),
             const Text('Not currently linked to a station.', style: TextStyle(fontSize: 18, color: AppColors.driverText)),
             const SizedBox(height: 8),
-            Text('Join a station from your profile to start receiving deliveries.', style: TextStyle(fontSize: 14, color: Colors.grey.shade700)),
+            Text('Join a station from your profile to start receiving deliveries.', style: TextStyle(fontSize: 14, color: AppColors.driverText.withValues(alpha: 0.7))),
             const SizedBox(height: 16),
             ElevatedButton(
               onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const DriverProfileScreen())),
@@ -674,11 +718,11 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.local_shipping_outlined, size: 80, color: Colors.grey.shade600),
+          Icon(Icons.local_shipping_outlined, size: 80, color: AppColors.driverText.withValues(alpha: 0.6)),
           const SizedBox(height: 16),
           const Text('No active deliveries right now.', style: TextStyle(fontSize: 18, color: AppColors.driverText)),
           const SizedBox(height: 8),
-          Text('Waiting for the station to assign an order...', style: TextStyle(fontSize: 14, color: Colors.grey.shade700)),
+          Text('Waiting for the station to assign an order...', style: TextStyle(fontSize: 14, color: AppColors.driverText.withValues(alpha: 0.7))),
         ],
       ),
     );
@@ -708,7 +752,7 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
                           child: Text(
                             'Deliver to: $_customerName',
                             overflow: TextOverflow.ellipsis,
-                            style: TextStyle(fontSize: 14, color: Colors.grey.shade700, fontWeight: FontWeight.bold),
+                            style: TextStyle(fontSize: 14, color: AppColors.driverText.withValues(alpha: 0.7), fontWeight: FontWeight.bold),
                           ),
                         ),
                         const SizedBox(width: 8),
@@ -736,12 +780,12 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
               ),
             ],
           ),
-          Divider(height: 24, thickness: 1, color: Colors.grey.shade700),
+          Divider(height: 24, thickness: 1, color: AppColors.driverText.withValues(alpha: 0.7)),
           Row(
             children: [
               const Icon(Icons.store, color: Colors.blueGrey, size: 18),
               const SizedBox(width: 8),
-              Expanded(child: Text('Station: $_stationName', style: TextStyle(fontSize: 13, color: Colors.grey.shade700))),
+              Expanded(child: Text('Station: $_stationName', style: TextStyle(fontSize: 13, color: AppColors.driverText.withValues(alpha: 0.7)))),
               TextButton.icon(
                 onPressed: () => _makePhoneCall(_stationPhone, 'Water Station'),
                 icon: const Icon(Icons.phone, size: 18, color: AppColors.driverOnDuty),
@@ -763,6 +807,17 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
           ),
           const SizedBox(height: 8),
           _buildDetailRow(Icons.payments, 'Collect:', formatPeso(_totalAmount)),
+          const SizedBox(height: 12),
+          OutlinedButton.icon(
+            onPressed: _destination == null ? null : _navigateToDropOff,
+            icon: const Icon(Icons.navigation_outlined, size: 20, color: AppColors.driverOnDuty),
+            label: const Text('NAVIGATE', style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.driverOnDuty)),
+            style: OutlinedButton.styleFrom(
+              side: const BorderSide(color: AppColors.driverOnDuty),
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+          ),
           const Spacer(),
           // While still just ASSIGNED, Start Delivery is the filled/primary
           // action and Complete Delivery is outlined/secondary -- a nudge
@@ -811,7 +866,7 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
       children: [
         Icon(icon, color: Colors.blueGrey, size: 22),
         const SizedBox(width: 12),
-        Text(label, style: TextStyle(fontSize: 16, color: Colors.grey.shade700)),
+        Text(label, style: TextStyle(fontSize: 16, color: AppColors.driverText.withValues(alpha: 0.7))),
         const Spacer(),
         Text(value, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.driverText)),
       ],

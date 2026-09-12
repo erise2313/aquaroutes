@@ -6,6 +6,7 @@ import 'package:latlong2/latlong.dart';
 import '../../widgets/custom_map_marker.dart';
 import '../../widgets/permission_rationale_dialog.dart';
 import '../../widgets/app_map_tiles.dart';
+import '../../utils/error_text.dart';
 
 class LocationPickerScreen extends StatefulWidget {
   final double? initialLatitude;
@@ -82,7 +83,7 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error getting location: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error getting location. ${describeError(e)}')));
       }
     } finally {
       if (mounted) setState(() => _isLoadingLocation = false);

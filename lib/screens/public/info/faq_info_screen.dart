@@ -4,6 +4,7 @@ import '../../../models/web_content.dart';
 import '../../../services/supabase_service.dart';
 import '../../../services/web_content_service.dart';
 import '../../../widgets/error_state.dart';
+import '../../../utils/error_text.dart';
 
 /// In-app mirror of faq_screen.dart -- same admin-editable content
 /// (web_faq_entries), plain ExpansionTile list instead of the website's
@@ -37,7 +38,7 @@ class _FaqInfoScreenState extends State<FaqInfoScreen> {
       final faqs = await _webContentService.fetchFaqs();
       if (mounted) setState(() { _faqs = faqs; _isLoading = false; });
     } catch (e) {
-      if (mounted) setState(() { _error = 'Could not load the FAQ: $e'; _isLoading = false; });
+      if (mounted) setState(() { _error = 'Could not load the FAQ. ${describeError(e)}'; _isLoading = false; });
     }
   }
 

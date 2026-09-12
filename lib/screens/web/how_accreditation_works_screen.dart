@@ -18,6 +18,7 @@ import '../../widgets/web_nav_bar.dart';
 import '../../widgets/web_page_header.dart';
 import '../../widgets/web_page_route.dart';
 import '../auth/registration_screen.dart';
+import '../../utils/error_text.dart';
 
 class HowAccreditationWorksScreen extends ConsumerStatefulWidget {
   const HowAccreditationWorksScreen({super.key});
@@ -64,7 +65,7 @@ class _HowAccreditationWorksScreenState extends ConsumerState<HowAccreditationWo
         });
       }
     } catch (e) {
-      if (mounted) setState(() { _error = 'Could not load this page: $e'; _isLoading = false; });
+      if (mounted) setState(() { _error = 'Could not load this page. ${describeError(e)}'; _isLoading = false; });
     }
   }
 

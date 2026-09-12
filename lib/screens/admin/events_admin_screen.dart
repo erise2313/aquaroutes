@@ -9,6 +9,7 @@ import '../../widgets/admin_page_header.dart';
 import '../../widgets/confirm_dialog.dart';
 import '../../widgets/error_state.dart';
 import '../../widgets/skeleton_loader.dart';
+import '../../utils/error_text.dart';
 
 class EventsAdminScreen extends StatefulWidget {
   const EventsAdminScreen({super.key});
@@ -40,7 +41,7 @@ class _EventsAdminScreenState extends State<EventsAdminScreen> {
       final events = await _eventService.fetchEvents();
       if (mounted) setState(() { _events = events; _isLoading = false; });
     } catch (e) {
-      if (mounted) setState(() { _error = 'Could not load events: $e'; _isLoading = false; });
+      if (mounted) setState(() { _error = 'Could not load events. ${describeError(e)}'; _isLoading = false; });
     }
   }
 
@@ -139,7 +140,7 @@ class _EventsAdminScreenState extends State<EventsAdminScreen> {
       }
       await _load();
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not save event: $e')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not save event. ${describeError(e)}')));
     }
   }
 
@@ -150,7 +151,7 @@ class _EventsAdminScreenState extends State<EventsAdminScreen> {
       await _eventService.deleteEvent(event.id);
       await _load();
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Delete failed: $e')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Delete failed. ${describeError(e)}')));
     }
   }
 

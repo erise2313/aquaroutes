@@ -5,6 +5,7 @@ import '../../../services/permit_service.dart';
 import '../../../services/supabase_service.dart';
 import '../../../services/web_content_service.dart';
 import '../../../widgets/error_state.dart';
+import '../../../utils/error_text.dart';
 
 /// In-app mirror of how_accreditation_works_screen.dart -- same
 /// admin-editable content (web_content_items page
@@ -49,7 +50,7 @@ class _HowAccreditationWorksInfoScreenState extends State<HowAccreditationWorksI
         });
       }
     } catch (e) {
-      if (mounted) setState(() { _error = 'Could not load this page: $e'; _isLoading = false; });
+      if (mounted) setState(() { _error = 'Could not load this page. ${describeError(e)}'; _isLoading = false; });
     }
   }
 

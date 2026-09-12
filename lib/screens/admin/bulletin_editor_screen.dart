@@ -14,6 +14,7 @@ import '../../widgets/confirm_dialog.dart';
 import '../../widgets/error_state.dart';
 import '../../widgets/skeleton_loader.dart';
 import '../public/bulletin_feed.dart';
+import '../../utils/error_text.dart';
 
 /// Validates a container code typed by the admin: lower-case letters,
 /// digits and underscores, like the seeded `slim_5gal`. Codes are stored on
@@ -79,7 +80,7 @@ class _BulletinEditorScreenState extends State<BulletinEditorScreen> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          _error = 'Could not load floor prices: $e';
+          _error = 'Could not load floor prices. ${describeError(e)}';
           _isLoading = false;
         });
       }
@@ -132,7 +133,7 @@ class _BulletinEditorScreenState extends State<BulletinEditorScreen> {
       await _bulletinService.deleteFloorPrice(fp.id);
       _load();
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(describeError(e))));
     }
   }
 
@@ -311,7 +312,7 @@ class _FloorPriceDialogState extends State<_FloorPriceDialog> {
     } on PostgrestException catch (e) {
       if (mounted) setState(() => _error = e.message);
     } catch (e) {
-      if (mounted) setState(() => _error = 'Could not set floor price: $e');
+      if (mounted) setState(() => _error = 'Could not set floor price. ${describeError(e)}');
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -435,7 +436,7 @@ class _ContainerDialogState extends State<_ContainerDialog> {
     } on PostgrestException catch (e) {
       if (mounted) setState(() => _error = e.message);
     } catch (e) {
-      if (mounted) setState(() => _error = 'Could not save the container: $e');
+      if (mounted) setState(() => _error = 'Could not save the container. ${describeError(e)}');
     } finally {
       if (mounted) setState(() => _saving = false);
     }

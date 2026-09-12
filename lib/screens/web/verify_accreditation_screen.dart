@@ -15,6 +15,7 @@ import '../../widgets/web_footer.dart';
 import '../../widgets/web_nav_bar.dart';
 import '../../widgets/web_page_header.dart';
 import '../../widgets/web_seal.dart';
+import '../../utils/error_text.dart';
 
 /// "Confirm this station is really WASA-accredited" lookup -- reuses the
 /// existing public_stations data (is_colorum_verified/is_accredited), no
@@ -60,7 +61,7 @@ class _VerifyAccreditationScreenState extends ConsumerState<VerifyAccreditationS
       final stations = await _stationService.fetchPublicStations();
       if (mounted) setState(() { _stations = stations; _isLoading = false; });
     } catch (e) {
-      if (mounted) setState(() { _error = 'Could not load stations: $e'; _isLoading = false; });
+      if (mounted) setState(() { _error = 'Could not load stations. ${describeError(e)}'; _isLoading = false; });
     }
   }
 

@@ -14,6 +14,7 @@ import '../../widgets/skeleton_loader.dart';
 import '../../widgets/web_footer.dart';
 import '../../widgets/web_nav_bar.dart';
 import '../../widgets/web_page_header.dart';
+import '../../utils/error_text.dart';
 
 /// Content-only explainer for the jug clearinghouse -- a genuine
 /// differentiator no comparable chamber/AMS site template has, so it earns
@@ -69,7 +70,7 @@ class _JugClearinghouseExplainerScreenState extends ConsumerState<JugClearinghou
         });
       }
     } catch (e) {
-      if (mounted) setState(() { _error = 'Could not load this page: $e'; _isLoading = false; });
+      if (mounted) setState(() { _error = 'Could not load this page. ${describeError(e)}'; _isLoading = false; });
     }
   }
 

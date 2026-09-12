@@ -8,8 +8,10 @@ import 'package:aquaroute/screens/merchant/permit_vault_screen.dart';
 import 'package:aquaroute/screens/merchant/worker_registry_screen.dart';
 import 'package:aquaroute/services/permit_service.dart';
 import 'package:aquaroute/services/supabase_service.dart';
+import 'package:aquaroute/utils/formatters.dart';
 import '../app_route.dart';
 import 'products_screen.dart';
+import '../../widgets/notification_bell.dart';
 
 /// 'assigned' rolls into "active" alongside 'active' (both mean a driver is
 /// on it, just not picked up yet vs. en route); 'done' is counted on its
@@ -32,6 +34,46 @@ Map<String, int> calculateOrderCounts(List<dynamic> orders) {
   return {'pending': pending, 'active': active, 'done': done};
 }
 
+/// What a station actually took in, for the owner's own bookkeeping.
+class SalesTotals {
+  const SalesTotals({this.today = 0, this.week = 0, this.month = 0, this.deliveredToday = 0});
+
+  final double today;
+  final double week;
+  final double month;
+  final int deliveredToday;
+}
+
+/// Totals from delivered orders only, in the phone's local time: pending,
+/// cancelled and in-flight orders are not money in hand. The week starts on
+/// Monday.
+SalesTotals calculateSalesTotals(List<dynamic> orders, {DateTime? now}) {
+  final current = now ?? DateTime.now();
+  final startOfDay = DateTime(current.year, current.month, current.day);
+  final startOfWeek = startOfDay.subtract(Duration(days: startOfDay.weekday - 1));
+  final startOfMonth = DateTime(current.year, current.month);
+
+  double today = 0, week = 0, month = 0;
+  int deliveredToday = 0;
+
+  for (final order in orders) {
+    if (order['status']?.toString().toLowerCase() != 'done') continue;
+    final createdRaw = order['created_at'];
+    if (createdRaw == null) continue;
+    final createdAt = DateTime.parse(createdRaw.toString()).toLocal();
+    final amount = (order['total_amount'] as num?)?.toDouble() ?? 0;
+
+    if (!createdAt.isBefore(startOfMonth)) month += amount;
+    if (!createdAt.isBefore(startOfWeek)) week += amount;
+    if (!createdAt.isBefore(startOfDay)) {
+      today += amount;
+      deliveredToday++;
+    }
+  }
+
+  return SalesTotals(today: today, week: week, month: month, deliveredToday: deliveredToday);
+}
+
 class MerchantDashboardScreen extends StatefulWidget {
   const MerchantDashboardScreen({super.key});
 
@@ -48,6 +90,7 @@ class _MerchantDashboardScreenState extends State<MerchantDashboardScreen> {
   int _doneCount = 0;
   int _renewalDueCount = 0;
   bool _hasNoProducts = false;
+  SalesTotals _sales = const SalesTotals();
   String _inviteCode = "Loading...";
   bool _isLoading = true;
 
@@ -72,8 +115,9 @@ class _MerchantDashboardScreenState extends State<MerchantDashboardScreen> {
         final stationId = stationData['id'] as String;
         final String inviteCode = stationData['invite_code'] ?? 'NO CODE';
 
-        final response = await supabase.from('orders').select('status').eq('station_id', stationId);
+        final response = await supabase.from('orders').select('status, total_amount, created_at').eq('station_id', stationId);
         final counts = calculateOrderCounts(response);
+        final sales = calculateSalesTotals(response);
         final permits = await _permitService.fetchStationPermits(stationId);
         final renewalDueCount = permits.where((p) => p.isRequired && p.isRenewalDueSoon).length;
         final products = await supabase.from('station_products').select('id').eq('station_id', stationId).eq('is_available', true).limit(1);
@@ -81,6 +125,7 @@ class _MerchantDashboardScreenState extends State<MerchantDashboardScreen> {
         if (mounted) {
           setState(() {
             _hasNoProducts = products.isEmpty;
+            _sales = sales;
             _pendingCount = counts['pending']!;
             _activeCount = counts['active']!;
             _doneCount = counts['done']!;
@@ -118,6 +163,7 @@ class _MerchantDashboardScreenState extends State<MerchantDashboardScreen> {
       appBar: AppBar(
         title: Text('Station Dashboard', style: TextStyle(fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurface)),
         elevation: 0,
+        actions: const [NotificationBell()],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -148,6 +194,11 @@ class _MerchantDashboardScreenState extends State<MerchantDashboardScreen> {
                       Expanded(child: _buildStatCard('Done', _doneCount, Colors.green.shade100, Colors.green.shade700)),
                     ],
                   ),
+                  const SizedBox(height: 24),
+
+                  Text('Sales', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: onSurface)),
+                  const SizedBox(height: 12),
+                  _buildSalesCard(),
                   const SizedBox(height: 24),
 
                   Text('Governance & compliance', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: onSurface)),
@@ -202,6 +253,58 @@ class _MerchantDashboardScreenState extends State<MerchantDashboardScreen> {
                 ],
               ),
             ),
+    );
+  }
+
+  /// Takings from delivered orders. The dashboard could say how many orders
+  /// arrived but never what they were worth, which is the number an owner
+  /// actually wants at the end of a day.
+  Widget _buildSalesCard() {
+    final scheme = Theme.of(context).colorScheme;
+
+    Widget figure(String label, double amount, {bool emphasise = false}) {
+      return Expanded(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(label, style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant)),
+            const SizedBox(height: 4),
+            Text(
+              formatPeso(amount),
+              style: TextStyle(
+                fontSize: emphasise ? 22 : 18,
+                fontWeight: FontWeight.bold,
+                color: emphasise ? scheme.primary : scheme.onSurface,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                figure('Today', _sales.today, emphasise: true),
+                figure('This week', _sales.week),
+                figure('This month', _sales.month),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              _sales.deliveredToday == 1
+                  ? '1 order delivered today'
+                  : '${_sales.deliveredToday} orders delivered today',
+              style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
+            ),
+          ],
+        ),
+      ),
     );
   }
 

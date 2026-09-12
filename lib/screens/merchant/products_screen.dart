@@ -9,6 +9,7 @@ import '../../services/supabase_service.dart';
 import '../../utils/formatters.dart';
 import '../../widgets/confirm_dialog.dart';
 import '../../widgets/error_state.dart';
+import '../../utils/error_text.dart';
 
 /// Checks a price an owner typed. Returns what's wrong, or null when valid.
 /// The server enforces the same floor; checking here just means the owner
@@ -122,7 +123,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          _error = 'Could not load your products: $e';
+          _error = 'Could not load your products. ${describeError(e)}';
           _isLoading = false;
         });
       }
@@ -161,7 +162,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
       await _productService.setAvailability(product.id, isAvailable);
       await _load();
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not update: $e')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not update. ${describeError(e)}')));
     }
   }
 
@@ -180,7 +181,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
       await _productService.deleteProduct(product.id);
       await _load();
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not remove: $e')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not remove. ${describeError(e)}')));
     }
   }
 
@@ -398,7 +399,7 @@ class _ProductEditorDialogState extends State<_ProductEditorDialog> {
       if (mounted) {
         setState(() {
           _saving = false;
-          _formError = 'Could not save: $e';
+          _formError = 'Could not save. ${describeError(e)}';
         });
       }
     }
@@ -529,7 +530,7 @@ class _DeliveryFeeDialogState extends State<_DeliveryFeeDialog> {
       if (mounted) {
         setState(() {
           _saving = false;
-          _error = 'Could not save: $e';
+          _error = 'Could not save. ${describeError(e)}';
         });
       }
     }

@@ -10,6 +10,7 @@ import '../../widgets/admin_page_header.dart';
 import '../../widgets/confirm_dialog.dart';
 import '../../widgets/error_state.dart';
 import '../../widgets/skeleton_loader.dart';
+import '../../utils/error_text.dart';
 
 /// WASA admin upload/manage screen for the public resources library
 /// (permit checklists, floor-price schedule, etc.) -- reuses the same
@@ -43,7 +44,7 @@ class _ResourcesAdminScreenState extends State<ResourcesAdminScreen> {
       final resources = await _resourceService.fetchResources();
       if (mounted) setState(() { _resources = resources; _isLoading = false; });
     } catch (e) {
-      if (mounted) setState(() { _error = 'Could not load resources: $e'; _isLoading = false; });
+      if (mounted) setState(() { _error = 'Could not load resources. ${describeError(e)}'; _isLoading = false; });
     }
   }
 
@@ -97,7 +98,7 @@ class _ResourcesAdminScreenState extends State<ResourcesAdminScreen> {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Resource uploaded.')));
       await _load();
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Upload failed: $e')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Upload failed. ${describeError(e)}')));
     }
   }
 
@@ -108,7 +109,7 @@ class _ResourcesAdminScreenState extends State<ResourcesAdminScreen> {
       await _resourceService.deleteResource(resource);
       await _load();
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Delete failed: $e')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Delete failed. ${describeError(e)}')));
     }
   }
 

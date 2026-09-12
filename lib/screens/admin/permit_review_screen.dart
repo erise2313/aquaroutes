@@ -13,6 +13,7 @@ import '../../widgets/admin_status_pill.dart';
 import '../../widgets/confirm_dialog.dart';
 import '../../widgets/error_state.dart';
 import '../../widgets/skeleton_loader.dart';
+import '../../utils/error_text.dart';
 
 /// wasa_admin review of a single station's permit vault. Approving every
 /// required permit flips water_stations.is_accredited automatically via the
@@ -97,7 +98,7 @@ class _PermitReviewScreenState extends State<PermitReviewScreen> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          _error = 'Could not load this station\'s permits: $e';
+          _error = 'Could not load this station\'s permits. ${describeError(e)}';
           _isLoading = false;
         });
       }
@@ -126,7 +127,7 @@ class _PermitReviewScreenState extends State<PermitReviewScreen> {
       }
       await _load();
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not review permit: $e')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not review permit. ${describeError(e)}')));
     }
   }
 
@@ -176,7 +177,7 @@ class _PermitReviewScreenState extends State<PermitReviewScreen> {
       await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not open document: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not open document. ${describeError(e)}')));
       }
     }
   }
@@ -198,7 +199,7 @@ class _PermitReviewScreenState extends State<PermitReviewScreen> {
       await _load();
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not update accreditation override: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not update accreditation override. ${describeError(e)}')));
       }
     }
   }
@@ -209,7 +210,7 @@ class _PermitReviewScreenState extends State<PermitReviewScreen> {
       if (mounted) setState(() => _isColorumVerified = value);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not update verification: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not update verification. ${describeError(e)}')));
       }
     }
   }
@@ -275,7 +276,7 @@ class _PermitReviewScreenState extends State<PermitReviewScreen> {
       await _permitService.setRequired(permit.id, value);
       await _load();
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not update: $e')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not update. ${describeError(e)}')));
     }
   }
 

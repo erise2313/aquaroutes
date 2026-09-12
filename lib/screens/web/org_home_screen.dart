@@ -28,6 +28,7 @@ import '../../widgets/web_seal.dart';
 import '../auth/registration_screen.dart';
 import 'news_screen.dart';
 import 'stations_directory_screen.dart';
+import '../../utils/error_text.dart';
 
 /// Public front door for the GENTRI WASA website. A hub, not a container --
 /// hero + a real stats strip (both numbers are live Supabase queries, never
@@ -81,7 +82,7 @@ class _OrgHomeScreenState extends ConsumerState<OrgHomeScreen> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          _error = 'Could not load the homepage: $e';
+          _error = 'Could not load the homepage. ${describeError(e)}';
           _isLoading = false;
         });
       }
