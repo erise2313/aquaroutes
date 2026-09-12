@@ -73,7 +73,9 @@ class MerchantNavigation extends StatelessWidget {
                 MerchantOrdersScreen(),
                 ProductsScreen(),
                 TrackingScreen(),
-                BulletinBoardScreen(),
+                // The shell supplies the header here, so the wrapper's own
+                // AppBar would be a second bar above the feed.
+                BulletinBoardScreen(showAppBar: false),
                 MerchantProfileScreen(),
               ],
             ),

@@ -7,9 +7,12 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../constants/app_colors.dart';
 import '../../models/order.dart';
+import '../../models/order_status_look.dart';
 import '../../services/driver_tracking_service.dart';
 import '../../services/supabase_service.dart';
 import '../../widgets/app_map_tiles.dart';
+import '../../widgets/error_state.dart';
+import '../../widgets/portal/portal.dart';
 import '../../utils/error_text.dart';
 
 /// Per-order detail screen with a live driver map, shared by logged-in
@@ -48,7 +51,7 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
   bool _isLoading = true;
   String? _error;
 
-  bool get _isTrackable => widget.status == OrderStatus.assigned || widget.status == OrderStatus.active;
+  bool get _isTrackable => OrderStatusLook.isTrackable(widget.status);
 
   @override
   void initState() {
@@ -101,31 +104,13 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
     return Scaffold(
       appBar: AppBar(title: Text(widget.stationName)),
       body: !_isTrackable
-          ? Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.hourglass_empty, size: 48, color: Colors.grey.shade400),
-                    const SizedBox(height: 12),
-                    Text(
-                      widget.status == OrderStatus.pending
-                          ? 'Waiting for a driver to be assigned.'
-                          : widget.status == OrderStatus.done
-                          ? 'This order has been delivered.'
-                          : 'This order was cancelled.',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(color: Colors.grey.shade700),
-                    ),
-                  ],
-                ),
-              ),
-            )
+          ? _buildUntrackableState()
           : _isLoading
           ? const Center(child: CircularProgressIndicator())
+          // Was bare text with no way out -- the only error state in the
+          // customer screens that couldn't be retried.
           : _error != null
-          ? Center(child: Padding(padding: const EdgeInsets.all(24), child: Text(_error!)))
+          ? ErrorState(message: _error!, onRetry: _fetchDriver)
           : Column(
               children: [
                 Expanded(
@@ -145,48 +130,68 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
                             const AppMapAttribution(),
                           ],
                         )
-                      : Center(
-                          child: Padding(
-                            padding: const EdgeInsets.all(24),
-                            child: Text(
-                              _driver == null ? 'Driver assigned -- waiting for their first location update.' : 'Waiting for driver location…',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(color: Colors.grey.shade700),
-                            ),
-                          ),
+                      : PortalEmptyState(
+                          icon: Icons.my_location_outlined,
+                          title: 'Waiting for a location',
+                          message: _driver == null
+                              ? 'A driver has been assigned. Their position appears here as soon as they send their first update.'
+                              : 'Your driver is on the way -- waiting for their next location update.',
                         ),
                 ),
-                if (_driver?.driverName != null)
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.surface,
-                      boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 8, offset: const Offset(0, -2))],
-                    ),
-                    child: Row(
-                      children: [
-                        const CircleAvatar(backgroundColor: AppColors.primary, child: Icon(Icons.person, color: Colors.white)),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(_driver!.driverName!, style: const TextStyle(fontWeight: FontWeight.bold)),
-                              Text('Your driver', style: TextStyle(color: Colors.grey.shade700, fontSize: 12)),
-                            ],
-                          ),
-                        ),
-                        if (_driver!.driverPhone != null && _driver!.driverPhone!.isNotEmpty)
-                          IconButton.filled(
-                            onPressed: () => _callDriver(_driver!.driverPhone!),
-                            icon: const Icon(Icons.phone),
-                            tooltip: 'Call driver',
-                          ),
-                      ],
-                    ),
-                  ),
+                if (_driver?.driverName != null) _buildDriverCard(),
               ],
             ),
+    );
+  }
+
+  Widget _buildUntrackableState() {
+    final (title, message) = switch (widget.status) {
+      OrderStatus.pending => ('Waiting for a driver', 'The station has your order. This map opens once they assign a driver to it.'),
+      OrderStatus.done => ('Delivered', 'This order has been delivered. Thanks for ordering.'),
+      _ => ('Cancelled', 'This order was cancelled, so there is nothing to track.'),
+    };
+
+    return PortalEmptyState(icon: Icons.hourglass_empty, title: title, message: message);
+  }
+
+  Widget _buildDriverCard() {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+
+    // top: false so the map still runs full-bleed behind the status bar, but
+    // the card itself clears the navigation bar -- under edge-to-edge this is
+    // the bottom-most element, and the call button would otherwise sit under
+    // the gesture area.
+    return SafeArea(
+      top: false,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: scheme.surface,
+          border: Border(top: BorderSide(color: scheme.outline.withValues(alpha: 0.6))),
+        ),
+        child: Row(
+          children: [
+            const CircleAvatar(backgroundColor: AppColors.primary, child: Icon(Icons.person, color: Colors.white)),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(_driver!.driverName!, style: theme.textTheme.titleMedium),
+                  Text('Your driver', style: theme.textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant)),
+                ],
+              ),
+            ),
+            if (_driver!.driverPhone != null && _driver!.driverPhone!.isNotEmpty)
+              IconButton.filled(
+                onPressed: () => _callDriver(_driver!.driverPhone!),
+                icon: const Icon(Icons.phone),
+                tooltip: 'Call driver',
+              ),
+          ],
+        ),
+      ),
     );
   }
 }

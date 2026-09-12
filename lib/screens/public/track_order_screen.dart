@@ -2,11 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../constants/app_colors.dart';
+
 import '../../models/order.dart';
+import '../../models/order_status_look.dart';
 import '../../services/order_service.dart';
 import '../../services/supabase_service.dart';
 import '../../utils/formatters.dart';
 import '../../widgets/confirm_dialog.dart';
+import '../../widgets/portal/portal.dart';
 import 'order_tracking_screen.dart';
 import '../app_route.dart';
 import '../../utils/error_text.dart';
@@ -98,12 +102,11 @@ class _TrackOrderScreenState extends State<TrackOrderScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Track My Order', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.blue.shade700,
-      ),
+      // Was a hard-coded blue bar with white text, which ignored the theme in
+      // both modes.
+      appBar: AppBar(title: const Text('Track my order')),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
+        padding: PortalDensity.of(context).pagePadding,
         child: Form(
           key: _formKey,
           child: Column(
@@ -130,16 +133,27 @@ class _TrackOrderScreenState extends State<TrackOrderScreen> {
                 validator: (v) => (v == null || v.trim().isEmpty) ? 'Enter the phone number you ordered with' : null,
               ),
               const SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: _isLoading ? null : _lookup,
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.blue.shade700, padding: const EdgeInsets.symmetric(vertical: 16)),
-                child: _isLoading
-                    ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                    : const Text('Track Order', style: TextStyle(color: Colors.white)),
+              PortalActionRow(
+                children: [
+                  FilledButton(
+                    onPressed: _isLoading ? null : _lookup,
+                    style: FilledButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16)),
+                    child: _isLoading
+                        ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                        : const Text('Track order'),
+                  ),
+                ],
               ),
               if (_error != null) ...[
                 const SizedBox(height: 16),
-                Text(_error!, style: const TextStyle(color: Colors.red)),
+                // Was bare red text; a callout tints from the theme and says
+                // what to do about it.
+                StatusCallout(
+                  accent: AppColors.flagged,
+                  icon: Icons.error_outline,
+                  title: "We couldn't find that order",
+                  message: _error!,
+                ),
               ],
               if (_result != null) ...[
                 const SizedBox(height: 24),
@@ -175,63 +189,71 @@ class _TrackOrderScreenState extends State<TrackOrderScreen> {
   }
 
   Widget _buildResultCard(GuestOrderStatus result) {
-    final (statusColor, statusLabel) = switch (result.status) {
-      OrderStatus.pending => (Colors.orange, 'Pending'),
-      OrderStatus.assigned => (Colors.blue, 'Driver Assigned'),
-      OrderStatus.active => (Colors.indigo, 'Out for Delivery'),
-      OrderStatus.done => (Colors.green, 'Delivered'),
-      OrderStatus.cancelled => (Colors.red, 'Cancelled'),
-    };
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    // The same mapping my_orders_screen uses -- this screen used to carry its
+    // own copy, and the two had drifted in wording.
+    final look = OrderStatusLook.of(result.status);
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
+    return PortalCard(
+      lift: false,
+      accent: look.color,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(result.stationName, style: theme.textTheme.titleMedium),
+          const SizedBox(height: 8),
+          StatusPill(label: look.label, color: look.color),
+          const SizedBox(height: 10),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Expanded(child: Text(result.lineDescription, style: theme.textTheme.bodyMedium)),
+              const SizedBox(width: 12),
+              Text(
+                formatPeso(result.totalAmount),
+                style: theme.textTheme.titleMedium?.copyWith(color: scheme.primary, fontWeight: FontWeight.w700),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Placed ${DateFormat('MMM d, yyyy h:mm a').format(result.createdAt)}',
+            style: theme.textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+          ),
+          if (OrderStatusLook.isTrackable(result.status)) ...[
+            const SizedBox(height: 12),
+            PortalActionRow(
               children: [
-                Expanded(child: Text(result.stationName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16))),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(color: statusColor.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(8)),
-                  child: Text(statusLabel, style: TextStyle(color: statusColor, fontWeight: FontWeight.bold)),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(result.lineDescription),
-            Text('Total: ${formatPeso(result.totalAmount)}'),
-            const SizedBox(height: 4),
-            Text('Placed ${DateFormat('MMM d, yyyy h:mm a').format(result.createdAt)}', style: TextStyle(color: Colors.grey.shade700, fontSize: 12)),
-            if (result.status == OrderStatus.assigned || result.status == OrderStatus.active) ...[
-              const SizedBox(height: 12),
-              OutlinedButton.icon(
-                onPressed: () => Navigator.push(
-                  context,
-                  appRoute(OrderTrackingScreen(
+                OutlinedButton.icon(
+                  onPressed: () => Navigator.push(
+                    context,
+                    appRoute(OrderTrackingScreen(
                       orderId: result.id,
                       stationName: result.stationName,
                       status: result.status,
                       guestPhone: _phoneController.text.trim(),
-                    ),
+                    )),
                   ),
+                  icon: const Icon(Icons.map_outlined),
+                  label: const Text('Track my driver'),
                 ),
-                icon: const Icon(Icons.map_outlined),
-                label: const Text('Track my driver'),
-              ),
-            ],
-            if (result.status == OrderStatus.pending || result.status == OrderStatus.assigned) ...[
-              const SizedBox(height: 8),
-              TextButton.icon(
-                onPressed: () => _cancelOrder(result),
-                style: TextButton.styleFrom(foregroundColor: Colors.red),
-                icon: const Icon(Icons.cancel_outlined, size: 18),
-                label: const Text('Cancel Order'),
-              ),
-            ],
+              ],
+            ),
           ],
-        ),
+          if (OrderStatusLook.isCancellable(result.status)) ...[
+            const SizedBox(height: 4),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                onPressed: () => _cancelOrder(result),
+                style: TextButton.styleFrom(foregroundColor: scheme.error),
+                icon: const Icon(Icons.cancel_outlined, size: 18),
+                label: const Text('Cancel order'),
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }
