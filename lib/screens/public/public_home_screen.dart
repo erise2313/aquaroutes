@@ -13,6 +13,7 @@ import 'bulletin_feed.dart';
 import '../../providers/app_theme_provider.dart';
 import '../app_route.dart';
 import 'customer_account_screen.dart';
+import 'customer_home_screen.dart';
 import 'info/about_wasa_hub_screen.dart';
 import 'orders_tab_screen.dart';
 import 'quick_order_screen.dart';
@@ -33,14 +34,17 @@ class PublicHomeScreen extends ConsumerStatefulWidget {
 }
 
 class _PublicHomeScreenState extends ConsumerState<PublicHomeScreen> {
-  int _currentIndex = 0;
+  // Named rather than bare indices: the Home tab hands off to three of these,
+  // and an off-by-one would silently send "Order water" to the map.
+  static const _homeTab = 0;
+  static const _boardTab = 1;
+  static const _orderTab = 2;
+  static const _mapTab = 3;
 
-  final List<Widget> _pages = const [
-    BulletinFeed(),
-    QuickOrderScreen(),
-    StationMapScreen(),
-    OrdersTabScreen(),
-  ];
+  /// The app opens on Home -- it used to open on the Bulletin Board.
+  int _currentIndex = _homeTab;
+
+  void _openTab(int index) => setState(() => _currentIndex = index);
 
   @override
   Widget build(BuildContext context) {
@@ -98,16 +102,30 @@ class _PublicHomeScreenState extends ConsumerState<PublicHomeScreen> {
               ],
         ],
       ),
-      body: IndexedStack(index: _currentIndex, children: _pages),
+      body: IndexedStack(
+        index: _currentIndex,
+        children: [
+          CustomerHomeScreen(
+            onOrderWater: () => _openTab(_orderTab),
+            onFindStation: () => _openTab(_mapTab),
+            onOpenBoard: () => _openTab(_boardTab),
+          ),
+          const BulletinFeed(),
+          const QuickOrderScreen(),
+          const StationMapScreen(),
+          const OrdersTabScreen(),
+        ],
+      ),
       bottomNavigationBar: MediaQuery.withClampedTextScaling(
         maxScaleFactor: 1.3,
         child: BottomNavigationBar(
         currentIndex: _currentIndex,
-        onTap: (index) => setState(() => _currentIndex = index),
+        onTap: _openTab,
         type: BottomNavigationBarType.fixed,
         selectedItemColor: AppColors.primary,
-        unselectedItemColor: Colors.grey,
+        unselectedItemColor: Theme.of(context).colorScheme.onSurfaceVariant,
         items: const [
+          BottomNavigationBarItem(icon: Icon(Icons.home_outlined), activeIcon: Icon(Icons.home), label: 'Home'),
           BottomNavigationBarItem(icon: Icon(Icons.campaign_outlined), activeIcon: Icon(Icons.campaign), label: 'Board'),
           BottomNavigationBarItem(icon: Icon(Icons.local_shipping_outlined), activeIcon: Icon(Icons.local_shipping), label: 'Order'),
           BottomNavigationBarItem(icon: Icon(Icons.map_outlined), activeIcon: Icon(Icons.map), label: 'Map'),
