@@ -541,7 +541,7 @@ class _QuickOrderScreenState extends ConsumerState<QuickOrderScreen> {
                         right: 10,
                         child: Container(
                           padding: const EdgeInsets.all(8),
-                          color: Colors.white.withValues(alpha: 0.9),
+                          color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.92),
                           child: const Text(
                             'Tap the map to set your delivery address',
                             textAlign: TextAlign.center,
@@ -601,7 +601,7 @@ class _QuickOrderScreenState extends ConsumerState<QuickOrderScreen> {
                                 children: [
                                   CircleAvatar(
                                     radius: 10,
-                                    backgroundColor: Colors.grey.shade200,
+                                    backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
                                     backgroundImage: s.photoUrl != null ? NetworkImage(s.photoUrl!) : null,
                                     child: s.photoUrl == null ? Icon(Icons.storefront, size: 12, color: Colors.grey.shade700) : null,
                                   ),

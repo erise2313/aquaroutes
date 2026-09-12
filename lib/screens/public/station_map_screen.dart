@@ -187,7 +187,7 @@ class _StationMapScreenState extends State<StationMapScreen> {
           child: ListTile(
             onTap: () => _showStationSheet(station),
             leading: CircleAvatar(
-              backgroundColor: Colors.grey.shade200,
+              backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
               backgroundImage: station.photoUrl != null ? NetworkImage(station.photoUrl!) : null,
               child: station.photoUrl == null ? Icon(Icons.storefront, color: Colors.grey.shade700) : null,
             ),

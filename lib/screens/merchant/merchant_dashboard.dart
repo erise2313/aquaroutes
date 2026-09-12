@@ -416,7 +416,7 @@ class _MerchantDashboardScreenState extends State<MerchantDashboardScreen> {
         children: [
           Text(title, style: TextStyle(color: textColor, fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
-          Text('$count', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.black87)),
+          Text('$count', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurface)),
         ],
       ),
     );

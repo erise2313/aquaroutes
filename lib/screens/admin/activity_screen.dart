@@ -9,6 +9,8 @@ import '../../widgets/admin_page_header.dart';
 import '../../widgets/error_state.dart';
 import '../../widgets/skeleton_loader.dart';
 import '../../utils/error_text.dart';
+import '../../utils/csv_download.dart';
+import '../../utils/csv_export.dart';
 
 /// Narrows activity rows by free-text search over who/what, plus category.
 /// Top-level and pure so the matching rules are unit-testable.
@@ -111,6 +113,30 @@ class _ActivityScreenState extends State<ActivityScreen> {
     'Website content': Icons.web_outlined,
   };
 
+  /// The audit trail, exportable for the association's records. Exports
+  /// what's on screen, filters included.
+  void _exportCsv() {
+    final visible = filterActivity(_rows, query: _query, category: _category);
+    final csv = buildCsv(
+      const ['When', 'Who', 'Category', 'Action', 'Subject'],
+      visible.map((row) {
+        final occurred = row['occurred_at']?.toString() ?? '';
+        return [
+          occurred.length >= 16 ? occurred.substring(0, 16).replaceFirst('T', ' ') : occurred,
+          row['actor_name'] ?? '',
+          row['category'] ?? '',
+          row['action'] ?? '',
+          row['subject'] ?? '',
+        ];
+      }).toList(),
+    );
+    if (!downloadCsv(csvFileName('activity log'), csv)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Exporting works in the web admin portal.')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final visible = filterActivity(_rows, query: _query, category: _category);
@@ -118,9 +144,17 @@ class _ActivityScreenState extends State<ActivityScreen> {
 
     return Column(
       children: [
-        const AdminPageHeader(
+        AdminPageHeader(
           title: 'Activity',
           subtitle: 'Recent decisions and edits across the portal',
+          actions: [
+            if (_rows.isNotEmpty)
+              TextButton.icon(
+                onPressed: _exportCsv,
+                icon: const Icon(Icons.download_outlined),
+                label: const Text('Export'),
+              ),
+          ],
         ),
         Expanded(
           child: _isLoading

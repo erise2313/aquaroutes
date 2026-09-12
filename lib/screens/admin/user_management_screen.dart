@@ -12,6 +12,8 @@ import '../../widgets/admin_status_pill.dart';
 import '../../widgets/confirm_dialog.dart';
 import '../../widgets/error_state.dart';
 import '../../widgets/skeleton_loader.dart';
+import '../../utils/csv_download.dart';
+import '../../utils/csv_export.dart';
 import '../../utils/error_text.dart';
 
 /// Narrows the loaded membership rows by free-text name/station search plus
@@ -127,6 +129,29 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
     }
   }
 
+  /// The association needs these lists on paper for meetings; the portal
+  /// could only ever show them on screen. Exports exactly what's on screen,
+  /// filters included, so the file matches what the admin is looking at.
+  void _exportCsv() {
+    final visible = filterMemberships(_memberships, query: _query, role: _roleFilter, status: _statusFilter);
+    final csv = buildCsv(
+      const ['Name', 'Role', 'Station', 'Status'],
+      visible
+          .map((membership) => [
+                (membership['profiles']?['full_name'] as String?) ?? 'Unknown',
+                membership['role'] == 'station_owner' ? 'Station Owner' : 'Driver / Helper',
+                (membership['water_stations']?['station_name'] as String?) ?? '',
+                membership['status'] ?? '',
+              ])
+          .toList(),
+    );
+    if (!downloadCsv(csvFileName('members'), csv)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Exporting works in the web admin portal.')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final visible = filterMemberships(
@@ -142,6 +167,14 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
         AdminPageHeader(
           title: 'User Management',
           subtitle: _memberships.isEmpty ? null : '${_memberships.length} accounts',
+          actions: [
+            if (_memberships.isNotEmpty)
+              TextButton.icon(
+                onPressed: _exportCsv,
+                icon: const Icon(Icons.download_outlined),
+                label: const Text('Export'),
+              ),
+          ],
         ),
         const _DeletionRequestsPanel(),
         Expanded(

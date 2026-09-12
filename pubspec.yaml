@@ -48,6 +48,11 @@ dependencies:
   # admin portal keep imperative Navigator routing -- see lib/web_router.dart.
   go_router: ^17.5.0
 
+  # Browser APIs for the admin portal's CSV download (a Blob and a click on
+  # a generated link). Web-only: the mobile app compiles the stub in
+  # lib/utils/csv_download_stub.dart instead and never touches this.
+  web: ^1.1.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

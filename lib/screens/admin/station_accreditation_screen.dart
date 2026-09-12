@@ -15,6 +15,8 @@ import 'admin_route.dart';
 import 'permit_review_screen.dart';
 import '../../widgets/app_map_tiles.dart';
 import '../../utils/error_text.dart';
+import '../../utils/csv_download.dart';
+import '../../utils/csv_export.dart';
 
 /// Narrows loaded station rows by name/address search and accreditation
 /// state. Top-level and pure so the matching rules are unit-testable.
@@ -123,6 +125,29 @@ class _StationAccreditationScreenState extends State<StationAccreditationScreen>
     }
   }
 
+  /// The accreditation list, as the association needs it for a meeting.
+  /// Exports what's on screen, filters included.
+  void _exportCsv() {
+    final visible = filterStations(_stations, query: _query, state: _stateFilter);
+    final csv = buildCsv(
+      const ['Station', 'Address', 'Accredited', 'Colorum verified', 'Listed publicly'],
+      visible
+          .map((station) => [
+                station['station_name'] ?? '',
+                station['station_address'] ?? '',
+                station['is_accredited'] == true ? 'Yes' : 'No',
+                station['is_colorum_verified'] == true ? 'Yes' : 'No',
+                station['is_active'] == true ? 'Yes' : 'No',
+              ])
+          .toList(),
+    );
+    if (!downloadCsv(csvFileName('accreditation status'), csv)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Exporting works in the web admin portal.')),
+      );
+    }
+  }
+
   Future<void> _toggleActive(Map<String, dynamic> station) async {
     final isActive = station['is_active'] as bool? ?? true;
     final stationName = station['station_name'] as String? ?? 'this station';
@@ -161,6 +186,14 @@ class _StationAccreditationScreenState extends State<StationAccreditationScreen>
             AdminPageHeader(
               title: 'Station Accreditation',
               subtitle: _isLoading ? null : '$accreditedCount of ${_stations.length} stations accredited',
+              actions: [
+                if (_stations.isNotEmpty)
+                  TextButton.icon(
+                    onPressed: _exportCsv,
+                    icon: const Icon(Icons.download_outlined),
+                    label: const Text('Export'),
+                  ),
+              ],
               // With the map permanently on screen there is nothing to
               // toggle, so the segmented control only appears when the window
               // is too narrow to show both at once.

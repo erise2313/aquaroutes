@@ -524,9 +524,9 @@ class _MerchantProfileScreenState extends State<MerchantProfileScreen> {
             ],
           ),
           const SizedBox(height: 8),
-          const Text(
+          Text(
             "Your station isn't accredited yet. Upload your permits so WASA can review them.",
-            style: TextStyle(color: Colors.black87),
+            style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
           ),
           const SizedBox(height: 16),
           ElevatedButton.icon(
@@ -611,7 +611,7 @@ class _MerchantProfileScreenState extends State<MerchantProfileScreen> {
                 height: 120,
                 width: double.infinity,
                 decoration: BoxDecoration(
-                  color: Colors.grey.shade100,
+                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
                   borderRadius: BorderRadius.circular(12),
                   image: _stationPhotoUrl != null
                       ? DecorationImage(image: NetworkImage(_stationPhotoUrl!), fit: BoxFit.cover)
