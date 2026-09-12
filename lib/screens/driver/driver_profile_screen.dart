@@ -4,6 +4,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../constants/app_colors.dart';
+import '../../constants/app_palette.dart';
 import '../../models/permit.dart';
 import '../../models/worker.dart';
 import '../../services/photo_service.dart';
@@ -26,6 +27,7 @@ class DriverProfileScreen extends StatefulWidget {
 }
 
 class _DriverProfileScreenState extends State<DriverProfileScreen> {
+  late DriverPalette driverPalette;
   final supabase = Supabase.instance.client;
   final _workerService = WorkerService(SupabaseService.instance);
   final _credentialService = WorkerCredentialService(SupabaseService.instance);
@@ -188,24 +190,24 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
     final code = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: AppColors.driverSurface,
-        titleTextStyle: const TextStyle(color: AppColors.driverText, fontSize: 18, fontWeight: FontWeight.bold),
+        backgroundColor: driverPalette.surface,
+        titleTextStyle: TextStyle(color: driverPalette.text, fontSize: 18, fontWeight: FontWeight.bold),
         title: Text(isSwitch ? 'Switch Station' : 'Join a Station'),
         content: TextField(
           controller: controller,
-          style: const TextStyle(color: AppColors.driverText),
+          style: TextStyle(color: driverPalette.text),
           decoration: InputDecoration(
             labelText: 'Station Invite Code',
-            labelStyle: TextStyle(color: AppColors.driverText.withValues(alpha: 0.7)),
+            labelStyle: TextStyle(color: driverPalette.text.withValues(alpha: 0.7)),
           ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('Cancel', style: TextStyle(color: AppColors.driverText.withValues(alpha: 0.7))),
+            child: Text('Cancel', style: TextStyle(color: driverPalette.text.withValues(alpha: 0.7))),
           ),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.driverOnDuty),
+            style: ElevatedButton.styleFrom(backgroundColor: driverPalette.onDuty),
             onPressed: () => Navigator.pop(context, controller.text.trim()),
             child: const Text('Confirm', style: TextStyle(color: Colors.white)),
           ),
@@ -233,20 +235,20 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: AppColors.driverSurface,
-        titleTextStyle: const TextStyle(color: AppColors.driverText, fontSize: 18, fontWeight: FontWeight.bold),
+        backgroundColor: driverPalette.surface,
+        titleTextStyle: TextStyle(color: driverPalette.text, fontSize: 18, fontWeight: FontWeight.bold),
         title: const Text('Leave Station'),
         content: Text(
           'Are you sure you want to leave $_stationName? You can join a new station anytime with an invite code.',
-          style: TextStyle(color: AppColors.driverText.withValues(alpha: 0.85)),
+          style: TextStyle(color: driverPalette.text.withValues(alpha: 0.85)),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: Text('Cancel', style: TextStyle(color: AppColors.driverText.withValues(alpha: 0.7))),
+            child: Text('Cancel', style: TextStyle(color: driverPalette.text.withValues(alpha: 0.7))),
           ),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.driverAlert),
+            style: ElevatedButton.styleFrom(backgroundColor: driverPalette.alert),
             onPressed: () => Navigator.pop(context, true),
             child: const Text('Leave', style: TextStyle(color: Colors.white)),
           ),
@@ -270,11 +272,12 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
+    driverPalette = DriverPalette.of(context);
     return Scaffold(
-      backgroundColor: AppColors.driverBackground,
+      backgroundColor: driverPalette.background,
       appBar: AppBar(
-        title: const Text('Driver Profile', style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.driverText)),
-        backgroundColor: AppColors.driverSurface,
+        title: Text('Driver Profile', style: TextStyle(fontWeight: FontWeight.bold, color: driverPalette.text)),
+        backgroundColor: driverPalette.surface,
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -292,48 +295,48 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
                   const SizedBox(height: 24),
                   TextField(
                     controller: _fullNameController,
-                    style: const TextStyle(color: AppColors.driverText),
+                    style: TextStyle(color: driverPalette.text),
                     decoration: InputDecoration(
                       labelText: 'Full Name',
-                      labelStyle: TextStyle(color: AppColors.driverText.withValues(alpha: 0.7)),
+                      labelStyle: TextStyle(color: driverPalette.text.withValues(alpha: 0.7)),
                       border: OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.person, color: AppColors.driverText.withValues(alpha: 0.7)),
+                      prefixIcon: Icon(Icons.person, color: driverPalette.text.withValues(alpha: 0.7)),
                     ),
                   ),
                   const SizedBox(height: 16),
                   TextField(
                     controller: _phoneController,
                     keyboardType: TextInputType.phone,
-                    style: const TextStyle(color: AppColors.driverText),
+                    style: TextStyle(color: driverPalette.text),
                     decoration: InputDecoration(
                       labelText: 'Phone Number',
                       hintText: 'e.g., 09123456789',
-                      labelStyle: TextStyle(color: AppColors.driverText.withValues(alpha: 0.7)),
+                      labelStyle: TextStyle(color: driverPalette.text.withValues(alpha: 0.7)),
                       border: OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.phone, color: AppColors.driverText.withValues(alpha: 0.7)),
+                      prefixIcon: Icon(Icons.phone, color: driverPalette.text.withValues(alpha: 0.7)),
                     ),
                   ),
                   const SizedBox(height: 16),
                   TextField(
                     controller: _vehiclePlateController,
-                    style: const TextStyle(color: AppColors.driverText),
+                    style: TextStyle(color: driverPalette.text),
                     decoration: InputDecoration(
                       labelText: 'Vehicle Plate Number',
-                      labelStyle: TextStyle(color: AppColors.driverText.withValues(alpha: 0.7)),
+                      labelStyle: TextStyle(color: driverPalette.text.withValues(alpha: 0.7)),
                       border: OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.directions_car, color: AppColors.driverText.withValues(alpha: 0.7)),
+                      prefixIcon: Icon(Icons.directions_car, color: driverPalette.text.withValues(alpha: 0.7)),
                     ),
                   ),
                   const SizedBox(height: 16),
                   TextField(
                     controller: _jugCapacityController,
                     keyboardType: TextInputType.number,
-                    style: const TextStyle(color: AppColors.driverText),
+                    style: TextStyle(color: driverPalette.text),
                     decoration: InputDecoration(
                       labelText: 'Jug Capacity',
-                      labelStyle: TextStyle(color: AppColors.driverText.withValues(alpha: 0.7)),
+                      labelStyle: TextStyle(color: driverPalette.text.withValues(alpha: 0.7)),
                       border: OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.water_drop, color: AppColors.driverText.withValues(alpha: 0.7)),
+                      prefixIcon: Icon(Icons.water_drop, color: driverPalette.text.withValues(alpha: 0.7)),
                     ),
                   ),
                   const SizedBox(height: 32),
@@ -355,10 +358,10 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
                   const SizedBox(height: 32),
                   Container(
                     padding: const EdgeInsets.symmetric(vertical: 8),
-                    decoration: BoxDecoration(color: AppColors.driverSurface, borderRadius: BorderRadius.circular(16)),
+                    decoration: BoxDecoration(color: driverPalette.surface, borderRadius: BorderRadius.circular(16)),
                     child: AccountSettingsSection(
-                      textColor: AppColors.driverText,
-                      mutedColor: AppColors.driverText.withValues(alpha: 0.7),
+                      textColor: driverPalette.text,
+                      mutedColor: driverPalette.text.withValues(alpha: 0.7),
                     ),
                   ),
                 ],
@@ -375,11 +378,11 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
         children: [
           CircleAvatar(
             radius: 48,
-            backgroundColor: AppColors.driverSurface,
+            backgroundColor: driverPalette.surface,
             backgroundImage: _avatarUrl != null ? NetworkImage(_avatarUrl!) : null,
             child: _isUploadingAvatar
                 ? const CircularProgressIndicator(color: AppColors.primary)
-                : (_avatarUrl == null ? Icon(Icons.local_shipping, size: 45, color: AppColors.driverText.withValues(alpha: 0.7)) : null),
+                : (_avatarUrl == null ? Icon(Icons.local_shipping, size: 45, color: driverPalette.text.withValues(alpha: 0.7)) : null),
           ),
           Container(
             padding: const EdgeInsets.all(6),
@@ -395,15 +398,15 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
     final isLinked = worker.stationId != null;
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(color: AppColors.driverSurface, borderRadius: BorderRadius.circular(16)),
+      decoration: BoxDecoration(color: driverPalette.surface, borderRadius: BorderRadius.circular(16)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('CURRENT STATION', style: TextStyle(color: AppColors.driverText.withValues(alpha: 0.7), letterSpacing: 1.2, fontSize: 12)),
+          Text('CURRENT STATION', style: TextStyle(color: driverPalette.text.withValues(alpha: 0.7), letterSpacing: 1.2, fontSize: 12)),
           const SizedBox(height: 8),
           Text(
             isLinked ? (_stationName ?? 'Unknown Station') : 'Not currently linked to a station',
-            style: const TextStyle(color: AppColors.driverText, fontSize: 16, fontWeight: FontWeight.bold),
+            style: TextStyle(color: driverPalette.text, fontSize: 16, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 12),
           Row(
@@ -434,15 +437,15 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
   Widget _buildCredentialsSection() {
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(color: AppColors.driverSurface, borderRadius: BorderRadius.circular(16)),
+      decoration: BoxDecoration(color: driverPalette.surface, borderRadius: BorderRadius.circular(16)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('MY CREDENTIALS', style: TextStyle(color: AppColors.driverText.withValues(alpha: 0.7), letterSpacing: 1.2, fontSize: 12)),
+          Text('MY CREDENTIALS', style: TextStyle(color: driverPalette.text.withValues(alpha: 0.7), letterSpacing: 1.2, fontSize: 12)),
           const SizedBox(height: 8),
           Text(
             'Submit these for WASA to review and clear your account.',
-            style: TextStyle(color: AppColors.driverText.withValues(alpha: 0.7), fontSize: 12),
+            style: TextStyle(color: driverPalette.text.withValues(alpha: 0.7), fontSize: 12),
           ),
           const SizedBox(height: 12),
           ..._credentials.map(_buildCredentialTile),
@@ -462,13 +465,13 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
     return ListTile(
       contentPadding: EdgeInsets.zero,
       leading: Icon(Icons.description, color: color),
-      title: Text(workerCredentialTypeLabel(credential.credentialType), style: const TextStyle(color: AppColors.driverText)),
+      title: Text(workerCredentialTypeLabel(credential.credentialType), style: TextStyle(color: driverPalette.text)),
       subtitle: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(label, style: TextStyle(color: color)),
           if (credential.status == PermitStatus.rejected && credential.rejectionReason != null && credential.rejectionReason!.isNotEmpty)
-            Text('Reason: ${credential.rejectionReason}', style: TextStyle(fontSize: 12, color: AppColors.driverText.withValues(alpha: 0.7))),
+            Text('Reason: ${credential.rejectionReason}', style: TextStyle(fontSize: 12, color: driverPalette.text.withValues(alpha: 0.7))),
         ],
       ),
       trailing: TextButton(
@@ -488,13 +491,13 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppColors.driverSurface,
+        color: driverPalette.surface,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: color, width: 2),
       ),
       child: Column(
         children: [
-          Text('GENTRI WASA WORKER BADGE', style: TextStyle(color: AppColors.driverText.withValues(alpha: 0.7), letterSpacing: 1.5, fontSize: 12)),
+          Text('GENTRI WASA WORKER BADGE', style: TextStyle(color: driverPalette.text.withValues(alpha: 0.7), letterSpacing: 1.5, fontSize: 12)),
           const SizedBox(height: 16),
           Container(
             padding: const EdgeInsets.all(12),
@@ -506,7 +509,7 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
             ),
           ),
           const SizedBox(height: 16),
-          Text(worker.workerCode, style: const TextStyle(color: AppColors.driverText, fontSize: 18, fontWeight: FontWeight.bold)),
+          Text(worker.workerCode, style: TextStyle(color: driverPalette.text, fontSize: 18, fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),

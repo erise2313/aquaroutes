@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../providers/app_state.dart';
+import '../providers/app_theme_provider.dart';
 import '../services/account_service.dart';
 import '../services/supabase_service.dart';
 import 'change_password_dialog.dart';
@@ -124,13 +125,37 @@ class _AccountSettingsSectionState extends ConsumerState<AccountSettingsSection>
     final danger = theme.colorScheme.error;
     final pending = _pending;
 
+    final heading = TextStyle(color: muted, letterSpacing: 1.2, fontSize: 12, fontWeight: FontWeight.w600);
+    final themeMode = ref.watch(appThemeProvider);
+
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-          child: Text('ACCOUNT', style: TextStyle(color: muted, letterSpacing: 1.2, fontSize: 12, fontWeight: FontWeight.w600)),
+          child: Text('APPEARANCE', style: heading),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+          // Chips rather than a SegmentedButton: three labels in one row
+          // overflow once the system font size is turned up.
+          child: Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final option in AppThemeMode.values)
+                ChoiceChip(
+                  label: Text(option.label),
+                  selected: themeMode == option,
+                  onSelected: (_) => ref.read(appThemeProvider.notifier).set(option),
+                ),
+            ],
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+          child: Text('ACCOUNT', style: heading),
         ),
         ListTile(
           enabled: !_busy,

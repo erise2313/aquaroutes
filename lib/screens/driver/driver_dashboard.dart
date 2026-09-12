@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../constants/app_colors.dart';
+import '../../constants/app_palette.dart';
 import '../../models/order.dart';
 import '../../models/permit.dart';
 import '../../services/jug_ledger_service.dart';
@@ -31,6 +32,7 @@ class DriverDashboardScreen extends StatefulWidget {
 }
 
 class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
+  late DriverPalette driverPalette;
   final supabase = Supabase.instance.client;
   final LocationService _locationService = LocationService();
   final RouteOptimizationService _routeService = RouteOptimizationService();
@@ -341,8 +343,8 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          backgroundColor: AppColors.driverSurface,
-          titleTextStyle: const TextStyle(color: AppColors.driverText, fontSize: 18, fontWeight: FontWeight.bold),
+          backgroundColor: driverPalette.surface,
+          titleTextStyle: TextStyle(color: driverPalette.text, fontSize: 18, fontWeight: FontWeight.bold),
           title: const Text('Complete Delivery & Return'),
           content: SingleChildScrollView(
             child: Column(
@@ -353,17 +355,17 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
                 expectsEmpties
                     ? 'Log the returned empty jugs and confirm cash collection before finalizing.'
                     : 'Confirm cash collection before finalizing.',
-                style: TextStyle(fontSize: 13, color: AppColors.driverText.withValues(alpha: 0.7)),
+                style: TextStyle(fontSize: 13, color: driverPalette.text.withValues(alpha: 0.7)),
               ),
               if (expectsEmpties) ...[
                 const SizedBox(height: 16),
                 TextField(
                   controller: emptyJugsController,
                   keyboardType: TextInputType.number,
-                  style: const TextStyle(color: AppColors.driverText),
+                  style: TextStyle(color: driverPalette.text),
                   decoration: InputDecoration(
                     labelText: 'Empty Jugs Collected',
-                    labelStyle: TextStyle(color: AppColors.driverText.withValues(alpha: 0.7)),
+                    labelStyle: TextStyle(color: driverPalette.text.withValues(alpha: 0.7)),
                     border: const OutlineInputBorder(),
                     isDense: true,
                   ),
@@ -373,7 +375,7 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
                 const SizedBox(height: 16),
                 Text(
                   'Customer said this jug is from ${otherStationNames[declaredOrigin] ?? 'another station'}. Confirm or correct:',
-                  style: TextStyle(fontSize: 12.5, color: AppColors.driverText.withValues(alpha: 0.7)),
+                  style: TextStyle(fontSize: 12.5, color: driverPalette.text.withValues(alpha: 0.7)),
                 ),
                 const SizedBox(height: 6),
                 CheckboxListTile(
@@ -382,15 +384,15 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
                   controlAffinity: ListTileControlAffinity.leading,
                   contentPadding: EdgeInsets.zero,
                   dense: true,
-                  activeColor: AppColors.driverOnDuty,
-                  title: const Text('No jug was actually exchanged', style: TextStyle(color: AppColors.driverText, fontSize: 13)),
+                  activeColor: driverPalette.onDuty,
+                  title: Text('No jug was actually exchanged', style: TextStyle(color: driverPalette.text, fontSize: 13)),
                 ),
                 if (!noJugExchange)
                   DropdownButtonFormField<String>(
                     initialValue: jugOrigin,
                     isDense: true,
-                    dropdownColor: AppColors.driverSurface,
-                    style: const TextStyle(color: AppColors.driverText, fontSize: 14),
+                    dropdownColor: driverPalette.surface,
+                    style: TextStyle(color: driverPalette.text, fontSize: 14),
                     decoration: const InputDecoration(
                       labelText: "Jug's home station",
                       border: OutlineInputBorder(),
@@ -411,15 +413,15 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
                 child: Column(
                   children: [
                     RadioListTile<bool>(
-                      title: const Text('Cash was collected', style: TextStyle(color: AppColors.driverText)),
+                      title: Text('Cash was collected', style: TextStyle(color: driverPalette.text)),
                       value: true,
-                      activeColor: AppColors.driverOnDuty,
+                      activeColor: driverPalette.onDuty,
                       contentPadding: EdgeInsets.zero,
                     ),
                     RadioListTile<bool>(
-                      title: const Text('Cash was NOT collected', style: TextStyle(color: AppColors.driverText)),
+                      title: Text('Cash was NOT collected', style: TextStyle(color: driverPalette.text)),
                       value: false,
-                      activeColor: AppColors.driverAlert,
+                      activeColor: driverPalette.alert,
                       contentPadding: EdgeInsets.zero,
                     ),
                   ],
@@ -431,10 +433,10 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: Text('Cancel', style: TextStyle(color: AppColors.driverText.withValues(alpha: 0.7))),
+              child: Text('Cancel', style: TextStyle(color: driverPalette.text.withValues(alpha: 0.7))),
             ),
             ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: AppColors.driverOnDuty),
+              style: ElevatedButton.styleFrom(backgroundColor: driverPalette.onDuty),
               onPressed: paymentCollected == null
                   ? null
                   : () {
@@ -527,29 +529,30 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
+    driverPalette = DriverPalette.of(context);
     return Scaffold(
-      backgroundColor: AppColors.driverBackground,
+      backgroundColor: driverPalette.background,
       appBar: AppBar(
-        title: const Text('Driver Dashboard', style: TextStyle(color: AppColors.driverText, fontWeight: FontWeight.bold)),
-        backgroundColor: AppColors.driverSurface,
+        title: Text('Driver Dashboard', style: TextStyle(color: driverPalette.text, fontWeight: FontWeight.bold)),
+        backgroundColor: driverPalette.surface,
         actions: [
           const NotificationBell(),
           IconButton(
-            icon: const Icon(Icons.person, color: AppColors.driverText),
+            icon: Icon(Icons.person, color: driverPalette.text),
             tooltip: 'Driver Profile',
             onPressed: () {
               Navigator.push(context, MaterialPageRoute(builder: (context) => const DriverProfileScreen()));
             },
           ),
-          IconButton(icon: const Icon(Icons.refresh, color: AppColors.driverText), onPressed: _fetchActiveDelivery, tooltip: 'Refresh Queue'),
+          IconButton(icon: Icon(Icons.refresh, color: driverPalette.text), onPressed: _fetchActiveDelivery, tooltip: 'Refresh Queue'),
           IconButton(
-            icon: const Icon(Icons.campaign, color: AppColors.driverText),
+            icon: Icon(Icons.campaign, color: driverPalette.text),
             tooltip: 'Bulletin Board',
             onPressed: () {
               Navigator.push(context, MaterialPageRoute(builder: (context) => const BulletinBoardScreen()));
             },
           ),
-          IconButton(icon: const Icon(Icons.logout, color: AppColors.driverAlert), onPressed: _signOut, tooltip: 'Sign Out'),
+          IconButton(icon: Icon(Icons.logout, color: driverPalette.alert), onPressed: _signOut, tooltip: 'Sign Out'),
         ],
       ),
       body: Column(
@@ -569,7 +572,7 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
                               // the map and the delivery card side by side;
                               // stacked, both would be letterbox slivers.
                               final card = Container(
-                                decoration: const BoxDecoration(color: AppColors.driverSurface),
+                                decoration: BoxDecoration(color: driverPalette.surface),
                                 child: _buildActiveDeliveryCard(),
                               );
                               if (constraints.maxWidth > constraints.maxHeight) {
@@ -608,10 +611,10 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
               Expanded(
                 child: Text(
                   'Action needed: submit your Government ID and Driver\'s License to complete WASA clearance.',
-                  style: const TextStyle(color: AppColors.driverText, fontWeight: FontWeight.bold, fontSize: 13),
+                  style: TextStyle(color: driverPalette.text, fontWeight: FontWeight.bold, fontSize: 13),
                 ),
               ),
-              const Icon(Icons.arrow_forward_ios, size: 14, color: AppColors.driverText),
+              Icon(Icons.arrow_forward_ios, size: 14, color: driverPalette.text),
             ],
           ),
         ),
@@ -626,11 +629,11 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.store_outlined, size: 80, color: AppColors.driverText.withValues(alpha: 0.6)),
+            Icon(Icons.store_outlined, size: 80, color: driverPalette.text.withValues(alpha: 0.6)),
             const SizedBox(height: 16),
-            const Text('Not currently linked to a station.', style: TextStyle(fontSize: 18, color: AppColors.driverText)),
+            Text('Not currently linked to a station.', style: TextStyle(fontSize: 18, color: driverPalette.text)),
             const SizedBox(height: 8),
-            Text('Join a station from your profile to start receiving deliveries.', style: TextStyle(fontSize: 14, color: AppColors.driverText.withValues(alpha: 0.7))),
+            Text('Join a station from your profile to start receiving deliveries.', style: TextStyle(fontSize: 14, color: driverPalette.text.withValues(alpha: 0.7))),
             const SizedBox(height: 16),
             ElevatedButton(
               onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const DriverProfileScreen())),
@@ -645,17 +648,17 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
   Widget _buildOnDutyBar() {
     return Container(
       width: double.infinity,
-      color: _isOnDuty ? AppColors.driverOnDuty.withValues(alpha: 0.15) : AppColors.driverSurface,
+      color: _isOnDuty ? driverPalette.onDuty.withValues(alpha: 0.15) : driverPalette.surface,
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       child: Row(
         children: [
-          Icon(Icons.gps_fixed, color: _isOnDuty ? AppColors.driverOnDuty : AppColors.driverOffDuty, size: 28),
+          Icon(Icons.gps_fixed, color: _isOnDuty ? driverPalette.onDuty : driverPalette.offDuty, size: 28),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
               _isOnDuty ? 'ON DUTY — Broadcasting GPS' : 'OFF DUTY',
               style: TextStyle(
-                color: _isOnDuty ? AppColors.driverOnDuty : AppColors.driverText,
+                color: _isOnDuty ? driverPalette.onDuty : driverPalette.text,
                 fontWeight: FontWeight.bold,
                 fontSize: 16,
               ),
@@ -663,7 +666,7 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
           ),
           Switch(
             value: _isOnDuty,
-            activeThumbColor: AppColors.driverOnDuty,
+            activeThumbColor: driverPalette.onDuty,
             onChanged: _toggleOnDuty,
           ),
         ],
@@ -673,7 +676,7 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
 
   Widget _buildMap() {
     if (_destination == null || _stationLocation == null) {
-      return const Center(child: Text('Map loading...', style: TextStyle(color: AppColors.driverText)));
+      return Center(child: Text('Map loading...', style: TextStyle(color: driverPalette.text)));
     }
 
     final markers = <Marker>[
@@ -718,11 +721,11 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.local_shipping_outlined, size: 80, color: AppColors.driverText.withValues(alpha: 0.6)),
+          Icon(Icons.local_shipping_outlined, size: 80, color: driverPalette.text.withValues(alpha: 0.6)),
           const SizedBox(height: 16),
-          const Text('No active deliveries right now.', style: TextStyle(fontSize: 18, color: AppColors.driverText)),
+          Text('No active deliveries right now.', style: TextStyle(fontSize: 18, color: driverPalette.text)),
           const SizedBox(height: 8),
-          Text('Waiting for the station to assign an order...', style: TextStyle(fontSize: 14, color: AppColors.driverText.withValues(alpha: 0.7))),
+          Text('Waiting for the station to assign an order...', style: TextStyle(fontSize: 14, color: driverPalette.text.withValues(alpha: 0.7))),
         ],
       ),
     );
@@ -744,7 +747,7 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Order #$shortId', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.driverText)),
+                    Text('Order #$shortId', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: driverPalette.text)),
                     const SizedBox(height: 4),
                     Row(
                       children: [
@@ -752,13 +755,13 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
                           child: Text(
                             'Deliver to: $_customerName',
                             overflow: TextOverflow.ellipsis,
-                            style: TextStyle(fontSize: 14, color: AppColors.driverText.withValues(alpha: 0.7), fontWeight: FontWeight.bold),
+                            style: TextStyle(fontSize: 14, color: driverPalette.text.withValues(alpha: 0.7), fontWeight: FontWeight.bold),
                           ),
                         ),
                         const SizedBox(width: 8),
                         InkWell(
                           onTap: () => _makePhoneCall(_customerPhone, 'Customer'),
-                          child: const Icon(Icons.phone, size: 22, color: AppColors.driverOnDuty),
+                          child: Icon(Icons.phone, size: 22, color: driverPalette.onDuty),
                         ),
                       ],
                     ),
@@ -780,16 +783,16 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
               ),
             ],
           ),
-          Divider(height: 24, thickness: 1, color: AppColors.driverText.withValues(alpha: 0.7)),
+          Divider(height: 24, thickness: 1, color: driverPalette.text.withValues(alpha: 0.7)),
           Row(
             children: [
               const Icon(Icons.store, color: Colors.blueGrey, size: 18),
               const SizedBox(width: 8),
-              Expanded(child: Text('Station: $_stationName', style: TextStyle(fontSize: 13, color: AppColors.driverText.withValues(alpha: 0.7)))),
+              Expanded(child: Text('Station: $_stationName', style: TextStyle(fontSize: 13, color: driverPalette.text.withValues(alpha: 0.7)))),
               TextButton.icon(
                 onPressed: () => _makePhoneCall(_stationPhone, 'Water Station'),
-                icon: const Icon(Icons.phone, size: 18, color: AppColors.driverOnDuty),
-                label: const Text('Call Station', style: TextStyle(fontSize: 13, color: AppColors.driverOnDuty)),
+                icon: Icon(Icons.phone, size: 18, color: driverPalette.onDuty),
+                label: Text('Call Station', style: TextStyle(fontSize: 13, color: driverPalette.onDuty)),
               ),
             ],
           ),
@@ -810,10 +813,10 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
           const SizedBox(height: 12),
           OutlinedButton.icon(
             onPressed: _destination == null ? null : _navigateToDropOff,
-            icon: const Icon(Icons.navigation_outlined, size: 20, color: AppColors.driverOnDuty),
-            label: const Text('NAVIGATE', style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.driverOnDuty)),
+            icon: Icon(Icons.navigation_outlined, size: 20, color: driverPalette.onDuty),
+            label: Text('NAVIGATE', style: TextStyle(fontWeight: FontWeight.bold, color: driverPalette.onDuty)),
             style: OutlinedButton.styleFrom(
-              side: const BorderSide(color: AppColors.driverOnDuty),
+              side: BorderSide(color: driverPalette.onDuty),
               padding: const EdgeInsets.symmetric(vertical: 14),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             ),
@@ -829,7 +832,7 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
               icon: const Icon(Icons.local_shipping_outlined, color: Colors.white),
               label: const Text('START DELIVERY', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.driverOnDuty,
+                backgroundColor: driverPalette.onDuty,
                 padding: const EdgeInsets.symmetric(vertical: 20),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
@@ -866,9 +869,9 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
       children: [
         Icon(icon, color: Colors.blueGrey, size: 22),
         const SizedBox(width: 12),
-        Text(label, style: TextStyle(fontSize: 16, color: AppColors.driverText.withValues(alpha: 0.7))),
+        Text(label, style: TextStyle(fontSize: 16, color: driverPalette.text.withValues(alpha: 0.7))),
         const Spacer(),
-        Text(value, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.driverText)),
+        Text(value, style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: driverPalette.text)),
       ],
     );
   }

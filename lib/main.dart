@@ -5,7 +5,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:go_router/go_router.dart';
 
+import 'constants/app_theme.dart';
 import 'constants/web_theme.dart';
+import 'providers/app_theme_provider.dart';
 import 'providers/web_theme_provider.dart';
 import 'screens/auth/auth_gate.dart';
 import 'web_router.dart';
@@ -78,17 +80,17 @@ class _MyAppState extends ConsumerState<MyApp> {
       );
     }
 
+    // The app (not the website) follows the phone's light/dark setting, with
+    // a Light/Dark/Follow-phone override in Account settings. The website
+    // keeps its own manual switch above: it paints its own warm-paper and
+    // navy surfaces, so inheriting the OS preference there produced dark
+    // Material text on light backgrounds rather than a designed dark mode.
+    final appMode = ref.watch(appThemeProvider);
     return MaterialApp(
       title: 'GenTri: WASA',
-      theme: WebTheme.light,
-      darkTheme: WebTheme.dark,
-      // Never ThemeMode.system. Every surface in this product paints its own
-      // colours, so inheriting the visitor's OS preference produced dark
-      // Material text on the site's light backgrounds rather than a designed
-      // dark mode. The website's toggle owns this now, and the mobile portals
-      // and admin (which wraps itself in AdminTheme) are unaffected because
-      // they never followed anything but light in practice.
-      themeMode: webMode.material,
+      theme: AppTheme.light,
+      darkTheme: AppTheme.dark,
+      themeMode: appMode.material,
       home: const AuthGate(),
     );
   }

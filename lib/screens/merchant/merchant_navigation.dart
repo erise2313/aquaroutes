@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'merchant_dashboard.dart';
 import 'orders_screen.dart';
 import 'tracking_screen.dart';
 import 'merchant_profile_screens.dart';
 import 'products_screen.dart';
 import '../../constants/app_colors.dart';
-import '../../constants/app_theme.dart';
+import '../../providers/app_theme_provider.dart';
 import '../../widgets/responsive_nav_shell.dart';
 import '../public/bulletin_board_screen.dart';
 
@@ -22,8 +23,9 @@ class MerchantNavigation extends StatelessWidget {
     // station owner got white cards and grey text on a dark page, with no
     // toggle in this portal to undo it. Screens pushed from here need
     // appRoute() (screens/app_route.dart) to keep it.
-    return Theme(
-      data: AppTheme.light,
+    return Consumer(
+      builder: (context, ref, _) => Theme(
+      data: appThemeDataFor(ref.watch(appThemeProvider), MediaQuery.platformBrightnessOf(context)),
       child: ResponsiveNavShell(
         selectedItemColor: AppColors.primary,
         // Products sits right after Orders: it's the second thing an owner
@@ -45,6 +47,7 @@ class MerchantNavigation extends StatelessWidget {
           BulletinBoardScreen(),
           MerchantProfileScreen(),
         ],
+      ),
       ),
     );
   }

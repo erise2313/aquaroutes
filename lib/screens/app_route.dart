@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../constants/app_theme.dart';
+import '../providers/app_theme_provider.dart';
 
 /// Pushes a merchant or customer screen with the app theme still applied.
 ///
-/// The shells (MerchantNavigation, PublicHomeScreen) wrap their pages in
-/// `Theme(data: AppTheme.light)`, but that wrapper does NOT reach screens
-/// opened with `Navigator.push`: a `MaterialPageRoute` builds under the root
+/// The shells (MerchantNavigation, PublicHomeScreen) wrap their pages in the
+/// app theme, but that wrapper does NOT reach screens opened with
+/// `Navigator.push`: a `MaterialPageRoute` builds under the root
 /// `Navigator`, above the local `Theme`, so `Theme.of` inside the pushed
 /// screen resolves to the root MaterialApp theme instead. (`showDialog` is
 /// unaffected -- it captures ambient themes via `InheritedTheme.capture`.)
@@ -17,14 +18,20 @@ import '../constants/app_theme.dart';
 /// test/admin_shell_test.dart that pins the behaviour down.
 ///
 /// It matters more here than it looks: the root theme can be the website's
-/// *dark* theme, so without this a pushed merchant screen would render its
-/// white cards and grey text on a dark page.
+/// theme, so without this a pushed merchant screen would render its cards
+/// and text against the wrong background entirely.
 ///
-/// Use this instead of `MaterialPageRoute` for every push out of a merchant
-/// or customer screen.
+/// The theme is resolved through a `Consumer` rather than pinned, so a
+/// pushed screen follows the phone's light/dark setting (and the override in
+/// Account settings) exactly like the screen that pushed it.
 Route<T> appRoute<T>(Widget child) {
   return MaterialPageRoute<T>(
-    builder: (context) => Theme(data: AppTheme.light, child: child),
+    builder: (context) => Consumer(
+      builder: (context, ref, _) => Theme(
+        data: appThemeDataFor(ref.watch(appThemeProvider), MediaQuery.platformBrightnessOf(context)),
+        child: child,
+      ),
+    ),
   );
 }
 
@@ -33,8 +40,8 @@ Route<T> appRoute<T>(Widget child) {
 /// For widgets shared across surfaces that don't agree on a theme --
 /// `screens/public/bulletin_feed.dart` is embedded in the admin portal, the
 /// merchant portal, the driver dashboard, the customer app *and* the public
-/// website's news page. Pinning its pushes to [AppTheme] would hand a
-/// dark-mode website visitor a light login screen; leaving them as a bare
+/// website's news page. Pinning its pushes to [appRoute] would hand a
+/// dark-mode website visitor the app's theme; leaving them as a bare
 /// `MaterialPageRoute` would drop them to the root theme instead. Capturing
 /// gives each host what it actually has.
 ///

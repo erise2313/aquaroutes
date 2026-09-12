@@ -111,7 +111,12 @@ class _ResponsiveNavShellState extends State<ResponsiveNavShell> {
         return Scaffold(
           appBar: widget.appBar,
           body: IndexedStack(index: _currentIndex, children: widget.pages),
-          bottomNavigationBar: BottomNavigationBar(
+          // The tab bar is the one place large system text has to be reined
+          // in: past ~130% the labels push the tabs apart and clip. Every
+          // other surface scales freely.
+          bottomNavigationBar: MediaQuery.withClampedTextScaling(
+            maxScaleFactor: 1.3,
+            child: BottomNavigationBar(
             currentIndex: _currentIndex,
             onTap: (i) => setState(() => _currentIndex = i),
             type: BottomNavigationBarType.fixed,
@@ -124,6 +129,7 @@ class _ResponsiveNavShellState extends State<ResponsiveNavShell> {
                       label: d.label,
                     ))
                 .toList(),
+            ),
           ),
         );
       },

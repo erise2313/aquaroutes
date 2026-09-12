@@ -404,7 +404,10 @@ class _MerchantProfileScreenState extends State<MerchantProfileScreen> {
                           ),
                           const SizedBox(height: 16),
                           SizedBox(
-                            height: 380,
+                            // TabBarView needs a bounded height, but a fixed
+                            // one clipped the forms once the system font size
+                            // was turned up, so it grows with it.
+                            height: 380 * MediaQuery.textScalerOf(context).scale(1.0).clamp(1.0, 2.0).toDouble(),
                             child: TabBarView(
                               children: [
                                 _buildEditableProfileForm(),

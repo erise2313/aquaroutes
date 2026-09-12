@@ -9,7 +9,7 @@ import '../../widgets/wasa_shield_logo.dart';
 import '../auth/login_screen.dart';
 import '../auth/registration_screen.dart';
 import 'bulletin_feed.dart';
-import '../../constants/app_theme.dart';
+import '../../providers/app_theme_provider.dart';
 import '../app_route.dart';
 import 'customer_account_screen.dart';
 import 'info/about_wasa_hub_screen.dart';
@@ -52,7 +52,7 @@ class _PublicHomeScreenState extends ConsumerState<PublicHomeScreen> {
     // need appRoute() (screens/app_route.dart) to keep it, since a
     // MaterialPageRoute builds above this Theme, not under it.
     return Theme(
-      data: AppTheme.light,
+      data: appThemeDataFor(ref.watch(appThemeProvider), MediaQuery.platformBrightnessOf(context)),
       child: Builder(builder: (context) {
         final onSurface = Theme.of(context).colorScheme.onSurface;
         return Scaffold(
@@ -97,7 +97,9 @@ class _PublicHomeScreenState extends ConsumerState<PublicHomeScreen> {
         ],
       ),
       body: IndexedStack(index: _currentIndex, children: _pages),
-      bottomNavigationBar: BottomNavigationBar(
+      bottomNavigationBar: MediaQuery.withClampedTextScaling(
+        maxScaleFactor: 1.3,
+        child: BottomNavigationBar(
         currentIndex: _currentIndex,
         onTap: (index) => setState(() => _currentIndex = index),
         type: BottomNavigationBarType.fixed,
@@ -109,6 +111,7 @@ class _PublicHomeScreenState extends ConsumerState<PublicHomeScreen> {
           BottomNavigationBarItem(icon: Icon(Icons.map_outlined), activeIcon: Icon(Icons.map), label: 'Map'),
           BottomNavigationBarItem(icon: Icon(Icons.receipt_long_outlined), activeIcon: Icon(Icons.receipt_long), label: 'Orders'),
         ],
+        ),
       ),
         );
       }),
