@@ -3,12 +3,14 @@ import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../models/order.dart';
+import '../../models/order_status_look.dart';
 import '../../services/order_service.dart';
 import '../../services/review_service.dart';
 import '../../services/supabase_service.dart';
 import '../../utils/formatters.dart';
 import '../../widgets/confirm_dialog.dart';
 import '../../widgets/error_state.dart';
+import '../../widgets/portal/portal.dart';
 import '../../widgets/star_rating.dart';
 import 'order_tracking_screen.dart';
 import 'quick_order_screen.dart';
@@ -22,7 +24,14 @@ import '../../utils/error_text.dart';
 /// lookup, one order at a time), this is a full list, always available
 /// across devices since it's tied to the account, not local storage.
 class MyOrdersScreen extends StatefulWidget {
-  const MyOrdersScreen({super.key});
+  const MyOrdersScreen({super.key, this.showAppBar = true});
+
+  /// False when this is the Orders tab rather than a pushed screen.
+  ///
+  /// PublicHomeScreen's shell already supplies an app bar, so rendering one
+  /// here too stacked two of them in the tab -- the same double-chrome fault
+  /// the admin portal had.
+  final bool showAppBar;
 
   @override
   State<MyOrdersScreen> createState() => _MyOrdersScreenState();
@@ -74,20 +83,38 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final density = PortalDensity.of(context);
+
     return Scaffold(
-      appBar: AppBar(title: const Text('My Orders')),
+      appBar: widget.showAppBar ? AppBar(title: const Text('My Orders')) : null,
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
           ? ErrorState(message: _error!, onRetry: _load)
           : _orders.isEmpty
-          ? Center(child: Text('No orders yet.', style: TextStyle(color: Colors.grey.shade700)))
+          // Inside a scrollable so pull-to-refresh still works on an empty
+          // list -- the one state where you most want to refresh.
+          ? RefreshIndicator(
+              onRefresh: _load,
+              child: ListView(
+                padding: density.pagePadding,
+                children: const [
+                  SizedBox(height: 24),
+                  PortalEmptyState(
+                    icon: Icons.receipt_long_outlined,
+                    title: 'No orders yet',
+                    message: 'Once you place an order it appears here, and you can follow its driver on a map.',
+                  ),
+                ],
+              ),
+            )
           : RefreshIndicator(
               onRefresh: _load,
               child: ListView.builder(
-                padding: const EdgeInsets.all(16),
+                padding: density.pagePadding,
                 itemCount: _orders.length,
-                itemBuilder: (context, index) => _buildOrderCard(_orders[index]),
+                itemBuilder: (context, index) =>
+                    _buildOrderCard(_orders[index], last: index == _orders.length - 1, density: density),
               ),
             ),
     );
@@ -124,99 +151,107 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
     );
   }
 
-  Widget _buildOrderCard(Map<String, dynamic> order) {
+  Widget _buildOrderCard(Map<String, dynamic> order, {required bool last, required PortalDensity density}) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
     final status = orderStatusFromString(order['status'] as String? ?? 'pending');
     final stationName = (order['water_stations']?['station_name'] as String?) ?? 'Unknown Station';
     final createdAt = DateTime.parse(order['created_at'] as String);
     final totalAmount = (order['total_amount'] as num).toDouble();
+    final look = OrderStatusLook.of(status);
 
-    final (statusColor, statusLabel) = switch (status) {
-      OrderStatus.pending => (Colors.orange, 'Pending'),
-      OrderStatus.assigned => (Colors.blue, 'Driver Assigned'),
-      OrderStatus.active => (Colors.indigo, 'Out for Delivery'),
-      OrderStatus.done => (Colors.green, 'Delivered'),
-      OrderStatus.cancelled => (Colors.red, 'Cancelled'),
-    };
-
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: InkWell(
-        onTap: () => Navigator.push(
-          context,
-          appRoute(OrderTrackingScreen(orderId: order['id'] as String, stationName: stationName, status: status),
-          ),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+    return PortalCard(
+      accent: look.color,
+      margin: EdgeInsets.only(bottom: last ? 0 : density.gap),
+      onTap: () => Navigator.push(
+        context,
+        appRoute(OrderTrackingScreen(orderId: order['id'] as String, stationName: stationName, status: status)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(stationName, style: theme.textTheme.titleMedium),
+          const SizedBox(height: 8),
+          // On its own line rather than beside the station name: a pill is a
+          // non-flexible child of a Row and is laid out with unbounded width,
+          // so a long label like OUT FOR DELIVERY could never wrap there.
+          StatusPill(label: look.label, color: look.color),
+          const SizedBox(height: 10),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Row(
-                children: [
-                  Expanded(child: Text(stationName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16))),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(color: statusColor.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(8)),
-                    child: Text(statusLabel, style: TextStyle(color: statusColor, fontWeight: FontWeight.bold)),
-                  ),
-                ],
+              Expanded(child: Text(_orderLineText(order), style: theme.textTheme.bodyMedium)),
+              const SizedBox(width: 12),
+              Text(
+                formatPeso(totalAmount),
+                style: theme.textTheme.titleMedium?.copyWith(color: scheme.primary, fontWeight: FontWeight.w700),
               ),
-              const SizedBox(height: 8),
-              Text(_orderLineText(order)),
-              Text('Total: ${formatPeso(totalAmount)}'),
-              const SizedBox(height: 4),
-              Text('Placed ${DateFormat('MMM d, yyyy h:mm a').format(createdAt)}', style: TextStyle(color: Colors.grey.shade700, fontSize: 12)),
-              if (status == OrderStatus.assigned || status == OrderStatus.active) ...[
-                const SizedBox(height: 8),
-                const Row(children: [Icon(Icons.map_outlined, size: 16, color: Colors.blueGrey), SizedBox(width: 4), Text('Tap to track your driver', style: TextStyle(color: Colors.blueGrey, fontSize: 12))]),
-              ],
-              if (status == OrderStatus.pending || status == OrderStatus.assigned) ...[
-                const SizedBox(height: 8),
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: TextButton.icon(
-                    onPressed: () => _cancelOrder(order['id'] as String, stationName, totalAmount),
-                    style: TextButton.styleFrom(foregroundColor: Colors.red),
-                    icon: const Icon(Icons.cancel_outlined, size: 18),
-                    label: const Text('Cancel Order'),
-                  ),
-                ),
-              ],
-              if (status == OrderStatus.done || status == OrderStatus.cancelled) ...[
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  children: [
-                    // Water is a weekly repeat purchase; this reopens the
-                    // order form on the same station, product and quantity.
-                    if (order['product_id'] != null)
-                      FilledButton.tonalIcon(
-                        onPressed: () => Navigator.push(
-                          context,
-                          appRoute(QuickOrderScreen(
-                            prefill: OrderPrefill(
-                              stationId: order['station_id'] as String,
-                              productId: order['product_id'] as String,
-                              quantity: (order['jugs_ordered'] as num).toInt(),
-                              unitPrice: (order['unit_price'] as num?)?.toDouble(),
-                            ),
-                          )),
-                        ),
-                        icon: const Icon(Icons.refresh, size: 18),
-                        label: const Text('Order again'),
-                      ),
-                    if (status == OrderStatus.done)
-                      OutlinedButton.icon(
-                        onPressed: () => _showRatingDialog(order['station_id'] as String, stationName),
-                        icon: const Icon(Icons.star_border, size: 18),
-                        label: const Text('Rate this station'),
-                      ),
-                  ],
-                ),
-              ],
             ],
           ),
-        ),
+          const SizedBox(height: 4),
+          Text(
+            'Placed ${DateFormat('MMM d, yyyy h:mm a').format(createdAt)}',
+            style: theme.textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+          ),
+          if (OrderStatusLook.isTrackable(status)) ...[
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Icon(Icons.map_outlined, size: 16, color: scheme.onSurfaceVariant),
+                const SizedBox(width: 4),
+                Text(
+                  'Tap to track your driver',
+                  style: theme.textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+                ),
+              ],
+            ),
+          ],
+          if (OrderStatusLook.isCancellable(status)) ...[
+            const SizedBox(height: 4),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                onPressed: () => _cancelOrder(order['id'] as String, stationName, totalAmount),
+                style: TextButton.styleFrom(foregroundColor: scheme.error),
+                icon: const Icon(Icons.cancel_outlined, size: 18),
+                label: const Text('Cancel order'),
+              ),
+            ),
+          ],
+          if (status == OrderStatus.done || status == OrderStatus.cancelled) ...[
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                // Water is a weekly repeat purchase; this reopens the order
+                // form on the same station, product and quantity.
+                if (order['product_id'] != null)
+                  FilledButton.tonalIcon(
+                    onPressed: () => Navigator.push(
+                      context,
+                      appRoute(QuickOrderScreen(
+                        prefill: OrderPrefill(
+                          stationId: order['station_id'] as String,
+                          productId: order['product_id'] as String,
+                          quantity: (order['jugs_ordered'] as num).toInt(),
+                          unitPrice: (order['unit_price'] as num?)?.toDouble(),
+                        ),
+                      )),
+                    ),
+                    icon: const Icon(Icons.refresh, size: 18),
+                    label: const Text('Order again'),
+                  ),
+                if (status == OrderStatus.done)
+                  OutlinedButton.icon(
+                    onPressed: () => _showRatingDialog(order['station_id'] as String, stationName),
+                    icon: const Icon(Icons.star_border, size: 18),
+                    label: const Text('Rate this station'),
+                  ),
+              ],
+            ),
+          ],
+        ],
       ),
     );
   }

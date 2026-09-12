@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../providers/app_state.dart';
+import '../../widgets/portal/portal.dart';
 import '../auth/login_screen.dart';
 import 'my_orders_screen.dart';
 import 'track_order_screen.dart';
@@ -20,39 +21,29 @@ class OrdersTabScreen extends ConsumerWidget {
     ref.watch(authStateProvider); // rebuild when the user logs in/out
     final isLoggedIn = Supabase.instance.client.auth.currentUser != null;
 
+    // No app bar on either branch: PublicHomeScreen's shell already supplies
+    // one, and rendering a second stacked two bars in this tab.
     if (isLoggedIn) {
-      return const MyOrdersScreen();
+      return const MyOrdersScreen(showAppBar: false);
     }
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Orders')),
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.receipt_long_outlined, size: 56, color: Colors.blue.shade700),
-              const SizedBox(height: 16),
-              const Text(
-                'Track a delivery or view your order history.',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 24),
-              ElevatedButton.icon(
-                onPressed: () => Navigator.push(context, appRoute(const TrackOrderScreen())),
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.blue.shade700, padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14)),
-                icon: const Icon(Icons.search, color: Colors.white),
-                label: const Text('Track a Guest Order', style: TextStyle(color: Colors.white)),
-              ),
-              const SizedBox(height: 12),
-              OutlinedButton(
-                onPressed: () => Navigator.push(context, appRoute(const LoginScreen())),
-                child: const Text('Log In to See Order History'),
-              ),
-            ],
-          ),
+      body: PortalEmptyState(
+        icon: Icons.receipt_long_outlined,
+        title: 'Track a delivery',
+        message: 'Look up a guest order with its ID and phone number, or sign in to see your full order history.',
+        action: PortalActionRow(
+          children: [
+            FilledButton.icon(
+              onPressed: () => Navigator.push(context, appRoute(const TrackOrderScreen())),
+              icon: const Icon(Icons.search),
+              label: const Text('Track a guest order'),
+            ),
+            OutlinedButton(
+              onPressed: () => Navigator.push(context, appRoute(const LoginScreen())),
+              child: const Text('Sign in'),
+            ),
+          ],
         ),
       ),
     );
