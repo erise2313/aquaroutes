@@ -213,12 +213,18 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
     return Scaffold(
-      backgroundColor: WebTheme.of(context).paper,
+      // The ambient theme, not WebTheme: pushed from the app, appRoute wraps
+      // this in AppTheme, which registers AppPalette -- so WebTheme.of fell
+      // back to its light palette and painted a white page under the app's
+      // dark mode, with near-white text on it.
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: WebTheme.of(context).paper,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         elevation: 0,
-        iconTheme: IconThemeData(color: WebTheme.of(context).ink),
+        iconTheme: IconThemeData(color: scheme.onSurface),
       ),
       body: Center(
         child: SingleChildScrollView(
@@ -245,7 +251,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                     Text(
                       "Join GenTri: WASA and manage deliveries instantly.",
                       textAlign: TextAlign.center,
-                      style: TextStyle(fontSize: 15, color: Colors.grey.shade700),
+                      style: TextStyle(fontSize: 15, color: scheme.onSurfaceVariant),
                     ),
                     const SizedBox(height: 32),
 
@@ -298,25 +304,25 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                       child: ElevatedButton(
                         onPressed: _isLoading ? null : _signUp,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: WebTheme.harborBlue,
+                          backgroundColor: scheme.primary,
+                          foregroundColor: scheme.onPrimary,
                           padding: const EdgeInsets.symmetric(vertical: 16),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(8),
                           ),
                         ),
                         child: _isLoading
-                            ? const SizedBox(
+                            ? SizedBox(
                                 height: 20,
                                 width: 20,
                                 child: CircularProgressIndicator(
-                                  color: Colors.white,
+                                  color: scheme.onPrimary,
                                   strokeWidth: 2,
                                 ),
                               )
                             : const Text(
-                                "REGISTER",
+                                "Register",
                                 style: TextStyle(
-                                  color: Colors.white,
                                   fontWeight: FontWeight.bold,
                                   fontSize: 16,
                                 ),
@@ -333,9 +339,9 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                       child: RichText(
                         text: TextSpan(
                           text: "Already have an account? ",
-                          style: TextStyle(color: Colors.grey.shade700),
+                          style: TextStyle(color: scheme.onSurfaceVariant),
                           children: [
-                            TextSpan(text: "Login here", style: TextStyle(color: WebTheme.harborBlue, fontWeight: FontWeight.bold)),
+                            TextSpan(text: "Login here", style: TextStyle(color: scheme.primary, fontWeight: FontWeight.bold)),
                           ],
                         ),
                       ),
@@ -351,13 +357,16 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
   }
 
   Widget _buildRoleDropdown() {
+    final scheme = Theme.of(context).colorScheme;
+
     return DropdownButtonFormField<String>(
       initialValue: _selectedRole,
       decoration: InputDecoration(
-        labelText: "Account Type",
-        prefixIcon: const Icon(Icons.badge_outlined, color: WebTheme.harborBlue),
+        labelText: "Account type",
+        labelStyle: TextStyle(color: scheme.onSurfaceVariant),
+        prefixIcon: Icon(Icons.badge_outlined, color: scheme.primary),
         filled: true,
-        fillColor: WebTheme.of(context).foam,
+        fillColor: scheme.surfaceContainerHighest,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
           borderSide: BorderSide.none,
@@ -368,7 +377,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(color: WebTheme.harborBlue, width: 2),
+          borderSide: BorderSide(color: scheme.primary, width: 2),
         ),
       ),
       items: const [
@@ -426,7 +435,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
               Expanded(
                 child: Text(
                   "Business Permit / KYC upload will be required after successful registration.",
-                  style: TextStyle(fontSize: 12, color: WebTheme.of(context).ink),
+                  style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurface),
                 ),
               ),
             ],
@@ -448,25 +457,31 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
           autofillHints: const [AutofillHints.name],
         ),
         const SizedBox(height: 16),
-        Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: WebTheme.of(context).foam,
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Row(
-            children: [
-              Icon(Icons.info_outline, color: WebTheme.harborBlue),
-              SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  "Use this to place water orders and track your order history. Browsing the Bulletin Board and station map never requires an account.",
-                  style: TextStyle(fontSize: 12, color: WebTheme.of(context).ink),
+        Builder(builder: (context) {
+          // Ambient scheme, not WebTheme: under AppTheme this resolved to the
+          // light palette, so the box stayed pale in the app's dark mode with
+          // near-white text inside it.
+          final scheme = Theme.of(context).colorScheme;
+          return Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: scheme.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.info_outline, color: scheme.primary),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    "Use this to place water orders and track your order history. Browsing the Bulletin Board and station map never requires an account.",
+                    style: TextStyle(fontSize: 12, color: scheme.onSurface),
+                  ),
                 ),
-              ),
-            ],
-          ),
-        ),
+              ],
+            ),
+          );
+        }),
       ],
     );
   }
@@ -483,19 +498,21 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
           autofillHints: const [AutofillHints.name],
         ),
         const SizedBox(height: 16),
-        Container(
+        Builder(builder: (context) {
+          final scheme = Theme.of(context).colorScheme;
+          return Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: WebTheme.of(context).foam,
+            color: scheme.surfaceContainerHighest,
             borderRadius: BorderRadius.circular(10),
           ),
           child: Column(
             children: [
-              const Row(
+              Row(
                 children: [
-                  Icon(Icons.vpn_key, color: WebTheme.harborBlue),
-                  SizedBox(width: 8),
-                  Text("Station Link Key", style: TextStyle(fontWeight: FontWeight.bold, color: WebTheme.harborBlue)),
+                  Icon(Icons.vpn_key, color: scheme.primary),
+                  const SizedBox(width: 8),
+                  Text("Station Link Key", style: TextStyle(fontWeight: FontWeight.bold, color: scheme.primary)),
                 ],
               ),
               const SizedBox(height: 8),
@@ -508,7 +525,8 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
               ),
             ],
           ),
-        ),
+          );
+        }),
         const SizedBox(height: 16),
         Row(
           children: [

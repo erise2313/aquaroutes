@@ -67,7 +67,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text("Login Failed: ${e.toString().split(':').last}"),
-            backgroundColor: Colors.redAccent,
+            backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );
       }
@@ -103,8 +103,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
     return Scaffold(
-      backgroundColor: WebTheme.of(context).paper,
+      // The ambient theme, not WebTheme. This screen is pushed from the app
+      // through appRoute, which wraps it in AppTheme -- and AppTheme registers
+      // AppPalette, so WebTheme.of fell back to its *light* palette here: a
+      // white page under the app's dark mode, with near-white text on it.
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24.0),
@@ -154,8 +160,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       alignment: Alignment.centerRight,
                       child: TextButton(
                         onPressed: _forgotPassword,
-                        style: TextButton.styleFrom(foregroundColor: WebTheme.harborBlue),
-                        child: const Text("Forgot Password?"),
+                        style: TextButton.styleFrom(foregroundColor: scheme.primary),
+                        child: const Text("Forgot password?"),
                       ),
                     ),
 
@@ -165,13 +171,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       child: ElevatedButton(
                         onPressed: _isLoading ? null : _login,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: WebTheme.harborBlue,
+                          backgroundColor: scheme.primary,
+                          foregroundColor: scheme.onPrimary,
                           padding: const EdgeInsets.symmetric(vertical: 16),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                         ),
                         child: _isLoading
-                            ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                            : const Text("LOGIN", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+                            ? SizedBox(
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(color: scheme.onPrimary, strokeWidth: 2),
+                              )
+                            : const Text("Log in", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                       ),
                     ),
 
@@ -184,9 +195,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       child: RichText(
                         text: TextSpan(
                           text: "Don't have an account? ",
-                          style: TextStyle(color: Colors.grey.shade700),
+                          style: TextStyle(color: scheme.onSurfaceVariant),
                           children: [
-                            TextSpan(text: "Register here", style: TextStyle(color: WebTheme.harborBlue, fontWeight: FontWeight.bold)),
+                            TextSpan(text: "Register here", style: TextStyle(color: scheme.primary, fontWeight: FontWeight.bold)),
                           ],
                         ),
                       ),
@@ -196,7 +207,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
                     TextButton.icon(
                       onPressed: () => Navigator.of(context).popUntil((route) => route.isFirst),
-                      style: TextButton.styleFrom(foregroundColor: WebTheme.of(context).ink),
+                      style: TextButton.styleFrom(foregroundColor: scheme.onSurface),
                       icon: const Icon(Icons.arrow_back, size: 16),
                       label: const Text("Continue browsing as guest"),
                     ),

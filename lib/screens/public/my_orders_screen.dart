@@ -62,7 +62,13 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
       final userId = _supabase.auth.currentUser!.id;
       final rows = await _supabase
           .from('orders')
-          .select('id, station_id, status, jugs_ordered, water_type, jug_type, product_kind, product_id, unit_price, total_amount, created_at, water_stations(station_name)')
+          // The join is named explicitly: orders has two foreign keys to
+          // water_stations -- station_id and jug_exchange_origin_station_id,
+          // the second added with jug exchange -- so a bare
+          // `water_stations(...)` became ambiguous and PostgREST refused it
+          // outright ("more than one relationship was found"), breaking this
+          // screen entirely. The constraint name survives a column rename.
+          .select('id, station_id, status, jugs_ordered, water_type, jug_type, product_kind, product_id, unit_price, total_amount, created_at, water_stations!orders_station_id_fkey(station_name)')
           .eq('customer_profile_id', userId)
           .order('created_at', ascending: false);
       if (mounted) {

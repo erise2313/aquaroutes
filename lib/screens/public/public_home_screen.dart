@@ -63,11 +63,27 @@ class _PublicHomeScreenState extends ConsumerState<PublicHomeScreen> {
         return Scaffold(
       appBar: AppBar(
         titleSpacing: 12,
+        // Signed out there are five things competing for this row -- the
+        // wordmark, the theme toggle, About, Login and Register -- and on a
+        // 360px phone they don't fit, so the actions drew over the name. (It
+        // looked fine signed in only because Login and Register collapse into
+        // one account icon there.) Below 420px the shield carries the brand on
+        // its own, which is the same rule the website's bar uses, and the
+        // wordmark stays flexible so no width can overlap it.
         title: Row(
           children: [
             const WasaShieldLogo(size: 32),
-            const SizedBox(width: 10),
-            Text('GenTri: WASA', style: TextStyle(fontWeight: FontWeight.bold, color: onSurface)),
+            if (MediaQuery.sizeOf(context).width >= 420) ...[
+              const SizedBox(width: 10),
+              Flexible(
+                child: Text(
+                  'GenTri: WASA',
+                  overflow: TextOverflow.ellipsis,
+                  softWrap: false,
+                  style: TextStyle(fontWeight: FontWeight.bold, color: onSurface),
+                ),
+              ),
+            ],
           ],
         ),
         elevation: 0,
