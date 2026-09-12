@@ -158,7 +158,12 @@ void main() {
             StatusPill(label: 'PENDING', color: Colors.amber),
           ],
         ));
-        expect(find.text('ACCREDITED'), findsOneWidget, reason: entry.key);
+        // A pill with an icon inlines it as a WidgetSpan, so its label lives
+        // in rich text. It has to be matched by substring rather than by
+        // equality: toPlainText() renders the inlined icon as the
+        // object-replacement character, so the pill's plain text is not
+        // "ACCREDITED" but "￼ACCREDITED".
+        expect(find.textContaining('ACCREDITED', findRichText: true), findsOneWidget, reason: entry.key);
         expect(find.text('PENDING'), findsOneWidget, reason: entry.key);
         expect(tester.takeException(), isNull, reason: entry.key);
       }
@@ -250,6 +255,98 @@ void main() {
               isNull,
               reason: 'dashboard body at ${width}px, text scale $scale',
             );
+          }
+        }
+      }
+    });
+  });
+
+  // An order card puts a status pill beside the order number and an amount
+  // beside the order line, and a peso amount has nowhere to wrap. Neither the
+  // Orders screen nor its card can be mounted directly (both need a live
+  // Supabase stream), so the composition stands in for them.
+  group('owner order card composition', () {
+    // Each row is swept on its own: takeException() reports only the error's
+    // message, not which widget produced it, so a single all-in-one card
+    // would say "a RenderFlex overflowed" without saying which one.
+    // Mirrors the Orders screen: the pill sits beside the order number only
+    // where there is room for it, and otherwise takes its own line, where its
+    // width is bounded and its label can wrap.
+    Widget identityRow(BuildContext context) {
+      final theme = Theme.of(context);
+      final isWide = PortalDensity.of(context).isWide;
+      const pill = StatusPill(label: 'OUT FOR DELIVERY', color: Colors.teal);
+
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SizedBox(width: 40, height: 40, child: Icon(Icons.fiber_new_outlined)),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Order #A1B2C3', style: theme.textTheme.titleMedium),
+                    Text('Placed at 10:45 AM', style: theme.textTheme.bodySmall),
+                  ],
+                ),
+              ),
+              if (isWide) ...[const SizedBox(width: 8), pill],
+            ],
+          ),
+          if (!isWide) ...[const SizedBox(height: 10), pill],
+        ],
+      );
+    }
+
+    Widget amountRow(BuildContext context) {
+      final theme = Theme.of(context);
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Expanded(child: Text('3 x Alkaline (Round 5-gal)', style: theme.textTheme.bodyMedium)),
+          const SizedBox(width: 12),
+          Text('₱1,240.00', style: theme.textTheme.titleMedium),
+        ],
+      );
+    }
+
+    Widget actionsRow(BuildContext context) {
+      return PortalActionRow(
+        children: [
+          OutlinedButton(onPressed: () {}, child: const Text('Reject')),
+          FilledButton(onPressed: () {}, child: const Text('Assign & accept')),
+        ],
+      );
+    }
+
+    final rows = <String, WidgetBuilder>{
+      'identity row': identityRow,
+      'amount row': amountRow,
+      'actions row': actionsRow,
+    };
+
+    testWidgets('every row lays out without overflow across widths, text sizes and modes', (tester) async {
+      for (final row in rows.entries) {
+        for (final theme in [AppTheme.light, AppTheme.dark]) {
+          for (final width in [360.0, 768.0, 1280.0]) {
+            for (final scale in [1.0, 1.3, 2.0]) {
+              await _pump(
+                tester,
+                theme,
+                PortalCard(lift: false, accent: Colors.amber, child: Builder(builder: row.value)),
+                size: Size(width, 900),
+                textScale: scale,
+              );
+              expect(
+                tester.takeException(),
+                isNull,
+                reason: '${row.key} at ${width}px, text scale $scale',
+              );
+            }
           }
         }
       }

@@ -15,7 +15,6 @@ import '../../constants/app_colors.dart';
 import '../../widgets/app_theme_toggle.dart';
 import '../../widgets/notification_bell.dart';
 import '../../widgets/portal/portal.dart';
-import '../../widgets/status_callout.dart';
 
 /// 'assigned' rolls into "active" alongside 'active' (both mean a driver is
 /// on it, just not picked up yet vs. en route); 'done' is counted on its

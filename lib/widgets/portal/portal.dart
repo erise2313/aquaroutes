@@ -8,6 +8,12 @@
 /// AdminTheme in either mode.
 library;
 
+// StatusTint and StatusCallout come with the kit: the tiles, pills and cards
+// are built on the tint, and any screen composing them needs the same tint for
+// its own icons and banners. Exporting it here saves every screen a second
+// import for what is really one vocabulary.
+export '../status_callout.dart';
+export 'portal_action_row.dart';
 export 'portal_card.dart';
 export 'portal_density.dart';
 export 'portal_empty_state.dart';

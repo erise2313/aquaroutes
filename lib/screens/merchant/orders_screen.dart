@@ -5,11 +5,40 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../constants/app_colors.dart';
 import '../../models/order.dart';
 import '../../services/order_service.dart';
 import '../../services/supabase_service.dart';
 import '../../widgets/confirm_dialog.dart';
+import '../../widgets/portal/portal.dart';
 import '../../utils/error_text.dart';
+import '../../utils/formatters.dart';
+
+/// How one order's status reads on screen: its pill, its colour and the icon
+/// on its card. Kept in one place so "assigned" doesn't mean amber on one
+/// screen and blue on the next.
+class _OrderLook {
+  const _OrderLook(this.label, this.color, this.icon);
+
+  final String label;
+  final Color color;
+  final IconData icon;
+
+  static _OrderLook of(String? status) {
+    switch (status?.toLowerCase()) {
+      case 'assigned':
+        return const _OrderLook('ASSIGNED', AppColors.primary, Icons.assignment_ind_outlined);
+      case 'active':
+        return const _OrderLook('OUT FOR DELIVERY', AppColors.accent, Icons.local_shipping_outlined);
+      case 'done':
+        return const _OrderLook('DELIVERED', AppColors.cleared, Icons.check_circle_outline);
+      case 'cancelled':
+        return const _OrderLook('CANCELLED', AppColors.flagged, Icons.cancel_outlined);
+      default:
+        return const _OrderLook('NEW', AppColors.pendingClearance, Icons.fiber_new_outlined);
+    }
+  }
+}
 
 class MerchantOrdersScreen extends StatefulWidget {
   const MerchantOrdersScreen({super.key});
@@ -179,7 +208,7 @@ class _MerchantOrdersScreenState extends State<MerchantOrdersScreen> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Driver successfully assigned to order!'), backgroundColor: Colors.green),
+          const SnackBar(content: Text('Driver successfully assigned to order!'), backgroundColor: AppColors.cleared),
         );
       }
     } catch (e) {
@@ -220,7 +249,8 @@ class _MerchantOrdersScreenState extends State<MerchantOrdersScreen> {
                 title: Text(driver['full_name'] ?? 'Unnamed Driver'),
                 subtitle: Text('Plate: ${driver['vehicle_plate'] ?? 'N/A'}'),
                 trailing: IconButton(
-                  icon: const Icon(Icons.phone, color: Colors.green),
+                  icon: const Icon(Icons.phone, color: AppColors.cleared),
+                  tooltip: 'Call this driver',
                   onPressed: () => _makePhoneCall(driver['phone_number'] ?? ''),
                 ),
                 onTap: () {
@@ -243,152 +273,236 @@ class _MerchantOrdersScreenState extends State<MerchantOrdersScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+
     return DefaultTabController(
       length: 3,
       child: Scaffold(
-        appBar: AppBar(
-          title: Text('Live Order Pipeline', style: TextStyle(fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurface)),
-          elevation: 0,
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.refresh, color: Colors.blue),
-              tooltip: 'Refresh Orders',
-              onPressed: () => _setupRealtimeSubscription(),
+        body: Column(
+          children: [
+            PortalPageHeader(
+              eyebrow: 'Your station',
+              title: 'Live Order Pipeline',
+              subtitle: 'New orders appear the moment a customer places one',
+              showBack: false,
+              actions: [
+                IconButton(
+                  icon: const Icon(Icons.refresh),
+                  tooltip: 'Refresh orders',
+                  onPressed: () => _setupRealtimeSubscription(),
+                ),
+              ],
+              // A TabBar has a fixed height, so past about 130% system text
+              // the labels clip inside it. Everything else on the page scales
+              // freely -- this is the same clamp the bottom nav uses.
+              bottom: MediaQuery.withClampedTextScaling(
+                maxScaleFactor: 1.3,
+                child: TabBar(
+                  labelColor: scheme.primary,
+                  unselectedLabelColor: scheme.onSurfaceVariant,
+                  indicatorColor: scheme.primary,
+                  tabs: const [
+                    Tab(text: 'New'),
+                    Tab(text: 'Active'),
+                    Tab(text: 'Done'),
+                  ],
+                ),
+              ),
+            ),
+            Expanded(
+              child: _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : TabBarView(
+                      children: [
+                        _buildOrderList(_newOrders, 'pending'),
+                        _buildOrderList(_activeOrders, 'active'),
+                        _buildOrderList(_doneOrders, 'done'),
+                      ],
+                    ),
             ),
           ],
-          bottom: const TabBar(
-            labelColor: Colors.blue,
-            unselectedLabelColor: Colors.grey,
-            indicatorColor: Colors.blue,
-            tabs: [
-              Tab(text: 'New'),
-              Tab(text: 'Active'),
-              Tab(text: 'Done'),
-            ],
-          ),
         ),
-        body: _isLoading
-            ? const Center(child: CircularProgressIndicator())
-            : TabBarView(
-                children: [
-                  _buildOrderList(_newOrders, 'pending'),
-                  _buildOrderList(_activeOrders, 'active'),
-                  _buildOrderList(_doneOrders, 'done'),
-                ],
-              ),
       ),
     );
   }
 
   Widget _buildOrderList(List<dynamic> orders, String listType) {
+    final density = PortalDensity.of(context);
+
     if (orders.isEmpty) {
-      return Center(child: Text('No orders in this pipeline.', style: TextStyle(color: Colors.grey.shade700)));
+      // Inside a ListView rather than a bare Center so pull-to-refresh still
+      // works on an empty tab -- previously the one state where you most
+      // wanted to refresh was the one you couldn't pull.
+      return RefreshIndicator(
+        onRefresh: () async => _setupRealtimeSubscription(),
+        child: ListView(
+          padding: density.pagePadding,
+          children: [
+            const SizedBox(height: 24),
+            _emptyStateFor(listType),
+          ],
+        ),
+      );
     }
 
     return RefreshIndicator(
       onRefresh: () async => _setupRealtimeSubscription(),
       child: ListView.builder(
-        padding: const EdgeInsets.all(16),
+        padding: density.pagePadding,
         itemCount: orders.length,
-        itemBuilder: (context, index) {
-          final order = orders[index];
-          final shortId = order['id'].toString().substring(0, 6).toUpperCase();
+        itemBuilder: (context, index) => _buildOrderCard(orders[index], listType, density),
+      ),
+    );
+  }
 
-          DateTime date = DateTime.parse(order['created_at']);
-          String time = DateFormat('h:mm a').format(date);
+  Widget _emptyStateFor(String listType) {
+    switch (listType) {
+      case 'active':
+        return const PortalEmptyState(
+          icon: Icons.local_shipping_outlined,
+          title: 'Nothing out for delivery',
+          message: 'Orders you have assigned to a driver stay here until they are delivered.',
+        );
+      case 'done':
+        return const PortalEmptyState(
+          icon: Icons.inventory_2_outlined,
+          title: 'No completed orders yet',
+          message: 'Delivered orders are kept here so you can look back over them.',
+        );
+      default:
+        return const PortalEmptyState(
+          icon: Icons.inbox_outlined,
+          title: 'No new orders',
+          message: 'When a customer places an order it appears here straight away -- you do not need to refresh.',
+        );
+    }
+  }
 
-          return Card(
-            elevation: 2,
-            margin: const EdgeInsets.only(bottom: 12),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      CircleAvatar(
-                        backgroundColor: Colors.blue.shade100,
-                        child: const Icon(Icons.water_drop, color: Colors.blue),
-                      ),
-                      const SizedBox(width: 12),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('Order #$shortId', style: const TextStyle(fontWeight: FontWeight.bold)),
-                          Text('Created at $time', style: TextStyle(color: Colors.grey.shade700, fontSize: 12)),
-                        ],
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    '${describeOrderLine(quantity: (order['jugs_ordered'] as num).toInt(), waterType: order['water_type'] as String? ?? '', containerCode: order['jug_type'] as String?, productKind: order['product_kind'] as String?)}'
-                    '  |  Total: ₱${order['total_amount']}',
-                    style: TextStyle(fontWeight: FontWeight.w600, color: Theme.of(context).colorScheme.onSurface),
-                  ),
+  Widget _buildOrderCard(dynamic order, String listType, PortalDensity density) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final status = order['status']?.toString();
+    final look = _OrderLook.of(status);
+    final shortId = order['id'].toString().substring(0, 6).toUpperCase();
+    final time = DateFormat('h:mm a').format(DateTime.parse(order['created_at']));
 
-                  if (listType == 'active') ...[
-                    const SizedBox(height: 8),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        // set_order_status only allows an owner to unassign
-                        // (assigned -> pending); once a driver has actually
-                        // started the delivery (active), this would always
-                        // fail server-side, so it's swapped for a plain
-                        // status label instead of an actionable button.
-                        if (order['status']?.toString().toLowerCase() == 'assigned')
-                          TextButton.icon(
-                            onPressed: () => _unassignOrder(order['id']),
-                            icon: Icon(Icons.person_remove_outlined, size: 16, color: Colors.grey.shade700),
-                            label: Text('Unassign', style: TextStyle(color: Colors.grey.shade700)),
-                          )
-                        else
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                            child: Text('Out for delivery', style: TextStyle(color: Colors.blue.shade700, fontWeight: FontWeight.w600, fontSize: 12)),
-                          ),
-                        TextButton.icon(
-                          onPressed: () {
-                            String customerPhone = order['customer_phone'] ?? order['guest_phone'] ?? '';
-                            _makePhoneCall(customerPhone);
-                          },
-                          icon: const Icon(Icons.phone, size: 16, color: Colors.green),
-                          label: const Text('Call Customer', style: TextStyle(color: Colors.green)),
-                        ),
-                      ],
+    return PortalCard(
+      lift: false,
+      accent: look.color,
+      margin: EdgeInsets.only(bottom: density.gap),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(color: StatusTint.surface(context, look.color), shape: BoxShape.circle),
+                child: Icon(look.icon, color: StatusTint.onTint(context, look.color), size: 20),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Order #$shortId', style: theme.textTheme.titleMedium),
+                    Text(
+                      'Placed at $time',
+                      style: theme.textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
                     ),
                   ],
-
-                  if (listType == 'pending') ...[
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: OutlinedButton(
-                            style: OutlinedButton.styleFrom(foregroundColor: Colors.grey),
-                            onPressed: () => _rejectOrder(order['id']),
-                            child: const Text('REJECT'),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: ElevatedButton(
-                            style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
-                            onPressed: () => _showAssignDriverDialog(order['id']),
-                            child: const Text('ASSIGN & ACCEPT', style: TextStyle(color: Colors.white)),
-                          ),
-                        ),
-                      ],
-                    )
-                  ],
-                ],
+                ),
               ),
+              if (density.isWide) ...[
+                const SizedBox(width: 8),
+                StatusPill(label: look.label, color: look.color),
+              ],
+            ],
+          ),
+          // On a phone the pill takes its own line. Beside the order number
+          // it is a non-flexible child of a Row, so it is laid out with
+          // unbounded width and a label like "OUT FOR DELIVERY" at large
+          // system text never wraps -- it just runs off the card. As a child
+          // of this Column its width is bounded, so it wraps instead.
+          if (!density.isWide) ...[
+            const SizedBox(height: 10),
+            StatusPill(label: look.label, color: look.color),
+          ],
+          const SizedBox(height: 12),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Expanded(
+                child: Text(
+                  describeOrderLine(
+                    quantity: (order['jugs_ordered'] as num).toInt(),
+                    waterType: order['water_type'] as String? ?? '',
+                    containerCode: order['jug_type'] as String?,
+                    productKind: order['product_kind'] as String?,
+                  ),
+                  style: theme.textTheme.bodyMedium,
+                ),
+              ),
+              const SizedBox(width: 12),
+              // The amount is what an owner scans for, so it gets the display
+              // face rather than being run together with the order line.
+              Text(
+                formatPeso((order['total_amount'] as num?)?.toDouble() ?? 0),
+                style: theme.textTheme.titleMedium?.copyWith(
+                  color: scheme.primary,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+          if (listType == 'active') ...[
+            const SizedBox(height: 4),
+            // Wrap rather than Row: at large system text two buttons side by
+            // side no longer fit a phone's width.
+            Wrap(
+              alignment: WrapAlignment.end,
+              spacing: 4,
+              children: [
+                // set_order_status only allows an owner to unassign
+                // (assigned -> pending); once a driver has actually started
+                // the delivery (active), this would always fail server-side,
+                // so it isn't offered as a button then.
+                if (status?.toLowerCase() == 'assigned')
+                  TextButton.icon(
+                    onPressed: () => _unassignOrder(order['id']),
+                    icon: const Icon(Icons.person_remove_outlined, size: 16),
+                    label: const Text('Unassign'),
+                  ),
+                TextButton.icon(
+                  onPressed: () {
+                    String customerPhone = order['customer_phone'] ?? order['guest_phone'] ?? '';
+                    _makePhoneCall(customerPhone);
+                  },
+                  icon: const Icon(Icons.phone, size: 16),
+                  label: const Text('Call customer'),
+                ),
+              ],
             ),
-          );
-        },
+          ],
+          if (listType == 'pending') ...[
+            const SizedBox(height: 14),
+            PortalActionRow(
+              children: [
+                OutlinedButton(
+                  onPressed: () => _rejectOrder(order['id']),
+                  child: const Text('Reject'),
+                ),
+                FilledButton(
+                  onPressed: () => _showAssignDriverDialog(order['id']),
+                  child: const Text('Assign & accept'),
+                ),
+              ],
+            ),
+          ],
+        ],
       ),
     );
   }

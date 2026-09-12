@@ -6,9 +6,11 @@ import '../../models/product.dart';
 import '../../services/bulletin_service.dart';
 import '../../services/product_service.dart';
 import '../../services/supabase_service.dart';
+import '../../constants/app_colors.dart';
 import '../../utils/formatters.dart';
 import '../../widgets/confirm_dialog.dart';
 import '../../widgets/error_state.dart';
+import '../../widgets/portal/portal.dart';
 import '../../utils/error_text.dart';
 
 /// Checks a price an owner typed. Returns what's wrong, or null when valid.
@@ -187,8 +189,9 @@ class _ProductsScreenState extends State<ProductsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final density = PortalDensity.of(context);
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Products & Prices')),
       floatingActionButton: _stationId == null || _isLoading
           ? null
           : FloatingActionButton.extended(
@@ -196,114 +199,175 @@ class _ProductsScreenState extends State<ProductsScreen> {
               icon: const Icon(Icons.add),
               label: const Text('Add product'),
             ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _error != null
-          ? ErrorState(message: _error!, onRetry: _load)
-          : RefreshIndicator(
-              onRefresh: _load,
-              child: ListView(
-                // Bottom padding keeps the last row clear of the FAB.
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
-                children: [
-                  _buildDeliveryFeeCard(),
-                  const SizedBox(height: 20),
-                  if (_products.isEmpty) _buildEmptyState() else ..._buildProductSections(),
-                ],
-              ),
-            ),
+      body: Column(
+        children: [
+          // No showBack: this screen is both a tab in the owner shell and a
+          // pushed screen from the dashboard's "no products" callout, and the
+          // header works out which it is.
+          const PortalPageHeader(
+            eyebrow: 'Your station',
+            title: 'Products & Prices',
+            subtitle: 'What customers can order from you, and what they pay',
+          ),
+          Expanded(
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : _error != null
+                ? ErrorState(message: _error!, onRetry: _load)
+                : RefreshIndicator(
+                    onRefresh: _load,
+                    child: ListView(
+                      // Bottom padding keeps the last row clear of the FAB.
+                      padding: EdgeInsets.fromLTRB(
+                        density.pagePadding.left,
+                        density.pagePadding.top,
+                        density.pagePadding.right,
+                        96,
+                      ),
+                      children: [
+                        _buildDeliveryFeeCard(),
+                        SizedBox(height: density.sectionGap),
+                        if (_products.isEmpty) _buildEmptyState() else ..._buildProductSections(density),
+                      ],
+                    ),
+                  ),
+          ),
+        ],
+      ),
     );
   }
 
   Widget _buildDeliveryFeeCard() {
-    return Card(
-      child: ListTile(
-        leading: const Icon(Icons.delivery_dining_outlined),
-        title: const Text('Delivery fee'),
-        subtitle: Text(_deliveryFee == 0 ? 'Free delivery' : '${formatPeso(_deliveryFee)} per order'),
-        trailing: TextButton(onPressed: _editDeliveryFee, child: const Text('Edit')),
-        onTap: _editDeliveryFee,
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+
+    return PortalCard(
+      onTap: _editDeliveryFee,
+      accent: scheme.primary,
+      child: Row(
+        children: [
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(color: StatusTint.surface(context, scheme.primary), shape: BoxShape.circle),
+            child: Icon(Icons.delivery_dining_outlined, size: 21, color: StatusTint.onTint(context, scheme.primary)),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Delivery fee', style: theme.textTheme.titleMedium),
+                const SizedBox(height: 2),
+                Text(
+                  _deliveryFee == 0 ? 'Free delivery' : '${formatPeso(_deliveryFee)} per order',
+                  style: theme.textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          TextButton(onPressed: _editDeliveryFee, child: const Text('Edit')),
+        ],
       ),
     );
   }
 
   Widget _buildEmptyState() {
-    final theme = Theme.of(context);
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          children: [
-            Icon(Icons.storefront_outlined, size: 48, color: theme.colorScheme.primary),
-            const SizedBox(height: 12),
-            Text("Customers can't order from you yet", style: theme.textTheme.titleLarge, textAlign: TextAlign.center),
-            const SizedBox(height: 8),
-            Text(
-              'List at least one product with its price -- for example, a Purified Slim 5-gal refill. '
-              'Your station becomes orderable as soon as you do.',
-              textAlign: TextAlign.center,
-              style: theme.textTheme.bodyMedium,
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton.icon(
-              onPressed: () => _editProduct(),
-              icon: const Icon(Icons.add),
-              label: const Text('Add your first product'),
-            ),
-          ],
-        ),
+    return PortalEmptyState(
+      icon: Icons.storefront_outlined,
+      title: "Customers can't order from you yet",
+      message: 'List at least one product with its price -- for example, a Purified Slim 5-gal refill. '
+          'Your station becomes orderable as soon as you do.',
+      action: FilledButton.icon(
+        onPressed: () => _editProduct(),
+        icon: const Icon(Icons.add),
+        label: const Text('Add your first product'),
       ),
     );
   }
 
-  List<Widget> _buildProductSections() {
-    final theme = Theme.of(context);
+  List<Widget> _buildProductSections(PortalDensity density) {
     final grouped = groupProductsByWaterType(_products, _containerByCode);
-    return [
-      for (final entry in grouped.entries) ...[
-        Padding(
-          padding: const EdgeInsets.fromLTRB(4, 8, 4, 8),
-          child: Text(waterTypeLabel(entry.key), style: theme.textTheme.titleLarge),
+    final sections = <Widget>[];
+
+    for (final entry in grouped.entries) {
+      if (sections.isNotEmpty) sections.add(SizedBox(height: density.sectionGap));
+      sections.add(PortalSection(
+        title: waterTypeLabel(entry.key),
+        subtitle: entry.value.length == 1 ? '1 product' : '${entry.value.length} products',
+        child: Column(
+          children: [
+            for (var i = 0; i < entry.value.length; i++)
+              _buildProductCard(entry.value[i], last: i == entry.value.length - 1, density: density),
+          ],
         ),
-        Card(
-          child: Column(
-            children: [
-              for (var i = 0; i < entry.value.length; i++) ...[
-                if (i > 0) const Divider(height: 1),
-                _buildProductTile(entry.value[i]),
-              ],
-            ],
-          ),
-        ),
-        const SizedBox(height: 12),
-      ],
-    ];
+      ));
+    }
+
+    return sections;
   }
 
-  Widget _buildProductTile(StationProduct product) {
+  Widget _buildProductCard(StationProduct product, {required bool last, required PortalDensity density}) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
     final container = _containerByCode[product.containerCode];
-    final notes = <String>[
-      if (!product.isAvailable) 'hidden from customers',
-      if (container != null && !container.isActive) 'container retired by the association',
-    ];
-    return ListTile(
-      title: Text(productTitle(product, container)),
-      subtitle: Text([formatPeso(product.price), ...notes].join(' · ')),
+    final retired = container != null && !container.isActive;
+
+    // Green down the edge for something customers can actually order, amber
+    // for something they can't -- readable before the row is read.
+    final tone = product.isAvailable ? AppColors.cleared : AppColors.pendingClearance;
+
+    return PortalCard(
       onTap: () => _editProduct(existing: product),
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
+      accent: tone,
+      margin: EdgeInsets.only(bottom: last ? 0 : density.gap),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Tooltip(
-            message: product.isAvailable ? 'Available -- tap to hide from customers' : 'Hidden -- tap to make available',
-            child: Switch(
-              value: product.isAvailable,
-              onChanged: (value) => _setAvailability(product, value),
-            ),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(child: Text(productTitle(product, container), style: theme.textTheme.titleMedium)),
+              const SizedBox(width: 12),
+              // The price is the thing being managed on this screen, so it
+              // reads as a figure rather than as part of a subtitle line.
+              Text(
+                formatPeso(product.price),
+                style: theme.textTheme.titleMedium?.copyWith(color: scheme.primary, fontWeight: FontWeight.w700),
+              ),
+            ],
           ),
-          IconButton(
-            icon: const Icon(Icons.delete_outline),
-            tooltip: 'Remove product',
-            onPressed: () => _delete(product),
+          if (!product.isAvailable || retired) ...[
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [
+                if (!product.isAvailable)
+                  const StatusPill(label: 'HIDDEN FROM CUSTOMERS', color: AppColors.pendingClearance),
+                if (retired) const StatusPill(label: 'CONTAINER RETIRED', color: AppColors.flagged),
+              ],
+            ),
+          ],
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              Tooltip(
+                message: product.isAvailable
+                    ? 'Available -- tap to hide from customers'
+                    : 'Hidden -- tap to make available',
+                child: Switch(
+                  value: product.isAvailable,
+                  onChanged: (value) => _setAvailability(product, value),
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.delete_outline),
+                tooltip: 'Remove product',
+                onPressed: () => _delete(product),
+              ),
+            ],
           ),
         ],
       ),
