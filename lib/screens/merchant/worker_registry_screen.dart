@@ -78,7 +78,10 @@ class _WorkerRegistryScreenState extends State<WorkerRegistryScreen> {
             Center(
               child: Text(
                 _inviteCode ?? '—',
-                style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, letterSpacing: 2),
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 2,
+                    ),
               ),
             ),
           ],

@@ -1,4 +1,5 @@
 import 'package:aquaroute/constants/admin_theme.dart';
+import 'package:aquaroute/constants/app_colors.dart';
 import 'package:aquaroute/constants/app_theme.dart';
 import 'package:aquaroute/widgets/portal/portal.dart';
 import 'package:flutter/material.dart';
@@ -410,6 +411,63 @@ void main() {
               );
             }
           }
+        }
+      }
+    });
+  });
+
+  /// Every pill, stat tile, accent circle and callout in both portals draws
+  /// StatusTint.onTint over StatusTint.surface. The palettes themselves are
+  /// covered in admin_theme_dark_test.dart, but these colours are derived at
+  /// paint time from a semantic accent, so they need their own check -- a
+  /// deep green or amber sinking into a dark surface is exactly the fault the
+  /// tint was introduced to fix.
+  group('StatusTint contrast', () {
+    double contrast(Color a, Color b) {
+      final la = a.computeLuminance();
+      final lb = b.computeLuminance();
+      final lighter = la > lb ? la : lb;
+      final darker = la > lb ? lb : la;
+      return (lighter + 0.05) / (darker + 0.05);
+    }
+
+    // The four semantic colours the portals actually use, plus the two brand
+    // accents that appear on nav and content cards.
+    const accents = <String, Color>{
+      'cleared': AppColors.cleared,
+      'pending': AppColors.pendingClearance,
+      'flagged': AppColors.flagged,
+      'muted': AppColors.inkMuted,
+      'primary': AppColors.primary,
+      'accent': AppColors.accent,
+    };
+
+    testWidgets('tinted labels stay legible on their own tint, in every theme', (tester) async {
+      for (final theme in _themes.entries) {
+        for (final accent in accents.entries) {
+          late Color foreground;
+          late Color background;
+          late Color surface;
+
+          await _pump(
+            tester,
+            theme.value,
+            Builder(builder: (context) {
+              foreground = StatusTint.onTint(context, accent.value);
+              background = StatusTint.surface(context, accent.value);
+              surface = Theme.of(context).colorScheme.surface;
+              return const SizedBox();
+            }),
+          );
+
+          // The tint is translucent, so what the eye sees is the tint composited
+          // over the card beneath it.
+          final composited = Color.alphaBlend(background, surface);
+          expect(
+            contrast(foreground, composited),
+            greaterThan(3.0),
+            reason: '${accent.key} on ${theme.key}',
+          );
         }
       }
     });

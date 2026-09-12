@@ -480,7 +480,7 @@ class _AccreditationPin extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = !isActive ? Colors.grey : (isAccredited ? AppColors.cleared : AppColors.pendingClearance);
+    final color = !isActive ? AppColors.inkMuted : (isAccredited ? AppColors.cleared : AppColors.pendingClearance);
     return Opacity(
       opacity: isActive ? 1.0 : 0.6,
       child: Container(

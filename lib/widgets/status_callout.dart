@@ -25,12 +25,45 @@ class StatusTint {
     return accent.withValues(alpha: isDark ? 0.45 : 0.30);
   }
 
-  /// The accent as text or an icon on that tint -- lightened on dark so a
-  /// deep amber or green doesn't sink into the background.
+  /// The accent as text or an icon on that tint.
+  ///
+  /// This used to return the accent unchanged in light mode and a flat 45%
+  /// lerp toward white in dark -- both assumed a contrast they never checked.
+  /// The association's amber (#F9A825) failed badly: amber text on a 10%
+  /// amber wash over a near-white card measured 1.84:1, so every PENDING,
+  /// RENEWAL DUE and IDLE label in both portals was close to unreadable.
+  ///
+  /// So it now moves the accent toward black (light) or white (dark) until it
+  /// actually clears the target against the tint as composited over the
+  /// surface beneath. Colours that already passed -- the deep green and red --
+  /// barely move; the amber darkens until it reads. Any accent added later is
+  /// corrected the same way rather than needing to be hand-checked.
   static Color onTint(BuildContext context, Color accent) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    if (!isDark) return accent;
-    return Color.lerp(accent, Colors.white, 0.45)!;
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final background = Color.alphaBlend(surface(context, accent), theme.colorScheme.surface);
+    final toward = isDark ? Colors.white : Colors.black;
+
+    var candidate = isDark ? Color.lerp(accent, Colors.white, 0.45)! : accent;
+    // 12 steps of 5% is enough to carry any hue to the target without ever
+    // reaching the flat black or white that would throw the meaning away.
+    for (var i = 0; i < 12; i++) {
+      if (_contrast(candidate, background) >= _targetContrast) return candidate;
+      candidate = Color.lerp(candidate, toward, 0.05)!;
+    }
+    return candidate;
+  }
+
+  /// WCAG AA for normal-size text. Pill labels are small and bold, so this is
+  /// the stricter of the two thresholds, deliberately.
+  static const _targetContrast = 4.5;
+
+  static double _contrast(Color a, Color b) {
+    final la = a.computeLuminance();
+    final lb = b.computeLuminance();
+    final lighter = la > lb ? la : lb;
+    final darker = la > lb ? lb : la;
+    return (lighter + 0.05) / (darker + 0.05);
   }
 }
 
