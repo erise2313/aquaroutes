@@ -20,5 +20,6 @@ export 'portal_density.dart';
 export 'portal_empty_state.dart';
 export 'portal_page_header.dart';
 export 'portal_section.dart';
+export 'portal_shell.dart';
 export 'portal_stat_tile.dart';
 export 'status_pill.dart';
