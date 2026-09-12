@@ -353,6 +353,68 @@ void main() {
     });
   });
 
+  // The owner Profile's two risky rows: the identity hero, where an avatar
+  // sits beside a name and email that have to absorb every text size, and the
+  // opening-hours row, which is the two-buttons-in-Expandeds pattern that
+  // overflowed on Orders.
+  group('owner profile composition', () {
+    Widget hero() => Container(
+          padding: const EdgeInsets.all(22),
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(colors: [Colors.blue, Colors.cyan]),
+          ),
+          child: const Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              CircleAvatar(radius: 30, child: Icon(Icons.storefront)),
+              SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Maria Dela Cruz', style: TextStyle(fontSize: 19, fontWeight: FontWeight.bold)),
+                    SizedBox(height: 4),
+                    Text('Buenavista Water Refilling Station\nowner@buenavista-station.example.com'),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+
+    Widget hours() => PortalActionRow(
+          children: [
+            OutlinedButton.icon(
+              onPressed: () {},
+              icon: const Icon(Icons.schedule, size: 18),
+              label: const Text('Opens 7:00 AM'),
+            ),
+            OutlinedButton.icon(
+              onPressed: () {},
+              icon: const Icon(Icons.schedule, size: 18),
+              label: const Text('Closes 7:00 PM'),
+            ),
+          ],
+        );
+
+    testWidgets('hero and hours lay out without overflow at every width and text size', (tester) async {
+      for (final entry in {'hero': hero, 'hours': hours}.entries) {
+        for (final theme in [AppTheme.light, AppTheme.dark]) {
+          for (final width in [360.0, 768.0, 1280.0]) {
+            for (final scale in [1.0, 1.3, 2.0]) {
+              await _pump(tester, theme, entry.value(), size: Size(width, 900), textScale: scale);
+              expect(
+                tester.takeException(),
+                isNull,
+                reason: '${entry.key} at ${width}px, text scale $scale',
+              );
+            }
+          }
+        }
+      }
+    });
+  });
+
   group('PortalDensity', () {
     test('phone and desk get different spacing, from one decision', () {
       final phone = PortalDensity.forWidth(360);

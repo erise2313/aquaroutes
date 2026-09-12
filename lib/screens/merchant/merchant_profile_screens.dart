@@ -9,9 +9,10 @@ import '../../services/supabase_service.dart';
 import '../public/info/about_wasa_hub_screen.dart';
 import '../app_route.dart';
 import 'products_screen.dart';
+import '../../constants/app_colors.dart';
 import '../../widgets/account_settings_section.dart';
 import '../../widgets/app_theme_toggle.dart';
-import '../../widgets/status_callout.dart';
+import '../../widgets/portal/portal.dart';
 import '../../utils/error_text.dart';
 
 /// Builds the `profiles` table update payload (trimmed). Split from
@@ -290,247 +291,155 @@ class _MerchantProfileScreenState extends State<MerchantProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          "Station Profile",
-          style: TextStyle(fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurface),
-        ),
-        elevation: 0,
-        actions: const [AppThemeToggle()],
+      body: Column(
+        children: [
+          const PortalPageHeader(
+            eyebrow: 'Your station',
+            title: 'Station Profile',
+            subtitle: 'Who you are, what customers see, and where to find you',
+            showBack: false,
+            actions: [AppThemeToggle()],
+          ),
+          Expanded(
+            child: _isLoading ? const Center(child: CircularProgressIndicator()) : _buildProfileContent(),
+          ),
+        ],
       ),
-      body: _isLoading ? const Center(child: CircularProgressIndicator()) : _buildProfileContent(),
     );
   }
 
   Widget _buildProfileContent() {
-    final String ownerName = _profileData?['full_name'] ?? "Unknown Owner";
-    final String stationName = _stationData?['station_name'] ?? "Unnamed Station";
-    final String email = supabase.auth.currentUser?.email ?? "";
+    final density = PortalDensity.of(context);
     final bool isAccredited = _stationData?['is_accredited'] as bool? ?? false;
 
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Expanded(
-              child: SingleChildScrollView(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
+    // Everything scrolls now. The resources, account and logout controls used
+    // to sit outside the scroll view in a fixed column, so at large system
+    // text they had nowhere to go and squeezed the forms above them.
+    return ListView(
+      padding: density.pagePadding,
+      children: [
+        _buildIdentityHero(),
+        SizedBox(height: density.sectionGap),
+        _buildAccreditationBanner(isAccredited),
+        SizedBox(height: density.sectionGap),
+        PortalSection(
+          title: 'Station details',
+          subtitle: 'What customers see about you and how you take orders',
+          child: _buildDetailTabs(density),
+        ),
+        SizedBox(height: density.sectionGap),
+        PortalSection(
+          title: 'Account',
+          child: Column(
+            children: [
+              PortalCard(
+                onTap: () => Navigator.push(context, appRoute(const AboutWasaHubScreen())),
+                accent: AppColors.seal,
+                margin: EdgeInsets.only(bottom: density.gap),
+                child: Row(
                   children: [
-                    Container(
-                      padding: const EdgeInsets.all(24),
-                      decoration: BoxDecoration(
-                        color: Colors.blue.shade600,
-                        borderRadius: BorderRadius.circular(20),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.blue.withValues(alpha: 0.2),
-                            blurRadius: 10,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: Row(
-                        children: [
-                          GestureDetector(
-                            onTap: _isUploadingAvatar ? null : _pickAndUploadAvatar,
-                            child: Stack(
-                              alignment: Alignment.bottomRight,
-                              children: [
-                                CircleAvatar(
-                                  radius: 30,
-                                  backgroundColor: Colors.white,
-                                  backgroundImage: _avatarUrl != null ? NetworkImage(_avatarUrl!) : null,
-                                  child: _isUploadingAvatar
-                                      ? const CircularProgressIndicator()
-                                      : (_avatarUrl == null ? const Icon(Icons.storefront, size: 35, color: Colors.blue) : null),
-                                ),
-                                Container(
-                                  padding: const EdgeInsets.all(4),
-                                  decoration: const BoxDecoration(color: Colors.blue, shape: BoxShape.circle),
-                                  child: const Icon(Icons.camera_alt, size: 12, color: Colors.white),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  ownerName,
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  "$stationName\n$email",
-                                  style: const TextStyle(
-                                    color: Colors.white70,
-                                    fontSize: 14,
-                                    height: 1.4,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
+                    Icon(Icons.info_outline, color: StatusTint.onTint(context, AppColors.seal)),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Text('WASA Resources', style: Theme.of(context).textTheme.titleMedium),
                     ),
-                    const SizedBox(height: 24),
-                    const Divider(),
-                    const SizedBox(height: 24),
-                    _buildAccreditationBanner(isAccredited),
-                    const SizedBox(height: 24),
-                    DefaultTabController(
-                      length: 3,
-                      initialIndex: _selectedTabIndex,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          TabBar(
-                            onTap: (index) => setState(() => _selectedTabIndex = index),
-                            labelColor: Colors.blue.shade700,
-                            unselectedLabelColor: Colors.grey,
-                            indicatorColor: Colors.blue.shade700,
-                            tabs: const [
-                              Tab(text: 'Profile'),
-                              Tab(text: 'Station Info'),
-                              Tab(text: 'Location'),
-                            ],
-                          ),
-                          const SizedBox(height: 16),
-                          SizedBox(
-                            // TabBarView needs a bounded height, but a fixed
-                            // one clipped the forms once the system font size
-                            // was turned up, so it grows with it.
-                            height: 380 * MediaQuery.textScalerOf(context).scale(1.0).clamp(1.0, 2.0).toDouble(),
-                            child: TabBarView(
-                              children: [
-                                _buildEditableProfileForm(),
-                                _buildEditableStationForm(),
-                                _buildLocationForm(),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+                    Icon(Icons.chevron_right, color: Theme.of(context).colorScheme.onSurfaceVariant),
                   ],
                 ),
               ),
-            ),
-            const SizedBox(height: 12),
-            OutlinedButton.icon(
-              onPressed: () => Navigator.push(context, appRoute(const AboutWasaHubScreen())),
-              style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              PortalCard(
+                lift: false,
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                margin: EdgeInsets.only(bottom: density.gap),
+                child: const AccountSettingsSection(),
               ),
-              icon: const Icon(Icons.info_outline),
-              label: const Text('WASA Resources'),
-            ),
-            const SizedBox(height: 16),
-            const Card(
-              child: Padding(
-                padding: EdgeInsets.symmetric(vertical: 8),
-                child: AccountSettingsSection(),
-              ),
-            ),
-            const SizedBox(height: 16),
-            OutlinedButton.icon(
-              onPressed: _isLoggingOut ? null : _logout,
-              style: OutlinedButton.styleFrom(
-                foregroundColor: Colors.redAccent,
-                side: const BorderSide(color: Colors.redAccent, width: 1.5),
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+              OutlinedButton.icon(
+                onPressed: _isLoggingOut ? null : _logout,
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Theme.of(context).colorScheme.error,
+                  side: BorderSide(color: Theme.of(context).colorScheme.error, width: 1.5),
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
-              ),
-              icon: _isLoggingOut
-                  ? const SizedBox(
-                      height: 20,
-                      width: 20,
-                      child: CircularProgressIndicator(
-                        color: Colors.redAccent,
-                        strokeWidth: 2,
-                      ),
-                    )
-                  : const Icon(Icons.logout),
-              label: const Text(
-                "SECURE LOGOUT",
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 1.2,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildAccreditationBanner(bool isAccredited) {
-    if (isAccredited) {
-      return const StatusCallout(
-        accent: Colors.green,
-        icon: Icons.verified,
-        title: 'WASA Accredited. Your station is visible to the public.',
-      );
-    }
-
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: StatusTint.surface(context, Colors.amber),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: StatusTint.border(context, Colors.amber)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(
-                Icons.warning_amber_rounded,
-                color: Colors.amber.shade700,
-                size: 28,
-              ),
-              const SizedBox(width: 12),
-              const Text(
-                "Action Required",
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                icon: _isLoggingOut
+                    ? SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(
+                          color: Theme.of(context).colorScheme.error,
+                          strokeWidth: 2,
+                        ),
+                      )
+                    : const Icon(Icons.logout),
+                label: const Text('Sign out', style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 0.6)),
               ),
             ],
           ),
-          const SizedBox(height: 8),
-          Text(
-            "Your station isn't accredited yet. Upload your permits so WASA can review them.",
-            style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
-          ),
-          const SizedBox(height: 16),
-          ElevatedButton.icon(
-            onPressed: () => Navigator.push(context, appRoute(const PermitVaultScreen())),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.amber.shade600,
-              foregroundColor: Colors.white,
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
+        ),
+      ],
+    );
+  }
+
+  /// The station's identity, on the brand gradient the public site uses for
+  /// its hero. Was a flat Colors.blue.shade600 block that stayed the same
+  /// bright blue in dark mode.
+  Widget _buildIdentityHero() {
+    final String ownerName = _profileData?['full_name'] ?? 'Unknown Owner';
+    final String stationName = _stationData?['station_name'] ?? 'Unnamed Station';
+    final String email = supabase.auth.currentUser?.email ?? '';
+
+    return Container(
+      padding: const EdgeInsets.all(22),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [AppColors.primary, AppColors.accent],
+        ),
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          GestureDetector(
+            onTap: _isUploadingAvatar ? null : _pickAndUploadAvatar,
+            child: Stack(
+              alignment: Alignment.bottomRight,
+              children: [
+                CircleAvatar(
+                  radius: 30,
+                  backgroundColor: Colors.white,
+                  backgroundImage: _avatarUrl != null ? NetworkImage(_avatarUrl!) : null,
+                  child: _isUploadingAvatar
+                      ? const CircularProgressIndicator()
+                      : (_avatarUrl == null ? const Icon(Icons.storefront, size: 34, color: AppColors.primary) : null),
+                ),
+                Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: const BoxDecoration(color: AppColors.primary, shape: BoxShape.circle),
+                  child: const Icon(Icons.camera_alt, size: 12, color: Colors.white),
+                ),
+              ],
             ),
-            icon: const Icon(Icons.upload_file),
-            label: const Text(
-              "OPEN PERMIT VAULT",
-              style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // White on the gradient in both modes: the band is dark
+                // either way, so this is one of the few places a fixed
+                // foreground colour is the correct answer.
+                Text(
+                  ownerName,
+                  style: const TextStyle(color: Colors.white, fontSize: 19, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '$stationName\n$email',
+                  style: const TextStyle(color: Colors.white70, fontSize: 14, height: 1.4),
+                ),
+              ],
             ),
           ),
         ],
@@ -538,281 +447,340 @@ class _MerchantProfileScreenState extends State<MerchantProfileScreen> {
     );
   }
 
-  Widget _buildEditableProfileForm() {
-    return SingleChildScrollView(
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surfaceContainerHighest,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
-        ),
-        child: Column(
-          children: [
-            _buildInputField(
-              controller: _fullNameController,
-              label: 'Owner Name',
-              hint: 'Enter your full name',
+  /// The three forms, with the selected one rendered directly beneath the
+  /// tabs.
+  ///
+  /// This was a TabBarView, which demands a bounded height inside a scrolling
+  /// column -- the height was a hand-tuned 380px multiplied by the text scale,
+  /// which clipped long forms at some sizes and left dead space at others.
+  /// Showing one form at a time needs no height at all.
+  Widget _buildDetailTabs(PortalDensity density) {
+    final scheme = Theme.of(context).colorScheme;
+
+    return DefaultTabController(
+      length: 3,
+      initialIndex: _selectedTabIndex,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // A TabBar's height is fixed, so its labels clip past about 130%
+          // system text. The forms below it scale freely.
+          MediaQuery.withClampedTextScaling(
+            maxScaleFactor: 1.3,
+            child: TabBar(
+              onTap: (index) => setState(() => _selectedTabIndex = index),
+              labelColor: scheme.primary,
+              unselectedLabelColor: scheme.onSurfaceVariant,
+              indicatorColor: scheme.primary,
+              tabs: const [
+                Tab(text: 'Profile'),
+                Tab(text: 'Station Info'),
+                Tab(text: 'Location'),
+              ],
             ),
-            const SizedBox(height: 12),
-            _buildInputField(
-              controller: _phoneController,
-              label: 'Phone Number',
-              hint: 'Enter contact phone number',
-              keyboardType: TextInputType.phone,
-            ),
-            const SizedBox(height: 16),
-            Align(
-              alignment: Alignment.centerRight,
-              child: ElevatedButton.icon(
-                onPressed: _isSaving ? null : _saveProfile,
-                icon: _isSaving
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.save),
-                label: Text(_isSaving ? 'Saving...' : 'Save Changes'),
+          ),
+          SizedBox(height: density.gap),
+          switch (_selectedTabIndex) {
+            1 => _buildEditableStationForm(),
+            2 => _buildLocationForm(),
+            _ => _buildEditableProfileForm(),
+          },
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAccreditationBanner(bool isAccredited) {
+    final theme = Theme.of(context);
+
+    if (isAccredited) {
+      return const StatusCallout(
+        accent: AppColors.cleared,
+        icon: Icons.verified,
+        title: 'WASA Accredited. Your station is visible to the public.',
+      );
+    }
+
+    return PortalCard(
+      lift: false,
+      accent: AppColors.pendingClearance,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.warning_amber_rounded,
+                color: StatusTint.onTint(context, AppColors.pendingClearance),
+                size: 26,
               ),
-            ),
-          ],
+              const SizedBox(width: 12),
+              Expanded(child: Text('Action required', style: theme.textTheme.titleMedium)),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            "Your station isn't accredited yet. Upload your permits so WASA can review them.",
+            style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+          ),
+          const SizedBox(height: 16),
+          PortalActionRow(
+            children: [
+              FilledButton.icon(
+                onPressed: () => Navigator.push(context, appRoute(const PermitVaultScreen())),
+                icon: const Icon(Icons.upload_file),
+                label: const Text('Open Permit Vault'),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// The save control every form ends with.
+  Widget _buildSaveButton({String label = 'Save changes'}) {
+    return PortalActionRow(
+      children: [
+        FilledButton.icon(
+          onPressed: _isSaving ? null : _saveProfile,
+          icon: _isSaving
+              ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+              : const Icon(Icons.save),
+          label: Text(_isSaving ? 'Saving...' : label),
         ),
+      ],
+    );
+  }
+
+  Widget _buildEditableProfileForm() {
+    return PortalCard(
+      lift: false,
+      child: Column(
+        children: [
+          _buildInputField(
+            controller: _fullNameController,
+            label: 'Owner name',
+            hint: 'Enter your full name',
+          ),
+          const SizedBox(height: 12),
+          _buildInputField(
+            controller: _phoneController,
+            label: 'Phone number',
+            hint: 'Enter contact phone number',
+            keyboardType: TextInputType.phone,
+          ),
+          const SizedBox(height: 16),
+          _buildSaveButton(),
+        ],
       ),
     );
   }
 
   Widget _buildEditableStationForm() {
-    return SingleChildScrollView(
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surfaceContainerHighest,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
-        ),
-        child: Column(
-          children: [
-            GestureDetector(
-              onTap: _isUploadingStationPhoto ? null : _pickAndUploadStationPhoto,
-              child: Container(
-                height: 120,
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                  borderRadius: BorderRadius.circular(12),
-                  image: _stationPhotoUrl != null
-                      ? DecorationImage(image: NetworkImage(_stationPhotoUrl!), fit: BoxFit.cover)
-                      : null,
-                ),
-                child: _isUploadingStationPhoto
-                    ? const Center(child: CircularProgressIndicator())
-                    : (_stationPhotoUrl == null
-                        ? Center(
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(Icons.add_a_photo_outlined, color: Colors.grey.shade700),
-                                const SizedBox(height: 4),
-                                Text('Add Station Photo', style: TextStyle(color: Colors.grey.shade700, fontSize: 12)),
-                              ],
-                            ),
-                          )
-                        : Align(
-                            alignment: Alignment.bottomRight,
-                            child: Container(
-                              margin: const EdgeInsets.all(8),
-                              padding: const EdgeInsets.all(6),
-                              decoration: const BoxDecoration(color: Colors.black54, shape: BoxShape.circle),
-                              child: const Icon(Icons.camera_alt, size: 16, color: Colors.white),
-                            ),
-                          )),
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+
+    return PortalCard(
+      lift: false,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          GestureDetector(
+            onTap: _isUploadingStationPhoto ? null : _pickAndUploadStationPhoto,
+            child: Container(
+              height: 120,
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: scheme.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: scheme.outlineVariant),
+                image: _stationPhotoUrl != null
+                    ? DecorationImage(image: NetworkImage(_stationPhotoUrl!), fit: BoxFit.cover)
+                    : null,
               ),
+              child: _isUploadingStationPhoto
+                  ? const Center(child: CircularProgressIndicator())
+                  : (_stationPhotoUrl == null
+                      ? Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.add_a_photo_outlined, color: scheme.onSurfaceVariant),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Add station photo',
+                                style: theme.textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+                              ),
+                            ],
+                          ),
+                        )
+                      : Align(
+                          alignment: Alignment.bottomRight,
+                          child: Container(
+                            margin: const EdgeInsets.all(8),
+                            padding: const EdgeInsets.all(6),
+                            decoration: const BoxDecoration(color: Colors.black54, shape: BoxShape.circle),
+                            child: const Icon(Icons.camera_alt, size: 16, color: Colors.white),
+                          ),
+                        )),
             ),
-            const SizedBox(height: 16),
-            _buildInputField(
-              controller: _stationNameController,
-              label: 'Station Name',
-              hint: 'Your station name',
+          ),
+          const SizedBox(height: 16),
+          _buildInputField(
+            controller: _stationNameController,
+            label: 'Station name',
+            hint: 'Your station name',
+          ),
+          const SizedBox(height: 12),
+          _buildInputField(
+            controller: _stationAddressController,
+            label: 'Station address',
+            hint: 'Full address for customers',
+            maxLines: 3,
+          ),
+          const SizedBox(height: 12),
+          _buildInputField(
+            controller: _emailController,
+            label: 'Email',
+            hint: 'Your contact email',
+            readOnly: true,
+          ),
+          const SizedBox(height: 16),
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            value: _isAcceptingOrders,
+            onChanged: (v) => setState(() => _isAcceptingOrders = v),
+            title: Text('Accepting orders', style: theme.textTheme.titleSmall),
+            subtitle: Text(
+              'Turn off when closed -- customers will see this station as closed and can\'t order.',
+              style: theme.textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
             ),
-            const SizedBox(height: 12),
-            _buildInputField(
-              controller: _stationAddressController,
-              label: 'Station Address',
-              hint: 'Full address for customers',
-              maxLines: 3,
+          ),
+          const Divider(),
+          // Water types and containers used to be chips here, with no price
+          // anywhere. They now come from the station's products, where each
+          // one carries its own price.
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: const Icon(Icons.sell_outlined),
+            title: Text('Products & prices', style: theme.textTheme.titleSmall),
+            subtitle: Text(
+              'Water types, containers, prices and delivery fee',
+              style: theme.textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
             ),
-            const SizedBox(height: 12),
-            _buildInputField(
-              controller: _emailController,
-              label: 'Email',
-              hint: 'Your contact email',
-              readOnly: true,
-              backgroundColor: Colors.grey.shade100,
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => Navigator.push(context, appRoute(const ProductsScreen())),
+          ),
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            value: _offersJugExchange,
+            onChanged: (v) => setState(() => _offersJugExchange = v),
+            title: Text('Accepts jug exchange', style: theme.textTheme.titleSmall),
+            subtitle: Text(
+              'Customers can bring an empty jug of any brand and swap it for a full one.',
+              style: theme.textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
             ),
-            const SizedBox(height: 16),
-            SwitchListTile(
-              contentPadding: EdgeInsets.zero,
-              value: _isAcceptingOrders,
-              onChanged: (v) => setState(() => _isAcceptingOrders = v),
-              title: const Text('Accepting Orders', style: TextStyle(fontWeight: FontWeight.w600)),
-              subtitle: const Text('Turn off when closed -- customers will see this station as closed and can\'t order.', style: TextStyle(fontSize: 12)),
-            ),
-            const Divider(),
-            // Water types and containers used to be chips here, with no price
-            // anywhere. They now come from the station's products, where each
-            // one carries its own price.
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: const Icon(Icons.sell_outlined),
-              title: const Text('Products & prices', style: TextStyle(fontWeight: FontWeight.w600)),
-              subtitle: const Text('Water types, containers, prices and delivery fee', style: TextStyle(fontSize: 12)),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () => Navigator.push(context, appRoute(const ProductsScreen())),
-            ),
-            SwitchListTile(
-              contentPadding: EdgeInsets.zero,
-              value: _offersJugExchange,
-              onChanged: (v) => setState(() => _offersJugExchange = v),
-              title: const Text('Accepts Jug Exchange', style: TextStyle(fontWeight: FontWeight.w600)),
-              subtitle: const Text('Customers can bring an empty jug of any brand and swap it for a full one.', style: TextStyle(fontSize: 12)),
-            ),
-            const Divider(),
-            const Align(alignment: Alignment.centerLeft, child: Text('Operating Hours', style: TextStyle(fontWeight: FontWeight.w600))),
-            const SizedBox(height: 4),
-            const Text(
-              'Leave every day checked with no times set to stay always-open (today\'s default behavior).',
-              style: TextStyle(fontSize: 12, color: Colors.grey),
-            ),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 6,
-              children: [
-                for (final entry in const {1: 'Mon', 2: 'Tue', 3: 'Wed', 4: 'Thu', 5: 'Fri', 6: 'Sat', 7: 'Sun'}.entries)
-                  FilterChip(
-                    label: Text(entry.value),
-                    selected: _operatingDays.contains(entry.key),
-                    onSelected: (v) => setState(() => v ? _operatingDays.add(entry.key) : _operatingDays.remove(entry.key)),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: () async {
-                      final picked = await showTimePicker(context: context, initialTime: _opensAt ?? const TimeOfDay(hour: 7, minute: 0));
-                      if (picked != null) setState(() => _opensAt = picked);
-                    },
-                    icon: const Icon(Icons.schedule, size: 18),
-                    label: Text(_opensAt == null ? 'Opens...' : 'Opens ${_opensAt!.format(context)}'),
-                  ),
+          ),
+          const Divider(),
+          const SizedBox(height: 4),
+          Text('Operating hours', style: theme.textTheme.titleSmall),
+          const SizedBox(height: 4),
+          Text(
+            'Leave every day checked with no times set to stay always open.',
+            style: theme.textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: [
+              for (final entry in const {1: 'Mon', 2: 'Tue', 3: 'Wed', 4: 'Thu', 5: 'Fri', 6: 'Sat', 7: 'Sun'}.entries)
+                FilterChip(
+                  label: Text(entry.value),
+                  selected: _operatingDays.contains(entry.key),
+                  onSelected: (v) => setState(() => v ? _operatingDays.add(entry.key) : _operatingDays.remove(entry.key)),
                 ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: () async {
-                      final picked = await showTimePicker(context: context, initialTime: _closesAt ?? const TimeOfDay(hour: 19, minute: 0));
-                      if (picked != null) setState(() => _closesAt = picked);
-                    },
-                    icon: const Icon(Icons.schedule, size: 18),
-                    label: Text(_closesAt == null ? 'Closes...' : 'Closes ${_closesAt!.format(context)}'),
-                  ),
-                ),
-                if (_opensAt != null || _closesAt != null)
-                  IconButton(
-                    tooltip: 'Clear hours',
-                    icon: const Icon(Icons.close),
-                    onPressed: () => setState(() {
-                      _opensAt = null;
-                      _closesAt = null;
-                    }),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 16),
+            ],
+          ),
+          const SizedBox(height: 12),
+          // Two buttons in Expandeds is the pattern that overflowed a 360px
+          // phone at large text on Orders, so the hours go through the same
+          // action row that stacks them when they don't fit.
+          PortalActionRow(
+            children: [
+              OutlinedButton.icon(
+                onPressed: () async {
+                  final picked = await showTimePicker(context: context, initialTime: _opensAt ?? const TimeOfDay(hour: 7, minute: 0));
+                  if (picked != null) setState(() => _opensAt = picked);
+                },
+                icon: const Icon(Icons.schedule, size: 18),
+                label: Text(_opensAt == null ? 'Opens...' : 'Opens ${_opensAt!.format(context)}'),
+              ),
+              OutlinedButton.icon(
+                onPressed: () async {
+                  final picked = await showTimePicker(context: context, initialTime: _closesAt ?? const TimeOfDay(hour: 19, minute: 0));
+                  if (picked != null) setState(() => _closesAt = picked);
+                },
+                icon: const Icon(Icons.schedule, size: 18),
+                label: Text(_closesAt == null ? 'Closes...' : 'Closes ${_closesAt!.format(context)}'),
+              ),
+            ],
+          ),
+          if (_opensAt != null || _closesAt != null)
             Align(
-              alignment: Alignment.centerRight,
-              child: ElevatedButton.icon(
-                onPressed: _isSaving ? null : _saveProfile,
-                icon: _isSaving
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.save),
-                label: Text(_isSaving ? 'Saving...' : 'Save Changes'),
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                icon: const Icon(Icons.close, size: 16),
+                label: const Text('Clear hours'),
+                onPressed: () => setState(() {
+                  _opensAt = null;
+                  _closesAt = null;
+                }),
               ),
             ),
-          ],
-        ),
+          const SizedBox(height: 16),
+          _buildSaveButton(),
+        ],
       ),
     );
   }
 
   Widget _buildLocationForm() {
-    return SingleChildScrollView(
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surfaceContainerHighest,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
-        ),
-        child: Column(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.blue.shade50,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.blue.shade200),
-              ),
-              child: const Text(
-                'Add your station location so customers can find you on the map.',
-                style: TextStyle(fontSize: 12, color: Colors.blue),
-              ),
-            ),
-            const SizedBox(height: 16),
-            _buildInputField(
-              controller: _latitudeController,
-              label: 'Latitude',
-              hint: 'e.g., 14.3868',
-            ),
-            const SizedBox(height: 12),
-            _buildInputField(
-              controller: _longitudeController,
-              label: 'Longitude',
-              hint: 'e.g., 120.8817',
-            ),
-            const SizedBox(height: 16),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
+    return PortalCard(
+      lift: false,
+      child: Column(
+        children: [
+          StatusCallout(
+            accent: Theme.of(context).colorScheme.primary,
+            icon: Icons.map_outlined,
+            title: 'Add your station location so customers can find you on the map.',
+          ),
+          const SizedBox(height: 16),
+          _buildInputField(
+            controller: _latitudeController,
+            label: 'Latitude',
+            hint: 'e.g., 14.3868',
+          ),
+          const SizedBox(height: 12),
+          _buildInputField(
+            controller: _longitudeController,
+            label: 'Longitude',
+            hint: 'e.g., 120.8817',
+          ),
+          const SizedBox(height: 16),
+          PortalActionRow(
+            children: [
+              OutlinedButton.icon(
                 onPressed: _openLocationPicker,
                 icon: const Icon(Icons.location_on),
-                label: const Text('Pick from Map'),
+                label: const Text('Pick from map'),
               ),
-            ),
-            const SizedBox(height: 12),
-            Align(
-              alignment: Alignment.centerRight,
-              child: ElevatedButton.icon(
-                onPressed: _isSaving ? null : _saveProfile,
-                icon: _isSaving
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.save),
-                label: Text(_isSaving ? 'Saving...' : 'Save Location'),
-              ),
-            ),
-          ],
-        ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          _buildSaveButton(label: 'Save location'),
+        ],
       ),
     );
   }
@@ -823,9 +791,10 @@ class _MerchantProfileScreenState extends State<MerchantProfileScreen> {
     required String hint,
     int maxLines = 1,
     bool readOnly = false,
-    Color? backgroundColor,
     TextInputType keyboardType = TextInputType.text,
   }) {
+    final scheme = Theme.of(context).colorScheme;
+
     return TextField(
       controller: controller,
       maxLines: maxLines,
@@ -834,16 +803,19 @@ class _MerchantProfileScreenState extends State<MerchantProfileScreen> {
       decoration: InputDecoration(
         labelText: label,
         hintText: hint,
-        filled: readOnly || backgroundColor != null,
-        fillColor: backgroundColor ?? Colors.transparent,
+        // A read-only field is filled so it reads as "shown, not editable" --
+        // it used to be a fixed grey.shade100, which was all but invisible in
+        // dark mode.
+        filled: readOnly,
+        fillColor: readOnly ? scheme.surfaceContainerHighest : Colors.transparent,
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide(color: Colors.grey.shade300),
+          borderSide: BorderSide(color: scheme.outlineVariant),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide(color: Colors.blue.shade500, width: 2),
+          borderSide: BorderSide(color: scheme.primary, width: 2),
         ),
       ),
     );
