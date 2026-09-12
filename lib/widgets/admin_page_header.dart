@@ -30,7 +30,7 @@ class AdminPageHeader extends StatelessWidget {
     this.subtitle,
     this.actions = const [],
     this.bottom,
-    this.showSignOut = true,
+    this.showSignOut = false,
   });
 
   final String title;
@@ -44,10 +44,18 @@ class AdminPageHeader extends StatelessWidget {
   final List<Widget> actions;
   final Widget? bottom;
 
-  /// Sign-out lives here rather than in a separate top bar -- it's the same
-  /// action on every admin screen, and giving it its own AppBar meant two
-  /// stacked navy bars on every page. Automatically suppressed on a pushed
-  /// page, which shows a back button instead.
+  /// Whether this header carries the theme toggle, the bell and the account
+  /// menu.
+  ///
+  /// Now false by default: those moved up into the portal's shared top bar
+  /// (widgets/portal/portal_shell.dart), where they are the same three
+  /// controls on every admin page, and rendering them in both places would
+  /// offer each one twice. Page-specific [actions] -- Export and the like --
+  /// are unaffected and still belong here.
+  ///
+  /// It stays a flag rather than being deleted because the admin build's
+  /// pushed screens once relied on it, and a pushed page shows a back button
+  /// instead either way.
   final bool showSignOut;
 
   @override

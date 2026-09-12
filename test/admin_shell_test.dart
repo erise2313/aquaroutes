@@ -43,18 +43,28 @@ void main() {
         reason: 'pushed admin screen should keep the admin theme, not the root blue');
   });
 
-  testWidgets('header: account menu on a tab page, back button when pushed', (tester) async {
+  // The theme toggle, bell and account menu moved up into the portal's
+  // shared top bar (widgets/portal/portal_shell.dart), where they are the
+  // same three controls on every admin page. The header must not render them
+  // too, or each one is offered twice on screen.
+  //
+  // That they appear in the bar can't be asserted here: PortalShell only
+  // builds the bar when kIsWeb, which is a compile-time false under
+  // flutter test, and admin is a web-only surface. That half is a browser
+  // check.
+  testWidgets('header: no duplicate account menu on a tab page, back button when pushed', (tester) async {
     await tester.pumpWidget(_scoped(const Scaffold(body: AdminPageHeader(title: 'Tab Page'))));
-    expect(find.byTooltip('Account'), findsOneWidget);
+    expect(find.byTooltip('Account'), findsNothing, reason: 'the account menu belongs to the top bar now');
     expect(find.byTooltip('Back'), findsNothing);
 
-    // Sign-out moved into the account menu, next to changing the password.
-    await tester.tap(find.byTooltip('Account'));
-    await tester.pumpAndSettle();
-    expect(find.text('Sign out'), findsOneWidget);
-    expect(find.text('Account & password'), findsOneWidget);
-    await tester.tapAt(Offset.zero); // close the menu
-    await tester.pumpAndSettle();
+    // Page-specific actions still belong to the header, and are unaffected.
+    await tester.pumpWidget(_scoped(const Scaffold(
+      body: AdminPageHeader(
+        title: 'Tab Page',
+        actions: [Tooltip(message: 'Export', child: Icon(Icons.download_outlined))],
+      ),
+    )));
+    expect(find.byTooltip('Export'), findsOneWidget);
 
     await tester.pumpWidget(_scoped(Builder(builder: (context) => Scaffold(
       body: ElevatedButton(
