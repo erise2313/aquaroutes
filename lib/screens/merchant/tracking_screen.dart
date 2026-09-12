@@ -3,6 +3,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../constants/app_colors.dart';
 import '../../services/route_optimization.dart';
 import '../../widgets/app_map_tiles.dart';
 import '../../widgets/custom_map_marker.dart';
@@ -93,6 +94,9 @@ class _TrackingScreenState extends State<TrackingScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      // No portal header here: the map is the whole screen, and a hero band
+      // would take a quarter of it on a phone for a title the tab bar already
+      // gives. Only the colours move onto the palette.
       appBar: AppBar(title: const Text('Live Fleet Tracking')),
       floatingActionButtonLocation: FloatingActionButtonLocation.startFloat,
       body: FlutterMap(
@@ -103,7 +107,7 @@ class _TrackingScreenState extends State<TrackingScreen> {
           if (_routePoints.length >= 2)
             PolylineLayer(
               polylines: [
-                Polyline(points: _routePoints, color: Colors.blueAccent, strokeWidth: 4),
+                Polyline(points: _routePoints, color: AppColors.primary, strokeWidth: 4),
               ],
             ),
           MarkerLayer(
@@ -128,7 +132,8 @@ class _TrackingScreenState extends State<TrackingScreen> {
         icon: _isGeneratingRoute
             ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
             : const Icon(Icons.route),
-        backgroundColor: Colors.blueAccent,
+        backgroundColor: AppColors.primary,
+        foregroundColor: Colors.white,
       ),
     );
   }

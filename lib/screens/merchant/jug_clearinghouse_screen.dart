@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../constants/app_colors.dart';
 import '../../models/jug_ledger.dart';
 import '../../services/jug_ledger_service.dart';
 import '../../services/supabase_service.dart';
 import '../../widgets/confirm_dialog.dart';
 import '../../widgets/error_state.dart';
+import '../../widgets/portal/portal.dart';
 import '../../utils/error_text.dart';
 
 /// Inter-Station Jug Clearinghouse: shows net balances of 5-gallon Slim/Round
@@ -109,10 +111,12 @@ class _JugClearinghouseScreenState extends State<JugClearinghouseScreen> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
+                  Text(
                     'Deliveries now record jug exchanges automatically. Only use this for corrections -- '
                     'a physical hand-off between stations directly, or fixing a mistake.',
-                    style: TextStyle(fontSize: 12, color: Colors.grey),
+                    style: Theme.of(dialogContext).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(dialogContext).colorScheme.onSurfaceVariant,
+                        ),
                   ),
                   const SizedBox(height: 12),
                   DropdownButtonFormField<String>(
@@ -263,40 +267,68 @@ class _JugClearinghouseScreenState extends State<JugClearinghouseScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final density = PortalDensity.of(context);
+
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Jug Clearinghouse'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.edit_note),
-            tooltip: 'Manual Adjustment (corrections only -- deliveries record themselves)',
-            onPressed: _stationId == null ? null : _showRecordTransferDialog,
+      body: Column(
+        children: [
+          PortalPageHeader(
+            eyebrow: 'Governance & compliance',
+            title: 'Jug Clearinghouse',
+            subtitle: 'Whose 5-gallon jugs you are holding, and whose are holding yours',
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.edit_note),
+                tooltip: 'Manual adjustment (corrections only -- deliveries record themselves)',
+                onPressed: _stationId == null ? null : _showRecordTransferDialog,
+              ),
+            ],
+          ),
+          Expanded(
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : _error != null
+                ? ErrorState(message: _error!, onRetry: _load)
+                : _stationId == null
+                ? const PortalEmptyState(
+                    icon: Icons.storefront_outlined,
+                    title: 'No station linked to this account',
+                    message: 'Your account is not linked to a water station, so it has no jug balances.',
+                  )
+                : RefreshIndicator(
+                    onRefresh: _load,
+                    child: ListView(
+                      padding: density.pagePadding,
+                      children: [
+                        PortalSection(
+                          title: 'Outstanding balances',
+                          subtitle: 'Net jugs between your station and each other station',
+                          child: _balances.isEmpty
+                              ? const PortalEmptyState(
+                                  icon: Icons.check_circle_outline,
+                                  title: 'Nothing outstanding',
+                                  message: 'You have no unsettled jug balances with other stations.',
+                                )
+                              : Column(children: _balances.map(_buildBalanceCard).toList()),
+                        ),
+                        SizedBox(height: density.sectionGap),
+                        PortalSection(
+                          title: 'Settlements',
+                          subtitle: 'Proposals to clear a balance, and what came of them',
+                          child: _settlements.isEmpty
+                              ? const PortalEmptyState(
+                                  icon: Icons.handshake_outlined,
+                                  title: 'No settlements yet',
+                                  message: 'When you or another station proposes to settle a balance, it appears here.',
+                                )
+                              : Column(children: _settlements.map(_buildSettlementCard).toList()),
+                        ),
+                      ],
+                    ),
+                  ),
           ),
         ],
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _error != null
-          ? ErrorState(message: _error!, onRetry: _load)
-          : _stationId == null
-              ? const Center(child: Text('No station linked to this account.'))
-              : RefreshIndicator(
-                  onRefresh: _load,
-                  child: ListView(
-                    padding: const EdgeInsets.all(16),
-                    children: [
-                      const Text('Outstanding Balances', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                      const SizedBox(height: 8),
-                      if (_balances.isEmpty) Text('No outstanding jug balances with other stations.', style: TextStyle(color: Colors.grey.shade700)),
-                      ..._balances.map(_buildBalanceCard),
-                      const SizedBox(height: 24),
-                      const Text('Settlements', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                      const SizedBox(height: 8),
-                      if (_settlements.isEmpty) Text('No settlement history yet.', style: TextStyle(color: Colors.grey.shade700)),
-                      ..._settlements.map(_buildSettlementCard),
-                    ],
-                  ),
-                ),
     );
   }
 
@@ -315,33 +347,52 @@ class _JugClearinghouseScreenState extends State<JugClearinghouseScreen> {
                 (e.holderStationId == balance.ownerStationId && e.ownerStationId == balance.holderStationId)))
         .toList();
 
-    return Card(
+    final theme = Theme.of(context);
+    // Amber when the jugs are ours to return, the brand blue when they are
+    // owed to us -- was a raw Colors.orange / Colors.blue.
+    final tone = isHolder ? AppColors.pendingClearance : AppColors.primary;
+
+    return PortalCard(
+      lift: false,
+      accent: tone,
+      padding: EdgeInsets.zero,
       margin: const EdgeInsets.only(bottom: 8),
       child: ExpansionTile(
         // Deliberately NOT using ExpansionTile's `trailing` slot for the
         // settlement button -- that would silently replace the expand
         // chevron, leaving no visible sign the card can be opened to see
-        // its entry history. Putting the button inside `title` instead
-        // keeps the chevron as its own trailing element.
-        leading: Icon(Icons.water_drop, color: isHolder ? Colors.orange : Colors.blue),
-        title: Row(
+        // its entry history. The button goes under the subtitle instead,
+        // which also keeps it off the title row where it could not shrink.
+        leading: Icon(Icons.water_drop, color: StatusTint.onTint(context, tone)),
+        title: Text('$jugLabel · ${balance.netQty.abs()} jugs', style: theme.textTheme.titleMedium),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(
-              child: Text('$jugLabel · ${balance.netQty.abs()} jugs'),
+            Text(
+              isHolder
+                  ? 'You are holding these jugs, owed to $otherStationName'
+                  : '$otherStationName is holding these jugs, owed to you',
+              style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
             ),
-            TextButton(
-              onPressed: () => _proposeSettlement(balance),
-              child: const Text('Propose Settlement'),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton(
+                onPressed: () => _proposeSettlement(balance),
+                child: const Text('Propose settlement'),
+              ),
             ),
           ],
         ),
-        subtitle: Text(
-          isHolder
-              ? 'You are holding these jugs, owed to $otherStationName'
-              : '$otherStationName is holding these jugs, owed to you',
-        ),
         children: entries.isEmpty
-            ? [const Padding(padding: EdgeInsets.fromLTRB(16, 0, 16, 12), child: Text('No entry history found.', style: TextStyle(color: Colors.grey, fontSize: 12)))]
+            ? [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                  child: Text(
+                    'No entry history found.',
+                    style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                  ),
+                ),
+              ]
             : entries.map((e) => _buildLedgerEntryRow(e, isHolder: e.holderStationId == _stationId)).toList(),
       ),
     );
@@ -353,14 +404,22 @@ class _JugClearinghouseScreenState extends State<JugClearinghouseScreen> {
         ? 'Delivery · order #${entry.relatedOrderId!.substring(0, 6).toUpperCase()}'
         : 'Manual adjustment';
     final direction = entry.quantity > 0 ? (isHolder ? 'received' : 'sent') : 'settled';
+    final theme = Theme.of(context);
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            child: Text('$source · $date', style: const TextStyle(fontSize: 12.5)),
+          Expanded(child: Text('$source · $date', style: theme.textTheme.bodySmall)),
+          const SizedBox(width: 8),
+          Text(
+            '${entry.quantity > 0 ? '+' : ''}${entry.quantity} ($direction)',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+              fontWeight: FontWeight.w600,
+            ),
           ),
-          Text('${entry.quantity > 0 ? '+' : ''}${entry.quantity} ($direction)', style: TextStyle(fontSize: 12.5, color: Colors.grey.shade700, fontWeight: FontWeight.w600)),
         ],
       ),
     );
@@ -372,34 +431,47 @@ class _JugClearinghouseScreenState extends State<JugClearinghouseScreen> {
     final ownerName = _stationNames[settlement.ownerStationId] ?? 'Unknown';
     final jugLabel = settlement.jugType == JugType.slim5gal ? 'Slim 5-gal' : 'Round 5-gal';
 
+    final theme = Theme.of(context);
+
     final (statusColor, statusLabel) = switch (settlement.status) {
-      SettlementStatus.proposed => (Colors.orange, 'Proposed'),
-      SettlementStatus.confirmed => (Colors.green, 'Confirmed'),
-      SettlementStatus.rejected => (Colors.red, 'Rejected'),
+      SettlementStatus.proposed => (AppColors.pendingClearance, 'PROPOSED'),
+      SettlementStatus.confirmed => (AppColors.cleared, 'CONFIRMED'),
+      SettlementStatus.rejected => (AppColors.flagged, 'REJECTED'),
     };
 
-    return Card(
+    return PortalCard(
+      lift: false,
+      accent: statusColor,
       margin: const EdgeInsets.only(bottom: 8),
-      child: ListTile(
-        title: Text('$holderName → $ownerName: ${settlement.quantity} $jugLabel'),
-        subtitle: Text(statusLabel, style: TextStyle(color: statusColor)),
-        trailing: canConfirm
-            ? Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  OutlinedButton(
-                    onPressed: () => _rejectSettlement(settlement),
-                    child: const Text('Reject'),
-                  ),
-                  const SizedBox(width: 8),
-                  ElevatedButton(
-                    style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
-                    onPressed: () => _confirmSettlement(settlement),
-                    child: const Text('Confirm', style: TextStyle(color: Colors.white)),
-                  ),
-                ],
-              )
-            : null,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('$holderName → $ownerName', style: theme.textTheme.titleMedium),
+          const SizedBox(height: 2),
+          Text(
+            '${settlement.quantity} $jugLabel',
+            style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+          ),
+          const SizedBox(height: 10),
+          StatusPill(label: statusLabel, color: statusColor),
+          // Only the owed station can confirm -- enforced by
+          // confirm_jug_settlement(), not by hiding the button.
+          if (canConfirm) ...[
+            const SizedBox(height: 12),
+            PortalActionRow(
+              children: [
+                OutlinedButton(
+                  onPressed: () => _rejectSettlement(settlement),
+                  child: const Text('Reject'),
+                ),
+                FilledButton(
+                  onPressed: () => _confirmSettlement(settlement),
+                  child: const Text('Confirm'),
+                ),
+              ],
+            ),
+          ],
+        ],
       ),
     );
   }

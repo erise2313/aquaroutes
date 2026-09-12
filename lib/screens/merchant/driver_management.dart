@@ -8,6 +8,7 @@ import '../../constants/app_colors.dart';
 import '../../models/worker.dart';
 import '../../services/supabase_service.dart';
 import '../../services/worker_service.dart';
+import '../../widgets/portal/portal.dart';
 
 /// Station-scoped fleet roster. Fixes the most severe bug found in the old
 /// app: the previous version streamed ALL rows where role='driver' with no
@@ -74,37 +75,58 @@ class _DriverManagementScreenState extends State<DriverManagementScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final density = PortalDensity.of(context);
+
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("Fleet Management & Tracking"),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.timer_outlined),
-            tooltip: 'Set Custom Idle Threshold',
-            onPressed: _showIdleThresholdDialog,
+      body: Column(
+        children: [
+          PortalPageHeader(
+            eyebrow: 'Fleet management',
+            title: 'Track & Manage Drivers',
+            subtitle: 'Vehicle details, duty status, and who has gone quiet',
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.timer_outlined),
+                tooltip: 'Set custom idle threshold',
+                onPressed: _showIdleThresholdDialog,
+              ),
+            ],
+          ),
+          Expanded(
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : _stationId == null
+                ? const PortalEmptyState(
+                    icon: Icons.storefront_outlined,
+                    title: 'No station linked to this account',
+                    message: 'Your account is not linked to a water station, so it has no fleet.',
+                  )
+                : StreamBuilder<List<Map<String, dynamic>>>(
+                    stream: _workerService.watchStationWorkers(_stationId!),
+                    builder: (context, snapshot) {
+                      if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+                      final workers = snapshot.data!.map((m) => Worker.fromMap(m)).toList();
+
+                      if (workers.isEmpty) {
+                        return const PortalEmptyState(
+                          icon: Icons.local_shipping_outlined,
+                          title: 'No drivers registered yet',
+                          message: 'Share your station invite code from the Worker Registry so a driver '
+                              'can register themselves at your station.',
+                        );
+                      }
+
+                      return ListView.builder(
+                        padding: density.pagePadding,
+                        itemCount: workers.length,
+                        itemBuilder: (context, index) =>
+                            _buildDriverCard(workers[index], last: index == workers.length - 1, density: density),
+                      );
+                    },
+                  ),
           ),
         ],
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _stationId == null
-              ? const Center(child: Text('No station linked to this account.'))
-              : StreamBuilder<List<Map<String, dynamic>>>(
-                  stream: _workerService.watchStationWorkers(_stationId!),
-                  builder: (context, snapshot) {
-                    if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
-                    final workers = snapshot.data!.map((m) => Worker.fromMap(m)).toList();
-
-                    if (workers.isEmpty) {
-                      return const Center(child: Text('No drivers registered yet.'));
-                    }
-
-                    return ListView.builder(
-                      itemCount: workers.length,
-                      itemBuilder: (context, index) => _buildDriverCard(workers[index]),
-                    );
-                  },
-                ),
     );
   }
 
@@ -123,7 +145,10 @@ class _DriverManagementScreenState extends State<DriverManagementScreen> {
     }
   }
 
-  Widget _buildDriverCard(Worker worker) {
+  Widget _buildDriverCard(Worker worker, {required bool last, required PortalDensity density}) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+
     final (clearanceColor, clearanceLabel) = switch (worker.clearanceStatus) {
       ClearanceStatus.cleared => (AppColors.cleared, 'CLEARED'),
       ClearanceStatus.pendingClearance => (AppColors.pendingClearance, 'PENDING'),
@@ -144,64 +169,84 @@ class _DriverManagementScreenState extends State<DriverManagementScreen> {
             lastUpdated != null &&
             DateTime.now().difference(lastUpdated) > Duration(minutes: _idleThresholdMinutes);
 
-        return Card(
-          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: ListTile(
-            leading: Icon(
-              Icons.directions_car,
-              color: !isActive
-                  ? Colors.grey
-                  : isIdle
-                      ? Colors.orange
-                      : Colors.green,
-            ),
-            title: Row(
-              children: [
-                Expanded(child: Text(worker.fullName, overflow: TextOverflow.ellipsis)),
-                const SizedBox(width: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                  decoration: BoxDecoration(color: clearanceColor.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(6)),
-                  child: Text(clearanceLabel, style: TextStyle(color: clearanceColor, fontSize: 10, fontWeight: FontWeight.bold)),
-                ),
-              ],
-            ),
-            subtitle: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text("Plate: ${worker.vehiclePlate ?? 'N/A'} · ${worker.workerCode}"),
-                Text(isActive ? 'ON DUTY' : 'OFF DUTY', style: TextStyle(color: isActive ? Colors.green : Colors.grey, fontSize: 12)),
-                if (isIdle)
-                  Text(
-                    "Idle (no update for over $_idleThresholdMinutes mins)",
-                    style: const TextStyle(color: Colors.orange, fontWeight: FontWeight.bold, fontSize: 12),
+        // Duty state drives the card's edge: grey off duty, amber gone quiet,
+        // green out working.
+        final dutyTone = !isActive
+            ? AppColors.inkMuted
+            : isIdle
+                ? AppColors.pendingClearance
+                : AppColors.cleared;
+
+        return PortalCard(
+          onTap: () => _showEditDialog(worker),
+          accent: dutyTone,
+          margin: EdgeInsets.only(bottom: last ? 0 : density.gap),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 42,
+                    height: 42,
+                    decoration: BoxDecoration(color: StatusTint.surface(context, dutyTone), shape: BoxShape.circle),
+                    child: Icon(Icons.directions_car, color: StatusTint.onTint(context, dutyTone), size: 21),
                   ),
-              ],
-            ),
-            trailing: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.phone, color: Colors.green),
-                  tooltip: 'Call Driver',
-                  onPressed: () => _makePhoneCall(worker.phoneNumber ?? ''),
-                ),
-                if (isIdle)
-                  IconButton(
-                    icon: const Icon(Icons.notifications_active, color: Colors.orange),
-                    tooltip: 'Send Idle Reminder',
-                    onPressed: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('Idle reminder sent to ${worker.fullName}.'),
-                          backgroundColor: Colors.orange.shade700,
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(worker.fullName, style: theme.textTheme.titleMedium),
+                        Text(
+                          "Plate: ${worker.vehiclePlate ?? 'N/A'} · ${worker.workerCode}",
+                          style: theme.textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
                         ),
-                      );
-                    },
+                      ],
+                    ),
                   ),
-              ],
-            ),
-            onTap: () => _showEditDialog(worker),
+                ],
+              ),
+              const SizedBox(height: 10),
+              // A Wrap bounds its children, so these labels wrap rather than
+              // running off the card at large system text.
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: [
+                  StatusPill(label: isActive ? 'ON DUTY' : 'OFF DUTY', color: dutyTone),
+                  StatusPill(label: clearanceLabel, color: clearanceColor),
+                  if (isIdle)
+                    StatusPill(
+                      label: 'IDLE OVER $_idleThresholdMinutes MIN',
+                      color: AppColors.pendingClearance,
+                      icon: Icons.warning_amber_rounded,
+                    ),
+                ],
+              ),
+              Wrap(
+                alignment: WrapAlignment.end,
+                spacing: 4,
+                children: [
+                  TextButton.icon(
+                    icon: const Icon(Icons.phone, size: 16),
+                    label: const Text('Call driver'),
+                    onPressed: () => _makePhoneCall(worker.phoneNumber ?? ''),
+                  ),
+                  if (isIdle)
+                    TextButton.icon(
+                      icon: const Icon(Icons.notifications_active, size: 16),
+                      label: const Text('Send reminder'),
+                      onPressed: () {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Idle reminder sent to ${worker.fullName}.')),
+                        );
+                      },
+                    ),
+                ],
+              ),
+            ],
           ),
         );
       },

@@ -6,6 +6,7 @@ import '../../models/worker.dart';
 import '../../services/supabase_service.dart';
 import '../../services/worker_service.dart';
 import '../../utils/error_text.dart';
+import '../../widgets/portal/portal.dart';
 
 /// Search a prospective driver's clearance history across the whole
 /// association before hiring them -- directly addresses the "driver
@@ -81,18 +82,26 @@ class _HireCheckScreenState extends State<HireCheckScreen> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('${result.fullName} -- Station History', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            Text('${result.fullName} -- station history', style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: 12),
-            if (history.isEmpty) Text('No station history on record.', style: TextStyle(color: Colors.grey.shade700)),
+            if (history.isEmpty)
+              const PortalEmptyState(
+                icon: Icons.store_outlined,
+                title: 'No station history',
+                message: 'This worker has not been on any station roster yet.',
+              ),
             ...history.map((h) {
               final range = h.leftAt == null
                   ? '${DateFormat('MMM yyyy').format(h.joinedAt)} -- present'
                   : '${DateFormat('MMM yyyy').format(h.joinedAt)} -- ${DateFormat('MMM yyyy').format(h.leftAt!)}';
+              final isActive = h.status == StationHistoryStatus.active;
               return ListTile(
                 contentPadding: EdgeInsets.zero,
                 leading: Icon(
-                  h.status == StationHistoryStatus.active ? Icons.store : Icons.store_outlined,
-                  color: h.status == StationHistoryStatus.active ? Colors.green : Colors.grey,
+                  isActive ? Icons.store : Icons.store_outlined,
+                  color: isActive
+                      ? StatusTint.onTint(context, AppColors.cleared)
+                      : Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
                 title: Text(h.stationName),
                 subtitle: Text('$range${h.status == StationHistoryStatus.removed ? " (removed by station)" : ""}'),
@@ -106,94 +115,156 @@ class _HireCheckScreenState extends State<HireCheckScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final density = PortalDensity.of(context);
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Hire Check')),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              'Search a worker by name or worker code before hiring them.',
-              style: TextStyle(color: Colors.grey.shade700),
+      body: Column(
+        children: [
+          const PortalPageHeader(
+            eyebrow: 'Governance & compliance',
+            title: 'Hire Check',
+            subtitle: 'Check a worker\'s clearance across the association before you hire them',
+          ),
+          Padding(
+            padding: EdgeInsets.fromLTRB(
+              density.pagePadding.left,
+              density.pagePadding.top,
+              density.pagePadding.right,
+              0,
             ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _searchController,
-                    decoration: const InputDecoration(
-                      labelText: 'Name or Worker Code',
-                      border: OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.search),
-                    ),
-                    onSubmitted: (_) => _search(),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                ElevatedButton(
-                  onPressed: _isSearching ? null : _search,
-                  child: _isSearching
-                      ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2))
-                      : const Text('Search'),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Expanded(
-              child: !_hasSearched
-                  ? const SizedBox.shrink()
-                  : _results.isEmpty
-                      ? Center(child: Text('No matching workers found.', style: TextStyle(color: Colors.grey.shade700)))
-                      : ListView.builder(
-                          itemCount: _results.length,
-                          itemBuilder: (context, index) => _buildResultCard(_results[index]),
-                        ),
-            ),
-          ],
-        ),
+            child: _buildSearchRow(density),
+          ),
+          Expanded(child: _buildResults(density)),
+        ],
       ),
     );
   }
 
-  Widget _buildResultCard(HireCheckResult result) {
+  /// The field and its button stack on a narrow screen: side by side, the
+  /// button is a non-flexible child whose label cannot shrink, which is what
+  /// overflowed the order card at large system text.
+  Widget _buildSearchRow(PortalDensity density) {
+    final field = TextField(
+      controller: _searchController,
+      decoration: const InputDecoration(
+        labelText: 'Name or worker code',
+        border: OutlineInputBorder(),
+        prefixIcon: Icon(Icons.search),
+      ),
+      onSubmitted: (_) => _search(),
+    );
+
+    final button = FilledButton(
+      onPressed: _isSearching ? null : _search,
+      child: _isSearching
+          ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2))
+          : const Text('Search'),
+    );
+
+    if (!density.isWide) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [field, const SizedBox(height: 10), button],
+      );
+    }
+
+    return Row(
+      children: [
+        Expanded(child: field),
+        const SizedBox(width: 8),
+        button,
+      ],
+    );
+  }
+
+  Widget _buildResults(PortalDensity density) {
+    if (!_hasSearched) {
+      return const PortalEmptyState(
+        icon: Icons.person_search_outlined,
+        title: 'Search before you hire',
+        message: 'Enter a name or worker code above. You will see their clearance status and how many '
+            'incidents were confirmed against them -- never another station\'s incident details.',
+      );
+    }
+
+    if (_results.isEmpty) {
+      return const PortalEmptyState(
+        icon: Icons.search_off,
+        title: 'No matching workers',
+        message: 'Nobody in the association register matches that name or worker code.',
+      );
+    }
+
+    return ListView.builder(
+      padding: density.pagePadding,
+      itemCount: _results.length,
+      itemBuilder: (context, index) =>
+          _buildResultCard(_results[index], last: index == _results.length - 1, density: density),
+    );
+  }
+
+  Widget _buildResultCard(HireCheckResult result, {required bool last, required PortalDensity density}) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+
     final (color, label) = switch (result.clearanceStatus) {
       ClearanceStatus.cleared => (AppColors.cleared, 'CLEARED'),
       ClearanceStatus.pendingClearance => (AppColors.pendingClearance, 'PENDING'),
       ClearanceStatus.flagged => (AppColors.flagged, 'FLAGGED'),
     };
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: ListTile(
-        leading: CircleAvatar(backgroundColor: color.withValues(alpha: 0.15), child: Icon(Icons.badge, color: color)),
-        title: Text(result.fullName),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(result.workerCode),
-            Text('Confirmed incidents: ${result.confirmedIncidentCount} (details are private to the worker\'s own station)'),
-          ],
-        ),
-        isThreeLine: true,
-        trailing: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-              decoration: BoxDecoration(color: color.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(8)),
-              child: Text(label, style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 11)),
-            ),
-            _loadingHistoryWorkerId == result.workerId
+    return PortalCard(
+      lift: false,
+      accent: color,
+      margin: EdgeInsets.only(bottom: last ? 0 : density.gap),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              CircleAvatar(
+                backgroundColor: StatusTint.surface(context, color),
+                child: Icon(Icons.badge, color: StatusTint.onTint(context, color)),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(result.fullName, style: theme.textTheme.titleMedium),
+                    Text(result.workerCode, style: theme.textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          StatusPill(label: label, color: color),
+          const SizedBox(height: 8),
+          Text(
+            'Confirmed incidents: ${result.confirmedIncidentCount}',
+            style: theme.textTheme.bodyMedium,
+          ),
+          Text(
+            'Details stay private to the worker\'s own station.',
+            style: theme.textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+          ),
+          const SizedBox(height: 8),
+          Align(
+            alignment: Alignment.centerRight,
+            child: _loadingHistoryWorkerId == result.workerId
                 ? const Padding(
                     padding: EdgeInsets.all(8),
-                    child: SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2)),
+                    child: SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
                   )
-                : TextButton(onPressed: () => _showHistory(result), child: const Text('History', style: TextStyle(fontSize: 12))),
-          ],
-        ),
+                : TextButton.icon(
+                    onPressed: () => _showHistory(result),
+                    icon: const Icon(Icons.history, size: 16),
+                    label: const Text('Station history'),
+                  ),
+          ),
+        ],
       ),
     );
   }
