@@ -2,11 +2,13 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../constants/app_colors.dart';
 import '../../models/permit.dart';
 import '../../models/web_content.dart';
 import '../../services/permit_service.dart';
 import '../../services/supabase_service.dart';
 import '../../utils/error_text.dart';
+import '../../widgets/portal/portal.dart';
 
 /// Multi-document permit upload for a station. Which permits show up as
 /// required is entirely server-driven (a Postgres trigger on
@@ -107,76 +109,141 @@ class _PermitVaultScreenState extends State<PermitVaultScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final density = PortalDensity.of(context);
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Permit Vault')),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _stationId == null
-              ? const Center(child: Text('No station linked to this account.'))
-              : ListView(
-                  padding: const EdgeInsets.all(16),
-                  children: [
-                    Card(
-                      color: _isAccredited ? Colors.green.shade50 : Colors.amber.shade50,
-                      child: ListTile(
-                        leading: Icon(
-                          _isAccredited ? Icons.verified : Icons.hourglass_top,
-                          color: _isAccredited ? Colors.green : Colors.amber.shade800,
-                        ),
-                        title: Text(_isAccredited ? 'Fully Accredited' : 'Accreditation Pending'),
-                        subtitle: Text(
-                          _isAccredited
-                              ? 'All required permits have been approved by WASA.'
-                              : 'Accreditation unlocks once every required permit below is approved.',
-                        ),
-                      ),
+      body: Column(
+        children: [
+          const PortalPageHeader(
+            eyebrow: 'Governance & compliance',
+            title: 'Permit Vault',
+            subtitle: 'The documents the association reviews before accrediting your station',
+          ),
+          Expanded(
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : _stationId == null
+                ? const PortalEmptyState(
+                    icon: Icons.storefront_outlined,
+                    title: 'No station linked to this account',
+                    message: 'Your account is not linked to a water station, so there are no permits to manage.',
+                  )
+                : RefreshIndicator(
+                    onRefresh: _load,
+                    child: ListView(
+                      padding: density.pagePadding,
+                      children: [
+                        _buildAccreditationCallout(),
+                        SizedBox(height: density.sectionGap),
+                        if (_permits.isEmpty)
+                          const PortalEmptyState(
+                            icon: Icons.folder_open_outlined,
+                            title: 'No permits required yet',
+                            message: 'Which permits you need depends on what your station sells. '
+                                'List your products and the association will ask for the right ones.',
+                          )
+                        else
+                          PortalSection(
+                            title: 'Required permits',
+                            subtitle: _permits.length == 1 ? '1 document' : '${_permits.length} documents',
+                            child: Column(
+                              children: [
+                                for (var i = 0; i < _permits.length; i++)
+                                  _buildPermitCard(_permits[i], last: i == _permits.length - 1, density: density),
+                              ],
+                            ),
+                          ),
+                      ],
                     ),
-                    const SizedBox(height: 16),
-                    ..._permits.map(_buildPermitCard),
-                  ],
-                ),
+                  ),
+          ),
+        ],
+      ),
     );
   }
 
-  Widget _buildPermitCard(Permit permit) {
+  /// Was a Card filled with green.shade50 / amber.shade50 -- a pale fill that
+  /// stayed pale in dark mode, leaving light text on a near-white block.
+  /// StatusCallout tints from the theme instead.
+  Widget _buildAccreditationCallout() {
+    if (_isAccredited) {
+      return const StatusCallout(
+        accent: AppColors.cleared,
+        icon: Icons.verified,
+        title: 'Fully accredited',
+        message: 'All required permits have been approved by WASA.',
+      );
+    }
+
+    return const StatusCallout(
+      accent: AppColors.pendingClearance,
+      icon: Icons.hourglass_top,
+      title: 'Accreditation pending',
+      message: 'Accreditation unlocks once every required permit below is approved.',
+    );
+  }
+
+  Widget _buildPermitCard(Permit permit, {required bool last, required PortalDensity density}) {
+    final theme = Theme.of(context);
     final label = _labels[permit.permitType]?.label ?? permit.permitType.name;
+
     final (statusColor, statusIcon, statusLabel) = switch (permit.status) {
-      PermitStatus.approved => (Colors.green, Icons.check_circle, 'Approved'),
-      PermitStatus.pendingReview => (Colors.orange, Icons.hourglass_top, 'Pending Review'),
-      PermitStatus.rejected => (Colors.red, Icons.cancel, 'Rejected'),
-      PermitStatus.missing => (Colors.grey, Icons.upload_file, 'Not Uploaded'),
+      PermitStatus.approved => (AppColors.cleared, Icons.check_circle, 'APPROVED'),
+      PermitStatus.pendingReview => (AppColors.pendingClearance, Icons.hourglass_top, 'PENDING REVIEW'),
+      PermitStatus.rejected => (AppColors.flagged, Icons.cancel, 'REJECTED'),
+      PermitStatus.missing => (AppColors.inkMuted, Icons.upload_file, 'NOT UPLOADED'),
     };
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: ListTile(
-        leading: Icon(statusIcon, color: statusColor),
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Flexible(child: Text(label, style: const TextStyle(fontWeight: FontWeight.bold))),
-            if (permit.isRenewalDueSoon) ...[
-              const SizedBox(width: 8),
+    return PortalCard(
+      lift: false,
+      accent: statusColor,
+      margin: EdgeInsets.only(bottom: last ? 0 : density.gap),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(color: Colors.amber.shade100, borderRadius: BorderRadius.circular(6)),
-                child: const Text('Renewal due', style: TextStyle(color: Colors.orange, fontSize: 10, fontWeight: FontWeight.bold)),
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(color: StatusTint.surface(context, statusColor), shape: BoxShape.circle),
+                child: Icon(statusIcon, color: StatusTint.onTint(context, statusColor), size: 21),
+              ),
+              const SizedBox(width: 14),
+              Expanded(child: Text(label, style: theme.textTheme.titleMedium)),
+            ],
+          ),
+          const SizedBox(height: 10),
+          // A Wrap bounds its children, so a long status label wraps rather
+          // than running off the card at large system text.
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: [
+              StatusPill(label: statusLabel, color: statusColor),
+              if (permit.isRenewalDueSoon)
+                const StatusPill(label: 'RENEWAL DUE', color: AppColors.pendingClearance),
+            ],
+          ),
+          if (permit.status == PermitStatus.rejected && permit.rejectionReason != null) ...[
+            const SizedBox(height: 8),
+            Text(
+              'Reason: ${permit.rejectionReason}',
+              style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+            ),
+          ],
+          const SizedBox(height: 12),
+          PortalActionRow(
+            children: [
+              OutlinedButton.icon(
+                onPressed: () => _upload(permit),
+                icon: const Icon(Icons.upload_file, size: 18),
+                label: Text(permit.status == PermitStatus.missing ? 'Upload document' : 'Replace document'),
               ),
             ],
-          ],
-        ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(statusLabel, style: TextStyle(color: statusColor)),
-            if (permit.status == PermitStatus.rejected && permit.rejectionReason != null)
-              Text('Reason: ${permit.rejectionReason}', style: const TextStyle(fontSize: 12)),
-          ],
-        ),
-        trailing: TextButton(
-          onPressed: () => _upload(permit),
-          child: Text(permit.status == PermitStatus.missing ? 'Upload' : 'Re-upload'),
-        ),
+          ),
+        ],
       ),
     );
   }

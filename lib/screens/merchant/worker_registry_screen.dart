@@ -11,6 +11,7 @@ import '../../services/worker_service.dart';
 import '../../utils/formatters.dart';
 import '../../widgets/confirm_dialog.dart';
 import '../../widgets/error_state.dart';
+import '../../widgets/portal/portal.dart';
 import '../../utils/error_text.dart';
 
 /// Station-owner side of the Worker Security Registry: share the station's
@@ -141,7 +142,9 @@ class _WorkerRegistryScreenState extends State<WorkerRegistryScreen> {
                 children: [
                   Text(
                     'Submitting this will immediately move ${worker.fullName} back to Pending Clearance until WASA reviews it.',
-                    style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
                   ),
                   const SizedBox(height: 12),
                   DropdownButtonFormField<String>(
@@ -237,11 +240,15 @@ class _WorkerRegistryScreenState extends State<WorkerRegistryScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Incident History: ${worker.fullName}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                      Text('Incident history: ${worker.fullName}', style: Theme.of(context).textTheme.titleLarge),
                       const SizedBox(height: 12),
                       Expanded(
                         child: incidents.isEmpty
-                            ? Center(child: Text('No incidents filed against this worker.', style: TextStyle(color: Colors.grey.shade700)))
+                            ? const PortalEmptyState(
+                                icon: Icons.verified_user_outlined,
+                                title: 'No incidents filed',
+                                message: 'Nothing has been reported against this worker.',
+                              )
                             : ListView.builder(
                                 controller: scrollController,
                                 itemCount: incidents.length,
@@ -266,134 +273,175 @@ class _WorkerRegistryScreenState extends State<WorkerRegistryScreen> {
       IncidentStatus.pendingReview => (AppColors.pendingClearance, 'Pending Review'),
     };
 
-    return Card(
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+
+    return PortalCard(
+      lift: false,
+      accent: color,
       margin: const EdgeInsets.only(bottom: 8),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(child: Text(incident.incidentType, style: const TextStyle(fontWeight: FontWeight.bold))),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                  decoration: BoxDecoration(color: color.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(8)),
-                  child: Text(label, style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.bold)),
-                ),
-              ],
-            ),
-            const SizedBox(height: 4),
-            Text(incident.description),
-            if (incident.amountInvolved != null) Text('Amount involved: ${formatPeso(incident.amountInvolved!)}'),
-            const SizedBox(height: 4),
-            Text(
-              'Filed ${DateFormat('MMM d, yyyy').format(incident.createdAt)}'
-              '${incident.resolvedAt != null ? ' · Resolved ${DateFormat('MMM d, yyyy').format(incident.resolvedAt!)}' : ''}',
-              style: TextStyle(color: Colors.grey.shade700, fontSize: 12),
-            ),
-          ],
-        ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // A Wrap rather than a Row: it bounds its children, so the pill's
+          // label wraps instead of running off the sheet at large text.
+          Wrap(
+            spacing: 8,
+            runSpacing: 6,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              Text(incident.incidentType, style: theme.textTheme.titleSmall),
+              StatusPill(label: label.toUpperCase(), color: color),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(incident.description, style: theme.textTheme.bodyMedium),
+          if (incident.amountInvolved != null)
+            Text('Amount involved: ${formatPeso(incident.amountInvolved!)}', style: theme.textTheme.bodyMedium),
+          const SizedBox(height: 4),
+          Text(
+            'Filed ${DateFormat('MMM d, yyyy').format(incident.createdAt)}'
+            '${incident.resolvedAt != null ? ' · Resolved ${DateFormat('MMM d, yyyy').format(incident.resolvedAt!)}' : ''}',
+            style: theme.textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+          ),
+        ],
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final density = PortalDensity.of(context);
+
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Worker Registry'),
-        actions: [
-          IconButton(icon: const Icon(Icons.share), tooltip: 'Share Invite Code', onPressed: _stationId == null ? null : _showInviteCodeDialog),
+      body: Column(
+        children: [
+          PortalPageHeader(
+            eyebrow: 'Governance & compliance',
+            title: 'Worker Registry',
+            subtitle: 'Your drivers and helpers, and the incidents WASA reviews',
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.share),
+                tooltip: 'Share invite code',
+                onPressed: _stationId == null ? null : _showInviteCodeDialog,
+              ),
+            ],
+          ),
+          Expanded(
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : _stationId == null
+                ? const PortalEmptyState(
+                    icon: Icons.storefront_outlined,
+                    title: 'No station linked to this account',
+                    message: 'Your account is not linked to a water station, so it has no worker roster.',
+                  )
+                : StreamBuilder<List<Map<String, dynamic>>>(
+                    stream: _workerService.watchStationWorkers(_stationId!),
+                    builder: (context, snapshot) {
+                      if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+                      final workers = snapshot.data!.map((m) => Worker.fromMap(m)).toList();
+                      if (workers.isEmpty) {
+                        return PortalEmptyState(
+                          icon: Icons.badge_outlined,
+                          title: 'No workers registered yet',
+                          message: 'Workers join by registering themselves with your station\'s invite code, '
+                              'so they get their own account and can upload the credentials WASA clearance needs.',
+                          action: FilledButton.icon(
+                            onPressed: _stationId == null ? null : _showInviteCodeDialog,
+                            icon: const Icon(Icons.share),
+                            label: const Text('Share invite code'),
+                          ),
+                        );
+                      }
+                      return ListView.builder(
+                        padding: density.pagePadding,
+                        itemCount: workers.length,
+                        itemBuilder: (context, index) =>
+                            _buildWorkerCard(workers[index], last: index == workers.length - 1, density: density),
+                      );
+                    },
+                  ),
+          ),
         ],
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _stationId == null
-              ? const Center(child: Text('No station linked to this account.'))
-              : StreamBuilder<List<Map<String, dynamic>>>(
-                  stream: _workerService.watchStationWorkers(_stationId!),
-                  builder: (context, snapshot) {
-                    if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
-                    final workers = snapshot.data!.map((m) => Worker.fromMap(m)).toList();
-                    if (workers.isEmpty) {
-                      return const Center(child: Text('No workers registered yet.'));
-                    }
-                    return ListView.builder(
-                      itemCount: workers.length,
-                      itemBuilder: (context, index) => _buildWorkerCard(workers[index]),
-                    );
-                  },
-                ),
     );
   }
 
-  Widget _buildWorkerCard(Worker worker) {
+  Widget _buildWorkerCard(Worker worker, {required bool last, required PortalDensity density}) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+
     final (color, label) = switch (worker.clearanceStatus) {
       ClearanceStatus.cleared => (AppColors.cleared, 'CLEARED'),
       ClearanceStatus.pendingClearance => (AppColors.pendingClearance, 'PENDING'),
       ClearanceStatus.flagged => (AppColors.flagged, 'FLAGGED'),
     };
 
-    // A plain ListTile with a trailing Column doesn't work once there are
-    // 3+ stacked items (status badge + File Incident + Incident History +
-    // Remove from Roster) -- ListTile gives trailing a fixed height budget
-    // based on the title/subtitle content, not the trailing content, so it
-    // silently overflowed ("BOTTOM OVERFLOWED BY 108 PIXELS") once
-    // Incident History was added as a third button. A header row + a Wrap
-    // footer (which wraps to a new line instead of overflowing) fixes this
-    // regardless of how many actions end up here later.
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                CircleAvatar(backgroundColor: color.withValues(alpha: 0.15), child: Icon(Icons.badge, color: color)),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(worker.fullName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                      Text(worker.workerCode, style: TextStyle(color: Colors.grey.shade700, fontSize: 12)),
-                      if (worker.vehiclePlate != null)
-                        Text('Plate: ${worker.vehiclePlate}', style: TextStyle(color: Colors.grey.shade700, fontSize: 12)),
-                    ],
-                  ),
+    // The actions stay in a Wrap. A ListTile with a trailing Column silently
+    // overflowed here once there were three of them ("BOTTOM OVERFLOWED BY
+    // 108 PIXELS"), because ListTile budgets the trailing height from the
+    // title, not from the trailing content.
+    final pill = StatusPill(label: label, color: color);
+
+    return PortalCard(
+      lift: false,
+      accent: color,
+      margin: EdgeInsets.only(bottom: last ? 0 : density.gap),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              CircleAvatar(
+                backgroundColor: StatusTint.surface(context, color),
+                child: Icon(Icons.badge, color: StatusTint.onTint(context, color)),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(worker.fullName, style: theme.textTheme.titleMedium),
+                    Text(worker.workerCode, style: theme.textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant)),
+                    if (worker.vehiclePlate != null)
+                      Text(
+                        'Plate: ${worker.vehiclePlate}',
+                        style: theme.textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+                      ),
+                  ],
                 ),
-                const SizedBox(width: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                  decoration: BoxDecoration(color: color.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(8)),
-                  child: Text(label, style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 11)),
-                ),
-              ],
-            ),
-            Wrap(
-              alignment: WrapAlignment.end,
-              spacing: 4,
-              children: [
-                TextButton(
-                  onPressed: () => _showFileIncidentDialog(worker),
-                  child: const Text('File Incident', style: TextStyle(fontSize: 12)),
-                ),
-                TextButton(
-                  onPressed: () => _showIncidentHistory(worker),
-                  child: const Text('Incident History', style: TextStyle(fontSize: 12)),
-                ),
-                TextButton(
-                  onPressed: () => _removeFromRoster(worker),
-                  child: Text('Remove from Roster', style: TextStyle(fontSize: 12, color: Colors.grey.shade700)),
-                ),
-              ],
-            ),
-          ],
-        ),
+              ),
+              // Beside the name the pill is a non-flexible child of a Row and
+              // is laid out unbounded, so on a phone it goes on its own line
+              // where it can wrap instead.
+              if (density.isWide) ...[const SizedBox(width: 8), pill],
+            ],
+          ),
+          if (!density.isWide) ...[const SizedBox(height: 10), pill],
+          const SizedBox(height: 4),
+          Wrap(
+            alignment: WrapAlignment.end,
+            spacing: 4,
+            children: [
+              TextButton(
+                onPressed: () => _showFileIncidentDialog(worker),
+                child: const Text('File incident'),
+              ),
+              TextButton(
+                onPressed: () => _showIncidentHistory(worker),
+                child: const Text('Incident history'),
+              ),
+              TextButton(
+                onPressed: () => _removeFromRoster(worker),
+                style: TextButton.styleFrom(foregroundColor: scheme.onSurfaceVariant),
+                child: const Text('Remove from roster'),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
