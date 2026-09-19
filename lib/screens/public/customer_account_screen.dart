@@ -207,15 +207,27 @@ class _CustomerAccountScreenState extends ConsumerState<CustomerAccountScreen> {
                             margin: EdgeInsets.only(bottom: density.gap),
                             child: const AccountSettingsSection(),
                           ),
-                          OutlinedButton.icon(
-                            onPressed: _signOut,
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: theme.colorScheme.error,
-                              side: BorderSide(color: theme.colorScheme.error, width: 1.5),
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                            ),
-                            icon: const Icon(Icons.logout),
-                            label: const Text('Sign out'),
+                          // Full width through PortalActionRow, the wrapper
+                          // Save changes already uses on this screen, so it
+                          // lines up with the cards instead of sitting as a
+                          // narrow centred pill beneath them (this Column
+                          // centres its children by default). The old style
+                          // passed only vertical padding, and styleFrom
+                          // replaces padding on every side -- so the icon and
+                          // label sat flush against the outline.
+                          PortalActionRow(
+                            children: [
+                              OutlinedButton.icon(
+                                onPressed: _signOut,
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: theme.colorScheme.error,
+                                  side: BorderSide(color: theme.colorScheme.error, width: 1.5),
+                                  padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+                                ),
+                                icon: const Icon(Icons.logout),
+                                label: const Text('Sign out'),
+                              ),
+                            ],
                           ),
                         ],
                       ),

@@ -363,11 +363,21 @@ class _BulletinFeedState extends ConsumerState<BulletinFeed> {
                 ],
               ),
             ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _handleNewPostTap(membership),
-        icon: const Icon(Icons.add),
-        label: const Text('New Post'),
-      ),
+      // Only offered to someone who can actually post. A signed-in customer
+      // has no posting categories at all, so this used to show them a New
+      // Post button whose answer was a prompt to log in -- while they were
+      // already logged in. Gated on the service rather than a hardcoded role
+      // list, so the button cannot drift from the permission it represents.
+      // A guest (membership == null) keeps it as the login entry point, the
+      // behaviour the class comment above describes.
+      floatingActionButton:
+          membership != null && _bulletinService.allowedCategoriesFor(membership.role).isEmpty
+          ? null
+          : FloatingActionButton.extended(
+              onPressed: () => _handleNewPostTap(membership),
+              icon: const Icon(Icons.add),
+              label: const Text('New Post'),
+            ),
     );
   }
 
