@@ -10,6 +10,11 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  # Web-only, ships with the SDK. Provides usePathUrlStrategy so the website
+  # has real paths (/privacy) instead of fragments (/#/privacy) -- see
+  # lib/utils/url_strategy.dart. The mobile app compiles the stub instead.
+  flutter_web_plugins:
+    sdk: flutter
   
   url_launcher: ^6.3.0
   # State Management

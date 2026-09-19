@@ -13,9 +13,15 @@ import 'providers/app_theme_provider.dart';
 import 'providers/web_theme_provider.dart';
 import 'screens/auth/auth_gate.dart';
 import 'web_router.dart';
+import 'utils/url_strategy.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Real paths for the website (/privacy) rather than fragments
+  // (/#/privacy). No-op on mobile. Must run before the router is built,
+  // since go_router reads the current location on construction.
+  useRealUrls();
 
   // Android 15 began enforcing edge-to-edge at targetSdk 35, and Android 16
   // (targetSdk 36, which this app inherits from the Flutter SDK) removes the
