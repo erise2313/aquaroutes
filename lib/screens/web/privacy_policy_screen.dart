@@ -77,7 +77,7 @@ class PrivacyPolicyScreen extends StatelessWidget {
                       const SizedBox(height: 28),
 
                       const _Body(
-                        'This policy covers the GenTri: WASA mobile app and the gentriwasa.org website, both operated by the General Trias Water Station Association. Browsing the bulletin board, the station directory and the map needs no account. Everything below applies once you create an account or place an order.',
+                        'This policy covers the GenTri: WASA mobile app and the association website, both operated by the General Trias Water Station Association. Browsing the bulletin board, the station directory and the map needs no account. Everything below applies once you create an account or place an order.',
                       ),
 
                       const _Heading('What we collect'),

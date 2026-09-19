@@ -136,7 +136,7 @@ class _AdminPortalWrongRoleScreen extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               const Text(
-                'Station owners should use gentriwasa.org instead.',
+                'Station owners should sign in on the main GenTri: WASA website instead.',
                 style: TextStyle(color: Colors.grey),
                 textAlign: TextAlign.center,
               ),
