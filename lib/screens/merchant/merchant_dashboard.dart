@@ -15,6 +15,7 @@ import '../../constants/app_colors.dart';
 import '../../widgets/app_theme_toggle.dart';
 import '../../widgets/notification_bell.dart';
 import '../../widgets/portal/portal.dart';
+import '../../utils/log.dart';
 
 /// 'assigned' rolls into "active" alongside 'active' (both mean a driver is
 /// on it, just not picked up yet vs. en route); 'done' is counted on its
@@ -146,7 +147,7 @@ class _MerchantDashboardScreenState extends State<MerchantDashboardScreen> {
         }
       }
     } catch (e) {
-      debugPrint('Error fetching dashboard data: $e');
+      logError('merchant dashboard', e);
       if (mounted) {
         setState(() {
           // Was previously left reading the initial "Loading..." placeholder

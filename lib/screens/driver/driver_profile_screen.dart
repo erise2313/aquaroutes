@@ -13,6 +13,7 @@ import '../../services/worker_credential_service.dart';
 import '../../services/worker_service.dart';
 import '../../widgets/account_settings_section.dart';
 import '../../utils/error_text.dart';
+import '../../utils/log.dart';
 
 /// Driver profile + the Digital WASA Worker QR Badge. Clearance status is
 /// read-only here -- it can only change via the worker_incidents review
@@ -97,7 +98,7 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
         });
       }
     } catch (e) {
-      debugPrint("Error fetching driver profile. ${describeError(e)}");
+      logError('driver profile fetch', e);
       if (mounted) setState(() => _isLoading = false);
     }
   }
@@ -120,7 +121,7 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
         );
       }
     } catch (e) {
-      debugPrint("Error saving profile. ${describeError(e)}");
+      logError('driver profile save', e);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to update profile. ${describeError(e)}')));
       }

@@ -21,6 +21,7 @@ import 'screens/web/station_detail_screen.dart';
 import 'screens/web/stations_directory_screen.dart';
 import 'screens/web/verify_accreditation_screen.dart';
 import 'widgets/web_nav_bar.dart';
+import 'screens/web/privacy_policy_screen.dart';
 
 /// Canonical paths for the public website. Kept in one place so the nav bar,
 /// the footer and any in-page link all name the same string, and so a typo
@@ -49,6 +50,11 @@ class WebRoutes {
 
   /// Google Play's required "how to delete your account" page.
   static const accountDeletion = '/account-deletion';
+
+  /// Google Play requires a publicly reachable privacy policy URL for any
+  /// app handling personal data. This is that URL; it goes in the Play
+  /// Console listing and must stay reachable while the app is published.
+  static const privacy = '/privacy';
 
   static String station(String id) => '$stations/$id';
 
@@ -149,6 +155,7 @@ GoRouter buildWebRouter() {
       GoRoute(path: WebRoutes.resources, pageBuilder: (_, _) => _page(const ResourcesScreen())),
       GoRoute(path: WebRoutes.events, pageBuilder: (_, _) => _page(const EventsScreen())),
       GoRoute(path: WebRoutes.accountDeletion, pageBuilder: (_, _) => _page(const AccountDeletionScreen())),
+      GoRoute(path: WebRoutes.privacy, pageBuilder: (_, _) => _page(const PrivacyPolicyScreen())),
     ],
     // A mistyped URL should land somewhere useful rather than on a router
     // stack trace, which is what an unhandled route renders in release.

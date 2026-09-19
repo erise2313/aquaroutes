@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A water drop, not the shield. Adaptive icons are masked to whatever
+     shape the device uses (circle, squircle, teardrop), so a shield
+     silhouette would be clipped differently on every launcher. The drop
+     stays inside the 66dp safe zone centred on the 108dp canvas, which is
+     the only region guaranteed to survive every mask. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,26 C54,26 74,48 74,62 A20,20 0 0,1 34,62 C34,48 54,26 54,26 Z" />
+</vector>

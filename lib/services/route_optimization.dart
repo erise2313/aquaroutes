@@ -1,9 +1,9 @@
 import 'dart:async';
 import 'dart:math';
 
-import 'package:flutter/foundation.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../utils/log.dart';
 
 /// Road routing for deliveries.
 ///
@@ -141,7 +141,7 @@ class RouteOptimizationService {
       return routePlanFromResponse(data, stops.length);
     } catch (e) {
       // No coordinates in the message: stops are customer addresses.
-      debugPrint('route-optimize unavailable (${e.runtimeType}); using straight-line estimate');
+      logError('route optimize', 'unavailable (${e.runtimeType}); using straight-line estimate');
       return approximateRoutePlan(origin, stops);
     }
   }

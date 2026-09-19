@@ -8,6 +8,7 @@ import '../../services/route_optimization.dart';
 import '../../widgets/app_map_tiles.dart';
 import '../../widgets/custom_map_marker.dart';
 import '../../utils/error_text.dart';
+import '../../utils/log.dart';
 
 class TrackingScreen extends StatefulWidget {
   const TrackingScreen({super.key});
@@ -84,7 +85,7 @@ class _TrackingScreenState extends State<TrackingScreen> {
         _mapController.move(dynamicStationLocation, 14);
       }
     } catch (e) {
-      debugPrint(describeError(e));
+      logError('merchant tracking', e);
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Routing Error. ${describeError(e)}')));
     } finally {
       if (mounted) setState(() => _isGeneratingRoute = false);

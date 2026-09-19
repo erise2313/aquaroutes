@@ -13,6 +13,7 @@ import '../../widgets/confirm_dialog.dart';
 import '../../widgets/portal/portal.dart';
 import '../../utils/error_text.dart';
 import '../../utils/formatters.dart';
+import '../../utils/log.dart';
 
 /// How one order's status reads on screen: its pill, its colour and the icon
 /// on its card. Kept in one place so "assigned" doesn't mean amber on one
@@ -129,7 +130,7 @@ class _MerchantOrdersScreenState extends State<MerchantOrdersScreen> {
             }
           });
     } catch (e) {
-      debugPrint(describeError(e));
+      logError('merchant orders', e);
       if (mounted) {
         setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(describeError(e))));
@@ -162,7 +163,7 @@ class _MerchantOrdersScreenState extends State<MerchantOrdersScreen> {
     if (await canLaunchUrl(launchUri)) {
       await launchUrl(launchUri);
     } else {
-      debugPrint('Could not launch phone dialer for $phoneNumber');
+      logError('merchant orders dialer', 'no installed app handled the tel: intent');
     }
   }
 
@@ -222,7 +223,7 @@ class _MerchantOrdersScreenState extends State<MerchantOrdersScreen> {
     try {
       await _refreshAvailableDrivers();
     } catch (e) {
-      debugPrint('Could not refresh available drivers: $e');
+      logError('merchant available drivers', e);
     }
     if (!mounted) return;
 

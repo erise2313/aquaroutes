@@ -14,6 +14,7 @@ import '../../widgets/account_settings_section.dart';
 import '../../widgets/app_theme_toggle.dart';
 import '../../widgets/portal/portal.dart';
 import '../../utils/error_text.dart';
+import '../../utils/log.dart';
 
 /// Builds the `profiles` table update payload (trimmed). Split from
 /// [buildStationPayload] since profile identity and station business data
@@ -94,7 +95,7 @@ class _MerchantProfileScreenState extends State<MerchantProfileScreen> {
     try {
       await supabase.auth.signOut();
     } catch (e) {
-      debugPrint("Logout error. ${describeError(e)}");
+      logError('merchant logout', e);
     } finally {
       if (mounted) {
         setState(() => _isLoggingOut = false);
@@ -155,7 +156,7 @@ class _MerchantProfileScreenState extends State<MerchantProfileScreen> {
         });
       }
     } catch (e) {
-      debugPrint("Error fetching profile. ${describeError(e)}");
+      logError('merchant profile fetch', e);
       if (mounted) {
         setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
@@ -275,7 +276,7 @@ class _MerchantProfileScreenState extends State<MerchantProfileScreen> {
       }
       await _fetchProfileData();
     } catch (e) {
-      debugPrint('Failed to update profile: $e');
+      logError('merchant profile update', e);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Failed to update profile. ${describeError(e)}')),

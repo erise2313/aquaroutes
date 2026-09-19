@@ -18,6 +18,7 @@ import '../../widgets/skeleton_loader.dart';
 import '../../widgets/web_seal.dart';
 import '../../utils/error_text.dart';
 import '../../constants/admin_palette.dart';
+import '../../utils/log.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -181,7 +182,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       // Never fall through to rendering zeros here: "0 permits to review /
       // 0 open incidents" reads as a genuine all-clear, so a failed load
       // would quietly tell an admin there's nothing to do.
-      debugPrint('Error fetching admin stats: $e');
+      logError('admin dashboard stats', e);
       if (mounted) {
         setState(() {
           _error = 'Could not load the overview. ${describeError(e)}';

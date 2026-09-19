@@ -17,6 +17,7 @@ import '../screens/web/news_screen.dart';
 import '../screens/web/resources_screen.dart';
 import '../screens/web/stations_directory_screen.dart';
 import '../screens/web/verify_accreditation_screen.dart';
+import '../screens/web/privacy_policy_screen.dart';
 import '../web_strings.dart';
 import 'web_page_route.dart';
 import 'web_seal.dart';
@@ -96,6 +97,10 @@ class WebFooter extends ConsumerWidget {
                         _FooterLink(
                           label: 'Delete your account',
                           onTap: () => _push(context, const AccountDeletionScreen(), WebRoutes.accountDeletion),
+                        ),
+                        _FooterLink(
+                          label: 'Privacy policy',
+                          onTap: () => _push(context, const PrivacyPolicyScreen(), WebRoutes.privacy),
                         ),
                       ],
                     ),

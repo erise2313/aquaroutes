@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The association's brand gradient, the same navy-to-teal the in-app
+     WasaShieldLogo paints (AppColors.primary -> AppColors.accent). Adaptive
+     icon backgrounds must fill the full 108dp canvas: the launcher masks it
+     to the device's own shape, and anything short of the edge shows a gap. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <gradient
+        android:type="linear"
+        android:angle="270"
+        android:startColor="#1565C0"
+        android:endColor="#00ACC1" />
+</shape>

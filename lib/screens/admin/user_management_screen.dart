@@ -16,6 +16,7 @@ import '../../utils/csv_download.dart';
 import '../../utils/csv_export.dart';
 import '../../utils/error_text.dart';
 import '../../constants/admin_palette.dart';
+import '../../utils/log.dart';
 
 /// Narrows the loaded membership rows by free-text name/station search plus
 /// optional role and status. Kept as a top-level pure function (same pattern
@@ -347,7 +348,7 @@ class _DeletionRequestsPanelState extends State<_DeletionRequestsPanel> {
       });
     } catch (e) {
       // The rest of the screen still works; the panel just stays hidden.
-      debugPrint('Could not load deletion requests: $e');
+      logError('deletion requests', e);
     }
   }
 

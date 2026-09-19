@@ -9,6 +9,7 @@ import '../../models/worker.dart';
 import '../../services/supabase_service.dart';
 import '../../services/worker_service.dart';
 import '../../widgets/portal/portal.dart';
+import '../../utils/log.dart';
 
 /// Station-scoped fleet roster. Fixes the most severe bug found in the old
 /// app: the previous version streamed ALL rows where role='driver' with no
@@ -141,7 +142,7 @@ class _DriverManagementScreenState extends State<DriverManagementScreen> {
     if (await canLaunchUrl(launchUri)) {
       await launchUrl(launchUri);
     } else {
-      debugPrint('Could not launch phone dialer for $phoneNumber');
+      logError('merchant driver dialer', 'no installed app handled the tel: intent');
     }
   }
 

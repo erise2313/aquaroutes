@@ -1,8 +1,8 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../utils/log.dart';
 
 /// GPS broadcast for the ON-DUTY toggle. Upserts into `driver_states`
 /// (supabase/migrations/0006_orders_driver_state.sql), keyed by worker_id
@@ -41,7 +41,7 @@ class LocationService {
           'is_active': true,
         });
       } catch (e) {
-        debugPrint('LocationService: failed to broadcast position, stopping tracking: $e');
+        logError('location broadcast', e);
         await stopTracking(workerId);
       }
     });

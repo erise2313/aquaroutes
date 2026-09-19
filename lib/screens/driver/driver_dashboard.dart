@@ -22,6 +22,7 @@ import '../../widgets/permission_rationale_dialog.dart';
 import '../public/bulletin_board_screen.dart';
 import 'driver_profile_screen.dart';
 import '../../utils/error_text.dart';
+import '../../utils/log.dart';
 
 
 class DriverDashboardScreen extends StatefulWidget {
@@ -132,7 +133,7 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
 
       await _fetchActiveDelivery();
     } catch (e) {
-      debugPrint('Driver init error: $e');
+      logError('driver init', e);
       if (mounted) {
         setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(describeError(e))));
@@ -280,7 +281,7 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
         }
       }
     } catch (e) {
-      debugPrint('Driver Fetch Error: $e');
+      logError('driver fetch', e);
       if (mounted) {
         setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(describeError(e))));
@@ -299,7 +300,7 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
     if (await canLaunchUrl(launchUri)) {
       await launchUrl(launchUri);
     } else {
-      debugPrint('Could not launch phone dialer for $phoneNumber');
+      logError('driver dialer', 'no installed app handled the tel: intent');
     }
   }
 
@@ -334,7 +335,7 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
         otherStations = await _jugService.fetchOtherStations(_stationId!);
         otherStationNames = {for (final s in otherStations) s['id'] as String: s['station_name'] as String};
       } catch (e) {
-        debugPrint('Could not load other stations for jug-origin confirmation: $e');
+        logError('jug origin stations', e);
       }
     }
     if (!mounted) return;
