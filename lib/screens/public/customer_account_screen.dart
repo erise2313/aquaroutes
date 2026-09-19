@@ -204,30 +204,26 @@ class _CustomerAccountScreenState extends ConsumerState<CustomerAccountScreen> {
                           PortalCard(
                             lift: false,
                             padding: const EdgeInsets.symmetric(vertical: 8),
-                            margin: EdgeInsets.only(bottom: density.gap),
-                            child: const AccountSettingsSection(),
-                          ),
-                          // Full width through PortalActionRow, the wrapper
-                          // Save changes already uses on this screen, so it
-                          // lines up with the cards instead of sitting as a
-                          // narrow centred pill beneath them (this Column
-                          // centres its children by default). The old style
-                          // passed only vertical padding, and styleFrom
-                          // replaces padding on every side -- so the icon and
-                          // label sat flush against the outline.
-                          PortalActionRow(
-                            children: [
-                              OutlinedButton.icon(
-                                onPressed: _signOut,
-                                style: OutlinedButton.styleFrom(
-                                  foregroundColor: theme.colorScheme.error,
-                                  side: BorderSide(color: theme.colorScheme.error, width: 1.5),
-                                  padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                const AccountSettingsSection(),
+                                // Sign out sits in the card with the other
+                                // account actions rather than floating below
+                                // it as a red outlined pill, which read as
+                                // bolted on rather than part of the page.
+                                // Neutral, too: signing out is reversible,
+                                // and red in this card means destructive
+                                // (Delete account).
+                                Divider(height: 1, indent: 16, endIndent: 16, color: theme.colorScheme.outlineVariant),
+                                ListTile(
+                                  leading: Icon(Icons.logout, color: theme.colorScheme.onSurface),
+                                  title: Text('Sign out', style: TextStyle(color: theme.colorScheme.onSurface)),
+                                  onTap: _signOut,
                                 ),
-                                icon: const Icon(Icons.logout),
-                                label: const Text('Sign out'),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
                         ],
                       ),

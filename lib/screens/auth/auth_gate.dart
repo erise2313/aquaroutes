@@ -17,14 +17,7 @@ import '../web/reset_password_screen.dart';
 import 'account_suspended_screen.dart';
 import 'login_screen.dart';
 import 'no_membership_screen.dart';
-
-/// Set via `--dart-define=PORTAL=admin` (deploy_admin_web.ps1) for the
-/// WASA-admin-only hosting build -- skips the public marketing site
-/// entirely and only lets wasa_admin through after login. Always false in
-/// every other build (the default web build, and the mobile app, which
-/// never passes this define), so normal behavior is provably unchanged
-/// unless this flavor is explicitly built.
-const _isAdminPortalBuild = String.fromEnvironment('PORTAL') == 'admin';
+import '../../constants/portal_build.dart';
 
 /// Root routing widget. Restores an existing session on relaunch (the old
 /// app always opened LoginScreen regardless of session state) and routes by
@@ -49,7 +42,7 @@ class AuthGate extends ConsumerWidget {
 
     return authState.when(
       loading: () => const _SplashScreen(),
-      error: (_, _) => _isAdminPortalBuild ? const _AdminThemed(child: LoginScreen()) : (kIsWeb ? const OrgHomeScreen() : const PublicHomeScreen()),
+      error: (_, _) => kIsAdminPortalBuild ? const _AdminThemed(child: LoginScreen()) : (kIsWeb ? const OrgHomeScreen() : const PublicHomeScreen()),
       data: (state) {
         // Supabase Flutter auto-detects a password-recovery token in the
         // URL fragment on web with no extra config -- intercept it here
@@ -62,15 +55,15 @@ class AuthGate extends ConsumerWidget {
         }
 
         final session = state.session;
-        if (session == null) return _isAdminPortalBuild ? const _AdminThemed(child: LoginScreen()) : (kIsWeb ? const OrgHomeScreen() : const PublicHomeScreen());
+        if (session == null) return kIsAdminPortalBuild ? const _AdminThemed(child: LoginScreen()) : (kIsWeb ? const OrgHomeScreen() : const PublicHomeScreen());
 
         final membershipAsync = ref.watch(currentMembershipProvider);
         return membershipAsync.when(
           loading: () => const _SplashScreen(),
-          error: (_, _) => _isAdminPortalBuild ? const _AdminThemed(child: LoginScreen()) : (kIsWeb ? const OrgHomeScreen() : const PublicHomeScreen()),
+          error: (_, _) => kIsAdminPortalBuild ? const _AdminThemed(child: LoginScreen()) : (kIsWeb ? const OrgHomeScreen() : const PublicHomeScreen()),
           data: (membership) {
             if (membership == null) return const _NoActiveMembershipRouter();
-            if (_isAdminPortalBuild && membership.role != AppRole.wasaAdmin) {
+            if (kIsAdminPortalBuild && membership.role != AppRole.wasaAdmin) {
               return const _AdminThemed(child: _AdminPortalWrongRoleScreen());
             }
             // Admin access on the main site is intentionally being retired
@@ -79,7 +72,7 @@ class AuthGate extends ConsumerWidget {
             // from gentri-wasa-admin.web.app. Mobile is untouched (this
             // guard only applies to the main *website* build), since admin
             // access there wasn't part of this change.
-            if (kIsWeb && !_isAdminPortalBuild && membership.role == AppRole.wasaAdmin) {
+            if (kIsWeb && !kIsAdminPortalBuild && membership.role == AppRole.wasaAdmin) {
               return const _UseAdminPortalScreen();
             }
             switch (membership.role) {

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../constants/web_theme.dart';
+import '../../constants/portal_build.dart';
 import '../../providers/app_state.dart';
 import '../../widgets/auth_text_field.dart';
 import '../../widgets/fade_slide_in.dart';
@@ -186,31 +187,36 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       ),
                     ),
 
-                    const SizedBox(height: 24),
-
-                    TextButton(
-                      onPressed: () {
-                        Navigator.push(context, webPageRoute(const RegistrationScreen()));
-                      },
-                      child: RichText(
-                        text: TextSpan(
-                          text: "Don't have an account? ",
-                          style: TextStyle(color: scheme.onSurfaceVariant),
-                          children: [
-                            TextSpan(text: "Register here", style: TextStyle(color: scheme.primary, fontWeight: FontWeight.bold)),
-                          ],
+                    // The admin portal is staff-only: WASA creates those
+                    // accounts, nobody self-registers into them, so a
+                    // Register link there leads somewhere that should not
+                    // exist. Guest browsing is dead on that build too --
+                    // this screen is the root there, so popUntil has
+                    // nothing to pop back to.
+                    if (!kIsAdminPortalBuild) ...[
+                      const SizedBox(height: 24),
+                      TextButton(
+                        onPressed: () {
+                          Navigator.push(context, webPageRoute(const RegistrationScreen()));
+                        },
+                        child: RichText(
+                          text: TextSpan(
+                            text: "Don't have an account? ",
+                            style: TextStyle(color: scheme.onSurfaceVariant),
+                            children: [
+                              TextSpan(text: "Register here", style: TextStyle(color: scheme.primary, fontWeight: FontWeight.bold)),
+                            ],
+                          ),
                         ),
                       ),
-                    ),
-
-                    const SizedBox(height: 8),
-
-                    TextButton.icon(
-                      onPressed: () => Navigator.of(context).popUntil((route) => route.isFirst),
-                      style: TextButton.styleFrom(foregroundColor: scheme.onSurface),
-                      icon: const Icon(Icons.arrow_back, size: 16),
-                      label: const Text("Continue browsing as guest"),
-                    ),
+                      const SizedBox(height: 8),
+                      TextButton.icon(
+                        onPressed: () => Navigator.of(context).popUntil((route) => route.isFirst),
+                        style: TextButton.styleFrom(foregroundColor: scheme.onSurface),
+                        icon: const Icon(Icons.arrow_back, size: 16),
+                        label: const Text("Continue browsing as guest"),
+                      ),
+                    ],
                   ],
                 ),
               ),

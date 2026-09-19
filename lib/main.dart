@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 
 import 'constants/app_theme.dart';
 import 'constants/web_theme.dart';
+import 'constants/portal_build.dart';
 import 'providers/app_theme_provider.dart';
 import 'providers/web_theme_provider.dart';
 import 'screens/auth/auth_gate.dart';
@@ -64,7 +65,7 @@ Future<void> main() async {
 /// (--dart-define=PORTAL=admin) and the mobile app are deliberately excluded
 /// from URL routing: admin having shareable, indexable URLs works against
 /// keeping it hidden, and the app has no address bar to benefit.
-const _isPublicWebsite = kIsWeb && String.fromEnvironment('PORTAL') != 'admin';
+const _isPublicWebsite = kIsWeb && !kIsAdminPortalBuild;
 
 class MyApp extends ConsumerStatefulWidget {
   const MyApp({super.key});
