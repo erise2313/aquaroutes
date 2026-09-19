@@ -22,9 +22,14 @@ class BulletinService {
     return rows.map((r) => FloorPrice.fromMap(r)).toList();
   }
 
-  /// Which categories a role is allowed to post, for the create-post sheet's
-  /// category dropdown. Empty for a guest (null role) -- the FAB shows a
-  /// login/register prompt instead of the sheet in that case.
+  /// Which categories a role is allowed to post.
+  ///
+  /// Two things read this, not one: the create-post sheet's category
+  /// dropdown, and whether the board's New Post button is rendered at all
+  /// (screens/public/bulletin_feed.dart). An empty answer means the role
+  /// cannot post, so a signed-in customer never sees the button -- change
+  /// this list and you change who sees it. A guest (null role) is the one
+  /// exception: the button stays as their login/register entry point.
   List<BulletinCategory> allowedCategoriesFor(AppRole? role) {
     switch (role) {
       case AppRole.wasaAdmin:
