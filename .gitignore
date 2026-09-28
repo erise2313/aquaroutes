@@ -66,3 +66,7 @@ AI_SNAPSHOT.txt
 # Supabase CLI local state (version cache, linked-branch info) -- machine-specific
 supabase/.temp/
 supabase/.branches/
+
+# Local developer tooling -- not part of the project
+.claude/
+skills-lock.json
