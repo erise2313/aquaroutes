@@ -60,7 +60,7 @@ class _WebsiteContentScreenState extends State<WebsiteContentScreen> {
     // _FaqEditor/_PermitLabelsEditor/_MultiEditor already own a ListView,
     // so they pass through unwrapped.
     final content = switch (page) {
-      _ContentPage.about => const _ItemsEditor(pageKey: 'about', itemKey: 'what_wasa_does', label: '"What WASA Does" bullets', showTitleField: false),
+      _ContentPage.about => const _ItemsEditor(pageKey: 'about', itemKey: 'what_wasa_does', label: 'What WASA Does', showTitleField: false),
       _ContentPage.faq => const _FaqEditor(),
       _ContentPage.contact => const _SectionsEditor(pageKey: 'contact', sections: [
           (key: 'address', label: 'Office Address'),
@@ -100,6 +100,13 @@ class _WebsiteContentScreenState extends State<WebsiteContentScreen> {
           final isWide = constraints.maxWidth > 700;
           if (isWide) {
             return Row(
+              // Without this, Row's default centre alignment floats a short
+              // editor halfway down the pane -- the About page has four
+              // bullets and sat with ~190px of blank space above it. Stretch
+              // makes both the sidebar and the editor fill the height, so
+              // content starts at the top and the sidebar's background runs
+              // the full way down.
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 SizedBox(
                   width: 240,

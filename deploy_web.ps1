@@ -26,10 +26,16 @@ if (-not $supabaseUrl -or -not $supabaseAnonKey) {
 $mapDefine = @()
 if ($envMap['MAPTILER_KEY']) { $mapDefine = @("--dart-define=MAPTILER_KEY=$($envMap['MAPTILER_KEY'])") }
 
+# Where this site points a wasa_admin who signs in here (auth_gate.dart).
+# Defaulted in code, but passed explicitly so .env is the single place an
+# environment switch has to touch.
+$adminUrlDefine = @()
+if ($envMap['ADMIN_PORTAL_URL']) { $adminUrlDefine = @("--dart-define=ADMIN_PORTAL_URL=$($envMap['ADMIN_PORTAL_URL'])") }
+
 & "C:\flutter\flutter\bin\flutter.bat" build web --source-maps `
     --dart-define=SUPABASE_URL=$supabaseUrl `
     --dart-define=SUPABASE_ANON_KEY=$supabaseAnonKey `
-    @mapDefine
+    @mapDefine @adminUrlDefine
 
 if ($LASTEXITCODE -ne 0) {
     Write-Error "flutter build web failed"

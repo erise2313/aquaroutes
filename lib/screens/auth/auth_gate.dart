@@ -162,7 +162,14 @@ class _AdminPortalWrongRoleScreen extends StatelessWidget {
 class _UseAdminPortalScreen extends StatelessWidget {
   const _UseAdminPortalScreen();
 
-  static const _adminPortalUrl = 'https://gentri-wasa-admin.web.app';
+  /// Supplied at build time (deploy_web.ps1 passes it from .env) so moving to
+  /// a different Firebase project doesn't leave this pointing at the previous
+  /// one -- which is exactly what happened when it was a literal: an admin
+  /// signing in on the new site was sent to the old project's portal.
+  static const _adminPortalUrl = String.fromEnvironment(
+    'ADMIN_PORTAL_URL',
+    defaultValue: 'https://gentriwasa-eval-admin.web.app',
+  );
 
   @override
   Widget build(BuildContext context) {

@@ -1,15 +1,15 @@
 {
   "projects": {
-    "default": "gentri-wasa"
+    "default": "gentriwasa-eval"
   },
   "targets": {
-    "gentri-wasa": {
+    "gentriwasa-eval": {
       "hosting": {
         "main": [
-          "gentri-wasa"
+          "gentriwasa-eval"
         ],
         "admin": [
-          "gentri-wasa-admin"
+          "gentriwasa-eval-admin"
         ]
       }
     }
