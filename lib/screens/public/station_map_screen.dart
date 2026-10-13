@@ -5,6 +5,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../../models/station.dart';
+import '../../services/favorite_station_service.dart';
 import '../../services/nearby_service.dart';
 import '../../services/station_service.dart';
 import '../../services/supabase_service.dart';
@@ -17,6 +18,7 @@ import '../../widgets/portal/portal.dart';
 import '../../widgets/star_rating.dart';
 import '../../widgets/app_map_tiles.dart';
 import '../../utils/error_text.dart';
+import '../../utils/log.dart';
 
 /// Public, no-login interactive map/list of every WASA-verified station.
 /// Alkaline stations get the animated glowing pulse pin (spec 4D); all pins
@@ -37,11 +39,13 @@ class StationMapScreen extends StatefulWidget {
 
 class _StationMapScreenState extends State<StationMapScreen> {
   final _stationService = StationService(SupabaseService.instance);
+  final _favoriteService = FavoriteStationService(SupabaseService.instance);
   final _nearbyService = NearbyService();
   final _mapController = MapController();
   bool _isLoading = true;
   String? _error;
   List<PublicStation> _stations = [];
+  Set<String> _favoriteIds = {};
   String? _filter;
   bool _showList = false;
   double? _userLat;
@@ -71,6 +75,12 @@ class _StationMapScreenState extends State<StationMapScreen> {
         });
       }
 
+      // Same reasoning as the location fix below: the favourites round trip
+      // must not hold the list back. Until it lands nothing is starred and
+      // nothing is pinned, which is exactly the signed-out state, so the list
+      // is correct at every moment rather than merely correct at the end.
+      unawaited(_loadFavorites());
+
       // Deliberately outside the loading gate above. Asking for a location
       // means a rationale dialog the user has to dismiss and then a GPS fix,
       // and the map used to sit behind both -- so the tiles had not even
@@ -85,6 +95,45 @@ class _StationMapScreenState extends State<StationMapScreen> {
           _isLoading = false;
         });
       }
+    }
+  }
+
+  /// Best-effort load of the signed-in customer's favourites. A guest gets an
+  /// empty set without a round trip, and a failure here leaves the directory
+  /// working with nothing starred rather than failing the whole screen -- a
+  /// favourite is a convenience, not something worth an error state over.
+  Future<void> _loadFavorites() async {
+    try {
+      final ids = await _favoriteService.fetchIds();
+      if (mounted) setState(() => _favoriteIds = ids);
+    } catch (e, stack) {
+      logError('station_map_screen._loadFavorites', e, stack);
+    }
+  }
+
+  /// Optimistic: the star flips immediately and is put back if the write
+  /// fails. Tapping it is a deliberate action whose result should be visible
+  /// at once, and the cost of being wrong is one star in the wrong state.
+  Future<void> _toggleFavorite(PublicStation station) async {
+    final wasFavorite = _favoriteIds.contains(station.id);
+    setState(() {
+      wasFavorite ? _favoriteIds.remove(station.id) : _favoriteIds.add(station.id);
+    });
+    try {
+      if (wasFavorite) {
+        await _favoriteService.remove(station.id);
+      } else {
+        await _favoriteService.add(station.id);
+      }
+    } catch (e, stack) {
+      logError('station_map_screen._toggleFavorite', e, stack);
+      if (!mounted) return;
+      setState(() {
+        wasFavorite ? _favoriteIds.add(station.id) : _favoriteIds.remove(station.id);
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not update your favourites. Please try again.')),
+      );
     }
   }
 
@@ -116,9 +165,13 @@ class _StationMapScreenState extends State<StationMapScreen> {
     } catch (_) {}
   }
 
+  /// Filter first, then pin: a favourite that the active water-type filter
+  /// excludes stays excluded, rather than being pulled back in by its star.
   List<PublicStation> get _filteredStations {
-    if (_filter == null) return _stations;
-    return _stations.where((s) => s.offeredWaterTypes.contains(_filter)).toList();
+    final filtered = _filter == null
+        ? _stations
+        : _stations.where((s) => s.offeredWaterTypes.contains(_filter)).toList();
+    return FavoriteStationService.pinFavorites(filtered, _favoriteIds);
   }
 
   @override
@@ -234,6 +287,7 @@ class _StationMapScreenState extends State<StationMapScreen> {
     final distance = _userLat != null && _userLng != null
         ? _nearbyService.formatDistance(_nearbyService.distanceKm(_userLat!, _userLng!, station))
         : null;
+    final isFavorite = _favoriteIds.contains(station.id);
 
     return PortalCard(
       onTap: () => _showStationSheet(station),
@@ -286,6 +340,21 @@ class _StationMapScreenState extends State<StationMapScreen> {
                   ],
                 ),
               ),
+              // Hidden entirely for guests rather than shown and then refused:
+              // a control that only ever produces a "sign in first" message is
+              // worse than no control. Sized to the 48dp minimum touch target.
+              if (_favoriteService.isSignedIn)
+                IconButton(
+                  onPressed: () => _toggleFavorite(station),
+                  visualDensity: VisualDensity.compact,
+                  constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+                  tooltip: isFavorite ? 'Remove from favourites' : 'Save to favourites',
+                  icon: Icon(
+                    isFavorite ? Icons.star : Icons.star_border,
+                    color: isFavorite ? AppColors.seal : scheme.onSurfaceVariant,
+                    size: 22,
+                  ),
+                ),
             ],
           ),
           // On its own line rather than as a ListTile trailing: a pill beside

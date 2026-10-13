@@ -12,12 +12,14 @@ import '../../models/product.dart';
 import '../../models/station.dart';
 import '../../services/address_service.dart';
 import '../../providers/app_state.dart';
+import '../../services/favorite_station_service.dart';
 import '../../services/nearby_service.dart';
 import '../../services/order_service.dart';
 import '../../services/product_service.dart';
 import '../../services/station_service.dart';
 import '../../services/supabase_service.dart';
 import '../../utils/formatters.dart';
+import '../../utils/log.dart';
 import '../../constants/app_colors.dart';
 import '../../widgets/custom_map_marker.dart';
 import '../../widgets/error_state.dart';
@@ -94,6 +96,7 @@ class _QuickOrderScreenState extends ConsumerState<QuickOrderScreen> {
   final _stationService = StationService(SupabaseService.instance);
   final _orderService = OrderService(SupabaseService.instance);
   final _productService = ProductService(SupabaseService.instance);
+  final _favoriteService = FavoriteStationService(SupabaseService.instance);
   final _nearbyService = NearbyService();
   double? _userLat;
   double? _userLng;
@@ -130,6 +133,7 @@ class _QuickOrderScreenState extends ConsumerState<QuickOrderScreen> {
   /// late position needs to know whether it may still re-pick the nearest
   /// station -- it must never overrule one the customer chose themselves.
   String? _autoSelectedStationId;
+  Set<String> _favoriteIds = {};
   bool _hasInitializedForSession = false;
 
   // Products are loaded per station on demand and cached; containers once.
@@ -275,8 +279,7 @@ class _QuickOrderScreenState extends ConsumerState<QuickOrderScreen> {
             _selectedProductId = prefill.productId;
             _jugCountController.text = '${prefill.quantity}';
           } else if (stations.isNotEmpty) {
-            _selectedStationId =
-                stations.firstWhere((s) => s.isOrderable && _hasProducts(s), orElse: () => stations.first).id;
+            _selectedStationId = _autoPickStationId(stations);
             _autoSelectedStationId = _selectedStationId;
             if (prefill != null) _prefillNotice = "That station isn't listed any more. Pick another one.";
           }
@@ -290,6 +293,7 @@ class _QuickOrderScreenState extends ConsumerState<QuickOrderScreen> {
       // -- the map with it -- waited on a position that indoors may never
       // arrive. Ordering no longer waits on location at all.
       unawaited(_locateAndSortStations());
+      unawaited(_loadFavorites());
     } catch (e) {
       if (mounted) {
         setState(() {
@@ -325,9 +329,7 @@ class _QuickOrderScreenState extends ConsumerState<QuickOrderScreen> {
         _selectedStationId != null &&
         _selectedStationId == _autoSelectedStationId &&
         _selectedProductId == null;
-    final nearest = canRepick
-        ? sorted.firstWhere((s) => s.isOrderable && _hasProducts(s), orElse: () => sorted.first).id
-        : null;
+    final nearest = canRepick ? _autoPickStationId(sorted) : null;
 
     setState(() {
       _userLat = position.latitude;
@@ -339,6 +341,50 @@ class _QuickOrderScreenState extends ConsumerState<QuickOrderScreen> {
       }
     });
     if (nearest != null) _loadProductsFor(nearest);
+  }
+
+  /// Which station the screen picks when the customer has not picked one.
+  ///
+  /// A favourite wins over proximity -- that is the whole point of marking
+  /// one, and a customer who already has a supplier should not have to
+  /// re-select it on every order. Failing that it falls back to the first
+  /// orderable station that actually has products, which is the nearest such
+  /// station once a GPS fix has arrived and re-sorted the list.
+  String? _autoPickStationId(List<PublicStation> stations) {
+    if (stations.isEmpty) return null;
+    for (final station in stations) {
+      if (_favoriteIds.contains(station.id) && station.isOrderable && _hasProducts(station)) {
+        return station.id;
+      }
+    }
+    return stations.firstWhere((s) => s.isOrderable && _hasProducts(s), orElse: () => stations.first).id;
+  }
+
+  /// Favourites arrive after the first auto-pick, so the pick is redone once
+  /// they land -- under the same guard as the GPS re-pick, so it never moves
+  /// a station the customer chose themselves or one a product is already
+  /// attached to.
+  Future<void> _loadFavorites() async {
+    try {
+      final ids = await _favoriteService.fetchIds();
+      if (!mounted || ids.isEmpty) return;
+      final canRepick = _selectedStationId != null &&
+          _selectedStationId == _autoSelectedStationId &&
+          _selectedProductId == null;
+      setState(() {
+        _favoriteIds = ids;
+        if (canRepick) {
+          final picked = _autoPickStationId(_availableStations);
+          if (picked != null) {
+            _selectedStationId = picked;
+            _autoSelectedStationId = picked;
+          }
+        }
+      });
+      if (canRepick && _selectedStationId != null) _loadProductsFor(_selectedStationId!);
+    } catch (e, stack) {
+      logError('quick_order_screen._loadFavorites', e, stack);
+    }
   }
 
   Future<void> _loadProductsFor(String stationId, {bool force = false}) async {
