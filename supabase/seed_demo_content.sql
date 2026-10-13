@@ -54,6 +54,12 @@ begin
   -- -------------------------------------------------------------------
   -- 1. Bulletin posts -- mix of categories, a couple pinned, varied dates.
   -- -------------------------------------------------------------------
+  -- validate_bulletin_author() requires posted_by = auth.uid(). In the SQL
+  -- Editor auth.uid() is NULL, so every seeded post would be rejected. The
+  -- guard exists to stop a client posting as someone else; seeding is an
+  -- out-of-band exception, so it is switched off for this insert only.
+  alter table bulletins disable trigger trg_validate_bulletin_author;
+
   insert into bulletins (id, association_id, category, title, body, is_pinned, posted_by, author_name, author_role, author_station_name, created_at) values
     (gen_random_uuid(), v_association_id, 'announcement', 'General Assembly moved to next month',
      'Heads up to all member stations: the Q1 General Assembly has been moved from this weekend to the third Saturday of next month, same venue. Attendance sheets will be collected at the door for compliance records.',
@@ -132,4 +138,5 @@ begin
     ('Q1 General Assembly', 'Quarterly meeting -- floor price review and worker registry updates.', now() - interval '75 days', 'Barangay Buenavista I Covered Court', admin_id),
     ('Community Clean Water Awareness Drive', 'Joint drive with Barangay Buenavista I to raise awareness about unlicensed water sellers.', now() - interval '20 days', 'Buenavista I Barangay Hall', admin_id);
 
+  alter table bulletins enable trigger trg_validate_bulletin_author;
 end $$;

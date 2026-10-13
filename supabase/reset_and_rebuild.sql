@@ -40,6 +40,28 @@ drop view if exists bulletin_reaction_counts cascade;
 -- 3. DROP: tables (new schema + any leftover old prototype tables),
 --    children before parents, all with cascade for safety.
 -- ---------------------------------------------------------------------
+-- Tables added by the patches further down this file. They are NOT
+-- removed by dropping their parents: `drop table bulletins cascade` drops
+-- the foreign KEY in bulletin_comments, not the TABLE, so it survives and
+-- the later `create table bulletin_comments` collides with it. Four of
+-- these are created without `if not exists` and fail outright on a re-run
+-- (bulletin_comments, reviews, resources, events); the rest would silently
+-- keep stale rows from the previous run. Dropped children-first.
+drop table if exists favorite_stations cascade;
+drop table if exists customer_addresses cascade;
+drop table if exists notifications cascade;
+drop table if exists account_deletion_requests cascade;
+drop table if exists station_products cascade;
+drop table if exists container_types cascade;
+drop table if exists permit_type_labels cascade;
+drop table if exists web_faq_entries cascade;
+drop table if exists web_content_items cascade;
+drop table if exists web_page_sections cascade;
+drop table if exists events cascade;
+drop table if exists resources cascade;
+drop table if exists reviews cascade;
+drop table if exists bulletin_comments cascade;
+
 drop table if exists bulletin_reactions cascade;
 drop table if exists bulletins cascade;
 drop table if exists floor_prices cascade;
@@ -65,36 +87,85 @@ drop table if exists user_profiles cascade;
 -- ---------------------------------------------------------------------
 drop trigger if exists trg_handle_new_auth_user on auth.users;
 
-drop function if exists handle_new_auth_user() cascade;
-drop function if exists auth_has_role(app_role) cascade;
-drop function if exists auth_station_id() cascade;
-drop function if exists sync_required_permits() cascade;
-drop function if exists recompute_accreditation() cascade;
-drop function if exists generate_worker_code() cascade;
-drop function if exists flag_on_incident_filed() cascade;
-drop function if exists apply_incident_resolution() cascade;
-drop function if exists get_active_orders(uuid) cascade;
-drop function if exists insert_quick_order(uuid, double precision, double precision, int, text, numeric, numeric, numeric, text, text) cascade;
-drop function if exists insert_quick_order(uuid, double precision, double precision, int, text, numeric, numeric, numeric, text, text, text) cascade;
-drop function if exists confirm_jug_settlement(uuid) cascade;
-drop function if exists reject_jug_settlement(uuid) cascade;
-drop function if exists sync_required_worker_credentials() cascade;
-drop function if exists recompute_worker_clearance() cascade;
-drop function if exists register_driver_for_station(text, text, text, text, int) cascade;
-drop function if exists driver_switch_station(text) cascade;
-drop function if exists driver_leave_station() cascade;
-drop function if exists owner_remove_worker(uuid) cascade;
-drop function if exists hire_check_search(text) cascade;
-drop function if exists hire_check_station_history(uuid) cascade;
-drop function if exists register_station_owner(text, text, text, double precision, double precision) cascade;
-drop function if exists register_customer(text) cascade;
-drop function if exists prevent_owner_self_accreditation() cascade;
-drop function if exists prevent_owner_self_permit_approval() cascade;
-drop function if exists prevent_worker_self_credential_approval() cascade;
-drop function if exists protect_order_financial_fields() cascade;
-drop function if exists validate_bulletin_author() cascade;
-drop function if exists enforce_floor_price() cascade;
-drop function if exists lookup_guest_order(uuid, text) cascade;
+-- Drop every overload BY NAME rather than by signature.
+--
+-- The old list named a handful of signatures, which went stale the moment a
+-- patch added a parameter: insert_quick_order alone ends up with 13-, 14-
+-- and 15-argument overloads, and four functions below are created with a
+-- plain `create function` (get_active_orders, insert_quick_order,
+-- lookup_guest_order, set_order_status), so a surviving overload makes a
+-- re-run fail with "function already exists with same argument types".
+-- Dropping a table does not drop functions, so nothing else removes them.
+--
+-- Restricted to the names this file creates -- a blanket drop of every
+-- function in `public` would take PostGIS with it, since that extension
+-- installs there.
+do $$
+declare
+  r record;
+  v_names text[] := array[
+      'account_deletion_blockers',
+      'anonymize_account',
+      'apply_incident_resolution',
+      'auth_has_role',
+      'auth_station_id',
+      'catalog_caller_owns_station',
+      'catalog_station_is_public',
+      'confirm_jug_settlement',
+      'container_types_sync_stations',
+      'driver_leave_station',
+      'driver_switch_station',
+      'enforce_floor_price',
+      'enforce_product_floor_price',
+      'enforce_single_default_address',
+      'flag_on_incident_filed',
+      'generate_worker_code',
+      'get_active_delivery_driver',
+      'get_active_orders',
+      'handle_new_auth_user',
+      'hire_check_search',
+      'hire_check_station_history',
+      'insert_quick_order',
+      'lookup_guest_order',
+      'notify_accreditation_change',
+      'notify_order_event',
+      'notify_permit_review',
+      'order_line_text',
+      'owner_remove_worker',
+      'peso_text',
+      'prevent_owner_self_accreditation',
+      'prevent_owner_self_permit_approval',
+      'prevent_worker_self_credential_approval',
+      'protect_order_financial_fields',
+      'recompute_accreditation',
+      'recompute_worker_clearance',
+      'register_customer',
+      'register_driver_for_station',
+      'register_station_owner',
+      'reject_jug_settlement',
+      'set_accreditation_override',
+      'set_comment_author_name',
+      'set_order_status',
+      'stamp_accredited_at',
+      'stamp_accredited_at_insert',
+      'station_products_sync_station',
+      'station_products_touch_updated_at',
+      'submit_station_review',
+      'sync_required_permits',
+      'sync_required_worker_credentials',
+      'sync_station_from_products',
+      'validate_bulletin_author'
+  ];
+begin
+  for r in
+    select p.oid::regprocedure as sig
+    from pg_proc p
+    join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public' and p.proname = any(v_names)
+  loop
+    execute 'drop function if exists ' || r.sig || ' cascade';
+  end loop;
+end $$;
 
 drop sequence if exists worker_code_seq cascade;
 
@@ -3687,3 +3758,141 @@ drop trigger if exists trg_enforce_single_default_address on customer_addresses;
 create trigger trg_enforce_single_default_address
   before insert or update on customer_addresses
   for each row execute function enforce_single_default_address();
+
+-- ---------------------------------------------------------------------
+-- supabase/migrations/0011_favorite_stations.sql
+--
+-- A customer's own shortlist of member stations. Purely a per-customer
+-- preference -- it grants no access to anything and is never visible to
+-- the station. The directory pins favourites above the distance-sorted
+-- remainder, and the ordering screen prefers a favourite over the nearest
+-- station.
+-- ---------------------------------------------------------------------
+create table if not exists favorite_stations (
+  profile_id uuid not null references profiles(id) on delete cascade,
+  station_id uuid not null references water_stations(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  primary key (profile_id, station_id)
+);
+
+create index if not exists favorite_stations_profile_idx on favorite_stations (profile_id);
+
+alter table favorite_stations enable row level security;
+
+drop policy if exists favorite_stations_self on favorite_stations;
+create policy favorite_stations_self on favorite_stations for all
+  using (profile_id = auth.uid())
+  with check (profile_id = auth.uid());
+
+
+-- ---------------------------------------------------------------------
+-- supabase/patch_flagged_driver_rejoin.sql
+-- ---------------------------------------------------------------------
+-- =====================================================================
+-- Fix: a flagged driver could rejoin the association by re-registering.
+--
+-- There are two ways a driver joins a station, and only one of them
+-- checked clearance:
+--
+--   driver_switch_station()        raises if clearance_status = 'flagged'
+--   register_driver_for_station()  did not check at all
+--
+-- So the sequence below let a flagged driver straight back in:
+--
+--   1. Station A files an incident; a WASA admin confirms it, which sets
+--      the worker's clearance_status to 'flagged'.
+--   2. Station A removes the driver (owner_remove_worker), leaving
+--      workers.station_id null.
+--   3. The driver enters any station's invite code.
+--   4. register_driver_for_station() takes its "previously left/removed"
+--      re-link branch, which never looked at clearance, and adds them to
+--      the new station's roster.
+--
+-- A driver who was NOT removed is blocked by driver_switch_station. Being
+-- removed after an incident therefore made it easier to move, not harder
+-- -- the opposite of what the worker security registry exists to do, and
+-- the opposite of what the public website states:
+--
+--   "Maintains a shared worker security registry, so a driver flagged for
+--    an incident at one station can't simply move to another unnoticed."
+--
+-- Found during the functionality evaluation of 10 October 2026, while
+-- checking an evaluator's observation that the station invite code never
+-- rotates -- which is what makes step 3 easy, since a removed driver
+-- already knows it.
+--
+-- The check below is deliberately worded like the one in
+-- driver_switch_station, so a flagged driver gets the same explanation
+-- whichever route they try.
+--
+-- Idempotent -- safe to run more than once.
+-- =====================================================================
+
+create or replace function register_driver_for_station(
+  p_invite_code text,
+  p_full_name text,
+  p_phone_number text,
+  p_vehicle_plate text,
+  p_jug_capacity int
+) returns uuid as $$
+declare
+  v_station_id uuid;
+  v_association_id uuid;
+  v_worker_id uuid;
+  v_current_station_id uuid;
+  v_clearance clearance_status;
+begin
+  select id, station_id, clearance_status
+    into v_worker_id, v_current_station_id, v_clearance
+    from workers where profile_id = auth.uid();
+
+  if v_worker_id is not null then
+    if v_current_station_id is not null then
+      return v_worker_id;
+    end if;
+
+    -- The fix. Checked only on the re-link branch: a brand new worker
+    -- (further down) starts at 'pending_clearance', which must stay
+    -- joinable or nobody could ever register in the first place.
+    if v_clearance = 'flagged' then
+      raise exception 'Cannot join a station while flagged. Contact WASA to resolve outstanding incidents.';
+    end if;
+
+    -- Previously left/removed from a station -- re-link to the new one
+    -- instead of silently returning a stale, still-unlinked id.
+    select id, association_id into v_station_id, v_association_id
+      from water_stations where invite_code ilike p_invite_code;
+    if v_station_id is null then
+      raise exception 'Invalid station invite code.';
+    end if;
+
+    update workers set station_id = v_station_id, updated_at = now() where id = v_worker_id;
+    update memberships set station_id = v_station_id, association_id = v_association_id
+      where profile_id = auth.uid() and role = 'driver';
+    insert into worker_station_history (worker_id, station_id) values (v_worker_id, v_station_id);
+    return v_worker_id;
+  end if;
+
+  if exists (select 1 from memberships where profile_id = auth.uid()) then
+    raise exception 'This account already has a different role. Sign out and use a different email, or contact WASA.';
+  end if;
+
+  select id, association_id into v_station_id, v_association_id
+    from water_stations where invite_code ilike p_invite_code;
+
+  if v_station_id is null then
+    raise exception 'Invalid station invite code.';
+  end if;
+
+  insert into workers (station_id, profile_id, full_name, phone_number, vehicle_plate, jug_capacity)
+    values (v_station_id, auth.uid(), p_full_name, p_phone_number, p_vehicle_plate, p_jug_capacity)
+    returning id into v_worker_id;
+
+  insert into worker_station_history (worker_id, station_id) values (v_worker_id, v_station_id);
+
+  insert into memberships (profile_id, association_id, role, station_id)
+    values (auth.uid(), v_association_id, 'driver', v_station_id);
+
+  return v_worker_id;
+end;
+$$ language plpgsql security definer set search_path = public;

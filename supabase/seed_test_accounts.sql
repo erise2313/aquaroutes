@@ -170,6 +170,19 @@ begin
   --    and mark every permit 'approved' -- skips the normal upload/
   --    review wait entirely, per your ask for ease of demoing.
   -- -------------------------------------------------------------------
+  -- Both updates below are blocked by guard triggers that require
+  -- auth_has_role('wasa_admin'). In the SQL Editor auth.uid() is NULL, so
+  -- there is no admin to be and the guards raise -- correctly, since their
+  -- whole purpose is stopping a station owner from accrediting itself.
+  -- Seeding is a legitimate out-of-band exception, so the two guards are
+  -- switched off for exactly these statements and switched straight back on.
+  --
+  -- Both are needed together: approving a permit fires
+  -- trg_recompute_accreditation, which updates water_stations and would
+  -- trip the first guard even though this block never touches it directly.
+  alter table water_stations disable trigger trg_prevent_owner_self_accreditation;
+  alter table permits disable trigger trg_prevent_owner_self_permit_approval;
+
   update water_stations
     set is_accredited = true, accreditation_status = 'accredited', is_colorum_verified = true
     where id in (station1_id, station2_id);
@@ -178,12 +191,25 @@ begin
     set status = 'approved', reviewed_by = admin_id, reviewed_at = now()
     where station_id in (station1_id, station2_id);
 
+  alter table permits enable trigger trg_prevent_owner_self_permit_approval;
+  alter table water_stations enable trigger trg_prevent_owner_self_accreditation;
+
   -- -------------------------------------------------------------------
   -- 5. Two drivers, one per station, pre-cleared (skips pending_clearance).
   -- -------------------------------------------------------------------
   insert into workers (station_id, profile_id, full_name, phone_number, vehicle_plate, jug_capacity, clearance_status) values
     (station1_id, driver1_id, 'Pedro Reyes', '09171234501', 'ABC1234', 20, 'cleared'),
     (station2_id, driver2_id, 'Ana Cruz', '09171234502', 'XYZ5678', 15, 'cleared');
+
+  -- Station history, which inserting into `workers` directly does not
+  -- create. Only register_driver_for_station() and driver_switch_station()
+  -- write these rows, and this script bypasses both -- so without this the
+  -- seeded drivers show "No station history" in Hire Check, making a
+  -- working feature look broken. (Raised by the evaluator, 10 Oct 2026.)
+  insert into worker_station_history (worker_id, station_id, joined_at, status)
+  select w.id, w.station_id, now() - interval '60 days', 'active'
+    from workers w
+   where w.profile_id in (driver1_id, driver2_id);
 
   insert into memberships (profile_id, association_id, role, station_id) values
     (driver1_id, v_association_id, 'driver', station1_id),
