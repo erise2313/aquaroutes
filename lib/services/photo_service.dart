@@ -22,11 +22,12 @@ class PhotoService {
     required String bucket,
     required String path,
     required Uint8List bytes,
+    bool upsert = true,
   }) async {
     await _supabase.client.storage.from(bucket).uploadBinary(
           path,
           bytes,
-          fileOptions: const FileOptions(upsert: true),
+          fileOptions: FileOptions(upsert: upsert),
         );
     return _supabase.client.storage.from(bucket).getPublicUrl(path);
   }
@@ -55,13 +56,17 @@ class PhotoService {
   /// clean the file up (deleteBulletinImage) if post creation fails after
   /// a successful upload -- otherwise a failed/retried post leaves an
   /// orphaned file behind with nothing ever referencing it.
+  /// Not an upsert: the path is unique, so there is nothing to overwrite,
+  /// and an upsert is also checked against SELECT/UPDATE storage policies
+  /// -- a project still carrying the original INSERT-only
+  /// bulletin_images_poster_write would refuse every upload.
   Future<({String path, String publicUrl})> uploadBulletinImage({
     required String authorProfileId,
     required Uint8List bytes,
     required String fileExtension,
   }) async {
     final uniquePath = '$authorProfileId/${DateTime.now().microsecondsSinceEpoch}_image.$fileExtension';
-    final publicUrl = await _uploadAndGetPublicUrl(bucket: 'bulletin-images', path: uniquePath, bytes: bytes);
+    final publicUrl = await _uploadAndGetPublicUrl(bucket: 'bulletin-images', path: uniquePath, bytes: bytes, upsert: false);
     return (path: uniquePath, publicUrl: publicUrl);
   }
 

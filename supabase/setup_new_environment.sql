@@ -1768,12 +1768,25 @@ create policy station_photos_owner_write on storage.objects for all
     and (storage.foldername(name))[1]::uuid in (select id from water_stations where owner_profile_id = auth.uid())
   );
 
-create policy bulletin_images_poster_write on storage.objects for insert
+-- `for all`, not `for insert`: PhotoService uploads with upsert, which RLS
+-- also checks against SELECT and UPDATE (patch_bulletin_images_and_reference_rls.sql).
+create policy bulletin_images_poster_write on storage.objects for all
+  using (
+    bucket_id = 'bulletin-images'
+    and (storage.foldername(name))[1]::uuid = auth.uid()
+    and (auth_has_role('station_owner') or auth_has_role('driver') or auth_has_role('wasa_admin'))
+  )
   with check (
     bucket_id = 'bulletin-images'
     and (storage.foldername(name))[1]::uuid = auth.uid()
     and (auth_has_role('station_owner') or auth_has_role('driver') or auth_has_role('wasa_admin'))
   );
+
+-- Reference tables: read by anyone, written only by definer functions / SQL editor.
+alter table associations enable row level security;
+alter table barangays enable row level security;
+create policy associations_public_read on associations for select using (true);
+create policy barangays_public_read on barangays for select using (true);
 
 create policy resources_admin_write on storage.objects for all
   using (bucket_id = 'resources' and auth_has_role('wasa_admin'))
