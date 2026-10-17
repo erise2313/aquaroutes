@@ -13,11 +13,28 @@ class NavShellDestination {
   /// and reading it.
   final int? badgeCount;
 
+  /// Sidebar group heading this destination sits under on the web portals
+  /// ("Compliance", "Content"...). Null for top-level items such as Overview.
+  final String? group;
+
+  /// Whether the destination is a bottom tab in the app. Destinations with
+  /// this false are listed on a "More" tab instead, so a phone never has to
+  /// fit more than five tabs.
+  final bool phoneTab;
+
+  /// Whether the destination exists in the app at all. Some web sidebar
+  /// entries (the owner's Permit vault, Hire check...) are reached from the
+  /// dashboard on a phone, which is how the app has always worked.
+  final bool onPhone;
+
   const NavShellDestination({
     required this.icon,
     this.selectedIcon,
     required this.label,
     this.badgeCount,
+    this.group,
+    this.phoneTab = true,
+    this.onPhone = true,
   });
 }
 
@@ -121,7 +138,7 @@ class _ResponsiveNavShellState extends State<ResponsiveNavShell> {
             onTap: (i) => setState(() => _currentIndex = i),
             type: BottomNavigationBarType.fixed,
             selectedItemColor: widget.selectedItemColor,
-            unselectedItemColor: Colors.grey,
+            unselectedItemColor: Theme.of(context).colorScheme.onSurfaceVariant,
             items: widget.destinations
                 .map((d) => BottomNavigationBarItem(
                       icon: _badged(d, Icon(d.icon)),

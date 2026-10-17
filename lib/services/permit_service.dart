@@ -23,6 +23,24 @@ class PermitService {
     return rows.map((r) => Permit.fromMap(r)).toList();
   }
 
+  /// wasa_admin only (RLS): every permit awaiting review, oldest upload
+  /// first, with the station it belongs to -- the officer's review queue.
+  Future<List<({Permit permit, String stationId, String stationName})>> fetchReviewQueue() async {
+    final rows = await _supabase.client
+        .from('permits')
+        .select('*, water_stations(id, station_name)')
+        .eq('status', 'pending_review')
+        .order('uploaded_at', ascending: true);
+    return [
+      for (final r in rows)
+        (
+          permit: Permit.fromMap(r),
+          stationId: (r['water_stations']?['id'] as String?) ?? r['station_id'] as String,
+          stationName: (r['water_stations']?['station_name'] as String?) ?? 'Unknown station',
+        ),
+    ];
+  }
+
   /// Uploads a document for one permit slot and marks it pending_review.
   /// Path convention: {station_id}/{permit_type}.{ext} -- matches the
   /// storage RLS policy in 0009_rls.sql. Takes raw bytes (not a `dart:io`

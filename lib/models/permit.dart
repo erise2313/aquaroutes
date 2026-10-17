@@ -80,6 +80,9 @@ class Permit {
   // may leave this unset when approving.
   final DateTime? expiryDate;
 
+  /// When the current document was uploaded; null while the slot is empty.
+  final DateTime? uploadedAt;
+
   const Permit({
     required this.id,
     required this.stationId,
@@ -90,7 +93,17 @@ class Permit {
     this.reviewedBy,
     this.rejectionReason,
     this.expiryDate,
+    this.uploadedAt,
   });
+
+  /// Whole days until [expiryDate]; negative once expired, null when no
+  /// expiry was recorded.
+  int? get daysUntilExpiry {
+    if (expiryDate == null) return null;
+    final today = DateTime.now();
+    final d = DateTime(expiryDate!.year, expiryDate!.month, expiryDate!.day);
+    return d.difference(DateTime(today.year, today.month, today.day)).inDays;
+  }
 
   /// True once expiry is within 30 days (or already past) -- drives the
   /// "Renewal due" badge in permit_review_screen.dart.
@@ -110,6 +123,7 @@ class Permit {
       reviewedBy: map['reviewed_by'] as String?,
       rejectionReason: map['rejection_reason'] as String?,
       expiryDate: map['expiry_date'] == null ? null : DateTime.parse(map['expiry_date'] as String),
+      uploadedAt: map['uploaded_at'] == null ? null : DateTime.parse(map['uploaded_at'] as String),
     );
   }
 }

@@ -21,10 +21,10 @@ class StatusPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final foreground = StatusTint.onTint(context, color);
-    final style = TextStyle(color: foreground, fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 0.3);
+    final style = TextStyle(color: foreground, fontSize: 13, fontWeight: FontWeight.bold, letterSpacing: 0.2);
 
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: icon == null ? 10 : 8, vertical: 4),
+      padding: EdgeInsets.symmetric(horizontal: icon == null ? 12 : 10, vertical: 5),
       decoration: BoxDecoration(
         color: StatusTint.surface(context, color),
         borderRadius: BorderRadius.circular(20),
@@ -51,7 +51,7 @@ class StatusPill extends StatelessWidget {
                     alignment: PlaceholderAlignment.middle,
                     child: Padding(
                       padding: const EdgeInsets.only(right: 4),
-                      child: Icon(icon, size: 13, color: foreground),
+                      child: Icon(icon, size: 15, color: foreground),
                     ),
                   ),
                   TextSpan(text: label),
