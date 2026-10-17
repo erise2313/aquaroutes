@@ -47,7 +47,11 @@ class MerchantNavigation extends StatelessWidget {
               portalName: 'Station portal',
               selectedItemColor: AppColors.primary,
               onBrandTap: () => _leavePortal(context),
-              footerActions: const [AppThemeToggle(), NotificationBell()],
+              footerActions: [
+                const AppThemeToggle(),
+                const NotificationBell(),
+                PortalAccountMenu(onLeavePortal: kIsWeb ? () => _leavePortal(context) : null),
+              ],
               // Wider than the old 1100 prose column: beside a sidebar on a
               // laptop that left a gutter either side of every page.
               maxContentWidth: 1280,

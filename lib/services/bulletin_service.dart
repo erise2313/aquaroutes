@@ -106,6 +106,11 @@ class BulletinService {
     return _supabase.client.from('bulletins').delete().eq('id', bulletinId);
   }
 
+  /// Admin-only (bulletins_admin_update): correct a post after publishing.
+  Future<void> updateBulletin(String bulletinId, {required String title, required String body}) {
+    return _supabase.client.from('bulletins').update({'title': title, 'body': body}).eq('id', bulletinId);
+  }
+
   /// Admin-only (enforced by bulletins_admin_update RLS, 0009_rls.sql).
   Future<void> togglePin(String bulletinId, bool isPinned) {
     return _supabase.client.from('bulletins').update({'is_pinned': isPinned}).eq('id', bulletinId);

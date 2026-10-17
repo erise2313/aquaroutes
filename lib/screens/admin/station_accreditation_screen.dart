@@ -156,11 +156,11 @@ class _StationAccreditationScreenState extends State<StationAccreditationScreen>
 
     final confirmed = await showConfirmDialog(
       context,
-      title: isActive ? 'Deactivate Station?' : 'Reactivate Station?',
+      title: isActive ? 'Suspend Station?' : 'Reinstate Station?',
       message: isActive
           ? '$stationName will disappear from the public map and can no longer accept new orders. This is fully reversible and all its history/permits/orders stay intact.'
           : '$stationName will become visible on the public map and able to accept orders again.',
-      confirmLabel: isActive ? 'Deactivate' : 'Reactivate',
+      confirmLabel: isActive ? 'Suspend' : 'Reinstate',
       isDestructive: isActive,
     );
     if (!confirmed) return;
@@ -243,7 +243,7 @@ class _StationAccreditationScreenState extends State<StationAccreditationScreen>
             null: 'All',
             'accredited': 'Accredited',
             'pending': 'Pending Review',
-            'deactivated': 'Deactivated',
+            'deactivated': 'Suspended',
           },
           selected: _stateFilter,
           onChanged: (v) => setState(() => _stateFilter = v),
@@ -388,13 +388,16 @@ class _StationAccreditationScreenState extends State<StationAccreditationScreen>
             Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Switch(
-                  value: isActive,
-                  activeTrackColor: AppColors.cleared,
-                  onChanged: (_) => _toggleActive(station),
+                Tooltip(
+                  message: isActive ? 'Suspend this station' : 'Reinstate this station',
+                  child: Switch(
+                    value: isActive,
+                    activeTrackColor: AppColors.cleared,
+                    onChanged: (_) => _toggleActive(station),
+                  ),
                 ),
                 Text(
-                  isActive ? 'Active' : 'Inactive',
+                  isActive ? 'Active' : 'Suspended',
                   style: TextStyle(fontSize: 13, color: palette.inkMuted, fontWeight: FontWeight.w600),
                 ),
               ],

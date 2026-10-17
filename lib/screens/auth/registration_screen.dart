@@ -9,6 +9,8 @@ import '../../widgets/hover_scale.dart';
 import '../../widgets/wasa_shield_logo.dart';
 import '../../widgets/web_page_route.dart';
 import 'login_screen.dart';
+import '../app_route.dart';
+import '../merchant/location_picker_screen.dart';
 import '../web/privacy_policy_screen.dart';
 import '../../utils/log.dart';
 import '../../utils/error_text.dart';
@@ -47,6 +49,13 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
   // Station Owner-Specific Controllers
   final _stationNameController = TextEditingController();
   final _stationAddressController = TextEditingController();
+
+  /// Where the station is, if the owner pinned it while registering. Without
+  /// a pin the station is saved at a placeholder point in General Trias and
+  /// the owner sets it later from their profile -- which many never did, so
+  /// stations sat on the wrong spot on the public map.
+  double? _stationLat;
+  double? _stationLng;
 
   // Driver-Specific Controllers
   final _inviteCodeController = TextEditingController();
@@ -169,10 +178,10 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
               'p_station_name': _stationNameController.text.trim(),
               'p_station_address': _stationAddressController.text.trim(),
               'p_invite_code': _generateInviteCode(),
-              // Placeholder coordinates until the owner sets their real
-              // location via the location picker in their profile screen.
-              'p_latitude': 14.3868,
-              'p_longitude': 120.8817,
+              // The pinned location, or a placeholder until the owner sets
+              // it from the location picker in their profile.
+              'p_latitude': _stationLat ?? 14.3868,
+              'p_longitude': _stationLng ?? 120.8817,
             });
             break;
           } on PostgrestException catch (e) {
@@ -350,7 +359,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                                 ),
                               )
                             : const Text(
-                                "Register",
+                                "Create account",
                                 style: TextStyle(
                                   fontWeight: FontWeight.bold,
                                   fontSize: 16,
@@ -422,6 +431,29 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
     );
   }
 
+  Future<void> _pickStationLocation() async {
+    final result = await Navigator.push<Map<String, dynamic>>(
+      context,
+      ambientRoute(
+        context,
+        LocationPickerScreen(
+          initialLatitude: _stationLat,
+          initialLongitude: _stationLng,
+          initialStationName: _stationNameController.text.trim(),
+        ),
+      ),
+    );
+    if (result == null || !mounted) return;
+    setState(() {
+      _stationLat = (result['latitude'] as num).toDouble();
+      _stationLng = (result['longitude'] as num).toDouble();
+      final name = (result['station_name'] as String?)?.trim();
+      if (name != null && name.isNotEmpty && _stationNameController.text.trim().isEmpty) {
+        _stationNameController.text = name;
+      }
+    });
+  }
+
   Widget _buildStationOwnerFields() {
     return Column(
       children: [
@@ -448,6 +480,24 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
           icon: Icons.store_mall_directory_outlined,
           textInputAction: TextInputAction.next,
           validator: (v) => _requiredField(v, 'your station address'),
+        ),
+        const SizedBox(height: 12),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: OutlinedButton.icon(
+            onPressed: _pickStationLocation,
+            icon: Icon(_stationLat == null ? Icons.add_location_alt_outlined : Icons.check_circle_outline),
+            label: Text(_stationLat == null ? 'Pin your station on the map' : 'Location pinned -- change'),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.only(top: 4, left: 4),
+          child: Text(
+            _stationLat == null
+                ? 'Optional now; you can also set it later from your profile.'
+                : 'Pinned at ${_stationLat!.toStringAsFixed(5)}, ${_stationLng!.toStringAsFixed(5)}',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
         ),
         const SizedBox(height: 16),
         Container(

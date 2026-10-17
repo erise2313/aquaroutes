@@ -14,6 +14,7 @@ library;
 // import for what is really one vocabulary.
 export '../count_up_text.dart';
 export '../status_callout.dart';
+export 'portal_account_menu.dart';
 export 'portal_action_row.dart';
 export 'portal_card.dart';
 export 'portal_density.dart';

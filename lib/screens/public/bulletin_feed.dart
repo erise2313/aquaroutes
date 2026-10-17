@@ -466,6 +466,63 @@ class _BulletinFeedState extends ConsumerState<BulletinFeed> {
     }
   }
 
+  Future<void> _editBulletin(Bulletin bulletin) async {
+    final title = TextEditingController(text: bulletin.title);
+    final body = TextEditingController(text: bulletin.body);
+    final formKey = GlobalKey<FormState>();
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Edit post'),
+        content: SizedBox(
+          width: 520,
+          child: Form(
+            key: formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextFormField(
+                  controller: title,
+                  decoration: const InputDecoration(labelText: 'Title'),
+                  validator: (v) => (v == null || v.trim().isEmpty) ? 'Enter a title' : null,
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: body,
+                  minLines: 4,
+                  maxLines: 10,
+                  decoration: const InputDecoration(labelText: 'Message'),
+                  validator: (v) => (v == null || v.trim().isEmpty) ? 'Enter the message' : null,
+                ),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('Cancel')),
+          FilledButton(
+            onPressed: () {
+              if (formKey.currentState?.validate() ?? false) Navigator.pop(dialogContext, true);
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+    final newTitle = title.text.trim();
+    final newBody = body.text.trim();
+    title.dispose();
+    body.dispose();
+    if (saved != true || !mounted) return;
+    try {
+      await _bulletinService.updateBulletin(bulletin.id, title: newTitle, body: newBody);
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Post updated.')));
+      _load();
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(describeError(e))));
+    }
+  }
+
   Future<void> _toggleHidden(Bulletin bulletin) async {
     try {
       await _bulletinService.setHidden(bulletin.id, !bulletin.isHidden);
@@ -597,6 +654,12 @@ class _BulletinFeedState extends ConsumerState<BulletinFeed> {
                     tooltip: bulletin.isPinned ? 'Unpin' : 'Pin',
                     constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
                     onPressed: () => _togglePin(bulletin),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.edit_outlined, size: 18),
+                    tooltip: 'Edit',
+                    constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+                    onPressed: () => _editBulletin(bulletin),
                   ),
                   IconButton(
                     icon: Icon(bulletin.isHidden ? Icons.visibility_outlined : Icons.visibility_off_outlined, size: 18),

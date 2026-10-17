@@ -7,6 +7,7 @@ import '../../constants/app_colors.dart';
 import '../../services/supabase_service.dart';
 import '../../services/worker_credential_service.dart';
 import '../../widgets/admin_page_header.dart';
+import 'admin_worker_registry_tab.dart';
 import '../../widgets/admin_status_pill.dart';
 import '../../widgets/confirm_dialog.dart';
 import '../../widgets/error_state.dart';
@@ -234,20 +235,21 @@ class _WorkerClearanceScreenState extends State<WorkerClearanceScreen> {
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 3,
+      length: 4,
       initialIndex: widget.initialTabIndex,
       child: Column(
         children: [
           AdminPageHeader(
             eyebrow: 'Association',
             title: 'Worker Clearance Review',
-            subtitle: 'Incidents filed by stations, credentials and driver appeals waiting on a decision',
+            subtitle: 'Every worker in the association, and the incidents, credentials and appeals waiting on you',
             // Colours from the theme: these used to be white for the old navy
             // header band and would be invisible on the light one.
             bottom: TabBar(
               isScrollable: true,
               tabAlignment: TabAlignment.start,
               tabs: [
+                const Tab(text: 'All workers'),
                 Tab(text: 'Incidents (${_incidents.length})'),
                 Tab(text: 'Credentials (${_credentials.length})'),
                 Tab(text: 'Appeals (${_appeals.length})'),
@@ -261,6 +263,7 @@ class _WorkerClearanceScreenState extends State<WorkerClearanceScreen> {
                 ? ErrorState(message: _error!, onRetry: _fetchAll)
                 : TabBarView(
                     children: [
+                      const AdminWorkerRegistryTab(),
                       _incidents.isEmpty
                           ? const PortalEmptyState(
                               icon: Icons.verified_user_outlined,

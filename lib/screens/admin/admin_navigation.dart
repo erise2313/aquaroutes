@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'activity_screen.dart';
 import 'admin_dashboard.dart';
@@ -15,7 +14,6 @@ import 'worker_clearance_screen.dart';
 import '../../constants/admin_theme.dart';
 import '../../providers/admin_theme_provider.dart';
 import '../../providers/admin_queue_provider.dart';
-import '../../widgets/account_settings_section.dart';
 import '../../widgets/notification_bell.dart';
 import '../../widgets/portal/portal.dart';
 import '../../widgets/responsive_nav_shell.dart';
@@ -46,7 +44,7 @@ class AdminNavigation extends ConsumerWidget {
         builder: (context) => PortalShell(
           portalName: 'Admin portal',
           selectedItemColor: AdminTheme.harborBlue,
-          footerActions: const [_ThemeToggle(), NotificationBell(), _AccountMenu()],
+          footerActions: const [_ThemeToggle(), NotificationBell(), PortalAccountMenu()],
           // Admin screens are lists, maps and charts rather than phone-shaped
           // forms, so they get a wider measure than the site's prose column.
           maxContentWidth: 1440,
@@ -146,47 +144,6 @@ class _ThemeToggle extends ConsumerWidget {
       tooltip: isDark ? 'Switch to light mode' : 'Switch to dark mode',
       icon: Icon(isDark ? Icons.light_mode_outlined : Icons.dark_mode_outlined),
       onPressed: () => ref.read(adminThemeProvider.notifier).toggle(),
-    );
-  }
-}
-
-/// An account menu rather than a bare sign-out button, so admins can also
-/// change their password.
-class _AccountMenu extends StatelessWidget {
-  const _AccountMenu();
-
-  @override
-  Widget build(BuildContext context) {
-    return PopupMenuButton<String>(
-      tooltip: 'Account',
-      icon: const Icon(Icons.account_circle_outlined),
-      onSelected: (value) {
-        if (value == 'account') {
-          showDialog(
-            context: context,
-            builder: (dialogContext) => AlertDialog(
-              title: const Text('Account'),
-              contentPadding: const EdgeInsets.fromLTRB(8, 16, 8, 0),
-              content: const SizedBox(width: 420, child: AccountSettingsSection()),
-              actions: [
-                TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Close')),
-              ],
-            ),
-          );
-        } else {
-          Supabase.instance.client.auth.signOut();
-        }
-      },
-      itemBuilder: (_) => const [
-        PopupMenuItem(
-          value: 'account',
-          child: ListTile(leading: Icon(Icons.manage_accounts_outlined), title: Text('Account & password')),
-        ),
-        PopupMenuItem(
-          value: 'signout',
-          child: ListTile(leading: Icon(Icons.logout), title: Text('Sign out')),
-        ),
-      ],
     );
   }
 }
