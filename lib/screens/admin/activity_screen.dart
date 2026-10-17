@@ -219,7 +219,7 @@ class _ActivityScreenState extends State<ActivityScreen> {
                         padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
                         child: Text(
                           'Showing the $_limit most recent entries.',
-                          style: TextStyle(fontSize: 12, fontStyle: FontStyle.italic, color: AdminPalette.of(context).ink.withValues(alpha: 0.5)),
+                          style: TextStyle(fontSize: 14, fontStyle: FontStyle.italic, color: AdminPalette.of(context).ink.withValues(alpha: 0.5)),
                         ),
                       ),
                   ],
@@ -257,7 +257,7 @@ class _ActivityScreenState extends State<ActivityScreen> {
                 Text(
                   '${row['actor_name'] ?? 'Unknown'}'
                   '${occurredAt == null ? '' : ' · ${DateFormat('MMM d, yyyy h:mm a').format(occurredAt.toLocal())}'}',
-                  style: TextStyle(fontSize: 12.5, color: palette.inkMuted),
+                  style: TextStyle(fontSize: 14, color: palette.inkMuted),
                 ),
               ],
             ),

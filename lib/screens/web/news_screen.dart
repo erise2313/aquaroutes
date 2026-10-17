@@ -22,6 +22,7 @@ import '../../widgets/web_page_header.dart';
 import '../../widgets/web_page_route.dart';
 import '../auth/login_screen.dart';
 import '../../utils/error_text.dart';
+import 'package:aquaroute/constants/brand_tokens.dart';
 
 /// Full news history for the website -- reuses BulletinService.fetchBulletins()
 /// (the same query backing bulletin_feed.dart's mobile board) rather than a
@@ -247,7 +248,7 @@ class _NewsScreenState extends ConsumerState<NewsScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Row(children: [Icon(Icons.push_pin, size: 16, color: WebTheme.sealGold), SizedBox(width: 6), Text('Pinned', style: TextStyle(color: WebTheme.sealGold, fontWeight: FontWeight.bold, fontSize: 12))]),
+            const Row(children: [Icon(Icons.push_pin, size: 16, color: WebTheme.sealGold), SizedBox(width: 6), Text('Pinned', style: TextStyle(color: WebTheme.sealGold, fontWeight: FontWeight.bold, fontSize: 14))]),
             const SizedBox(height: 10),
             Text(bulletin.title, style: WebTheme.display(fontSize: 22)),
             const SizedBox(height: 10),
@@ -271,7 +272,7 @@ class _NewsScreenState extends ConsumerState<NewsScreen> {
               ),
             ],
             const SizedBox(height: 12),
-            Text('${bulletin.authorBadge} · ${DateFormat('MMM d, yyyy').format(bulletin.createdAt)}', style: TextStyle(color: WebTheme.of(context).inkMuted, fontSize: 12)),
+            Text('${bulletin.authorBadge} · ${DateFormat('MMM d, yyyy').format(bulletin.createdAt)}', style: TextStyle(color: WebTheme.of(context).inkMuted, fontSize: 14)),
             const SizedBox(height: 12),
             _buildInteractionBar(bulletin),
             if (_expandedComments.contains(bulletin.id)) _buildCommentsSection(bulletin.id),
@@ -302,7 +303,7 @@ class _NewsScreenState extends ConsumerState<NewsScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                 decoration: BoxDecoration(color: categoryColor.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(8)),
-                child: Text(categoryLabel, style: TextStyle(color: categoryColor, fontSize: 11, fontWeight: FontWeight.bold)),
+                child: Text(categoryLabel, style: TextStyle(color: categoryColor, fontSize: 13, fontWeight: FontWeight.bold)),
               ),
               const SizedBox(height: 10),
               Text(bulletin.title, style: WebTheme.display(fontSize: 18)),
@@ -327,7 +328,7 @@ class _NewsScreenState extends ConsumerState<NewsScreen> {
                 ),
               ],
               const SizedBox(height: 8),
-              Text('${bulletin.authorBadge} · ${DateFormat('MMM d, yyyy').format(bulletin.createdAt)}', style: TextStyle(color: WebTheme.of(context).inkMuted, fontSize: 12)),
+              Text('${bulletin.authorBadge} · ${DateFormat('MMM d, yyyy').format(bulletin.createdAt)}', style: TextStyle(color: WebTheme.of(context).inkMuted, fontSize: 14)),
               const SizedBox(height: 10),
               _buildInteractionBar(bulletin),
               if (_expandedComments.contains(bulletin.id)) _buildCommentsSection(bulletin.id),
@@ -353,9 +354,9 @@ class _NewsScreenState extends ConsumerState<NewsScreen> {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(reacted ? Icons.favorite : Icons.favorite_border, size: 18, color: reacted ? Colors.redAccent : WebTheme.of(context).inkMuted),
+                Icon(reacted ? Icons.favorite : Icons.favorite_border, size: 18, color: reacted ? BrandStatus.danger : WebTheme.of(context).inkMuted),
                 const SizedBox(width: 6),
-                Text('$count', style: TextStyle(color: reacted ? Colors.redAccent : WebTheme.of(context).inkMuted, fontSize: 13, fontWeight: FontWeight.w600)),
+                Text('$count', style: TextStyle(color: reacted ? BrandStatus.danger : WebTheme.of(context).inkMuted, fontSize: 13, fontWeight: FontWeight.w600)),
               ],
             ),
           ),

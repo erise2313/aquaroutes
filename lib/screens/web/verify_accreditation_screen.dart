@@ -16,6 +16,7 @@ import '../../widgets/web_nav_bar.dart';
 import '../../widgets/web_page_header.dart';
 import '../../widgets/web_seal.dart';
 import '../../utils/error_text.dart';
+import 'package:aquaroute/constants/brand_tokens.dart';
 
 /// "Confirm this station is really WASA-accredited" lookup -- reuses the
 /// existing public_stations data (is_colorum_verified/is_accredited), no
@@ -143,12 +144,12 @@ class _VerifyAccreditationScreenState extends ConsumerState<VerifyAccreditationS
       // Translucent rather than red.shade50, which stayed pale pink in dark
       // mode under light text. Mirrors the found card's gold treatment.
       decoration: BoxDecoration(
-        color: Colors.red.withValues(alpha: 0.10),
+        color: BrandStatus.danger.withValues(alpha: 0.10),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
+        border: Border.all(color: BrandStatus.danger.withValues(alpha: 0.3)),
       ),
       child: ListTile(
-        leading: Icon(Icons.error_outline, color: Colors.red, size: 32),
+        leading: Icon(Icons.error_outline, color: BrandStatus.danger, size: 32),
         title: Text('No accredited station found by that name', style: TextStyle(fontWeight: FontWeight.bold, color: WebTheme.of(context).ink)),
         subtitle: Text('Double-check the spelling, or the station may not be WASA-accredited.'),
       ),

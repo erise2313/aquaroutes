@@ -10,6 +10,7 @@ import '../../widgets/wasa_shield_logo.dart';
 import '../../widgets/web_page_route.dart';
 import 'login_screen.dart';
 import '../../utils/error_text.dart';
+import 'package:aquaroute/constants/brand_tokens.dart';
 
 /// Self-registration for the three roles that can sign themselves up:
 /// station_owner, driver, and public_consumer (a resident/customer account).
@@ -202,7 +203,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(describeError(e)),
-            backgroundColor: Colors.redAccent,
+            backgroundColor: BrandStatus.danger,
           ),
         );
       }
@@ -240,7 +241,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                   children: [
                     const Center(child: WasaShieldLogo(size: 56)),
                     const SizedBox(height: 20),
-                    Text('JOIN THE ASSOCIATION', textAlign: TextAlign.center, style: WebTheme.eyebrow.copyWith(fontSize: 11)),
+                    Text('JOIN THE ASSOCIATION', textAlign: TextAlign.center, style: WebTheme.eyebrow.copyWith(fontSize: 13)),
                     const SizedBox(height: 8),
                     Text(
                       "Create an Account",
@@ -435,7 +436,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
               Expanded(
                 child: Text(
                   "Business Permit / KYC upload will be required after successful registration.",
-                  style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurface),
+                  style: TextStyle(fontSize: 14, color: Theme.of(context).colorScheme.onSurface),
                 ),
               ),
             ],
@@ -475,7 +476,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                 Expanded(
                   child: Text(
                     "Use this to place water orders and track your order history. Browsing the Bulletin Board and station map never requires an account.",
-                    style: TextStyle(fontSize: 12, color: scheme.onSurface),
+                    style: TextStyle(fontSize: 14, color: scheme.onSurface),
                   ),
                 ),
               ],

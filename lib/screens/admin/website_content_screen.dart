@@ -458,7 +458,7 @@ class _ItemsEditorState extends State<_ItemsEditor> {
                           item.body,
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
-                          style: TextStyle(fontSize: 12.5, color: AdminPalette.of(context).inkMuted),
+                          style: TextStyle(fontSize: 14, color: AdminPalette.of(context).inkMuted),
                         ),
                       ],
                     ],
@@ -616,7 +616,7 @@ class _FaqEditorState extends State<_FaqEditor> {
                         faq.answer,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: TextStyle(fontSize: 12.5, color: AdminPalette.of(context).inkMuted),
+                        style: TextStyle(fontSize: 14, color: AdminPalette.of(context).inkMuted),
                       ),
                     ],
                   ),
@@ -729,7 +729,7 @@ class _PermitLabelsEditorState extends State<_PermitLabelsEditor> {
       children: [
         Text(
           'Shared by the Permit Vault, Permit Review, and the "How Accreditation Works" page -- editing one updates all three.',
-          style: TextStyle(color: AdminPalette.of(context).inkMuted, fontSize: 12.5),
+          style: TextStyle(color: AdminPalette.of(context).inkMuted, fontSize: 14),
         ),
         const SizedBox(height: 12),
         for (final label in _labels)
@@ -748,7 +748,7 @@ class _PermitLabelsEditorState extends State<_PermitLabelsEditor> {
                         label.conditionNote,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: TextStyle(fontSize: 12.5, color: AdminPalette.of(context).inkMuted),
+                        style: TextStyle(fontSize: 14, color: AdminPalette.of(context).inkMuted),
                       ),
                     ],
                   ),

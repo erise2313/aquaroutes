@@ -155,7 +155,7 @@ class _BulletinCommentsState extends ConsumerState<BulletinComments> {
                             crossAxisAlignment: WrapCrossAlignment.center,
                             children: [
                               Text(c.authorName, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: scheme.onSurface)),
-                              Text(DateFormat('MMM d, h:mm a').format(c.createdAt), style: TextStyle(color: muted, fontSize: 11)),
+                              Text(DateFormat('MMM d, h:mm a').format(c.createdAt), style: TextStyle(color: muted, fontSize: 13)),
                             ],
                           ),
                           const SizedBox(height: 2),

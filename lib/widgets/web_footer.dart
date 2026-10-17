@@ -73,7 +73,7 @@ class WebFooter extends ConsumerWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(t('footer_quick_links'), style: WebTheme.eyebrow.copyWith(fontSize: 11)),
+                        Text(t('footer_quick_links'), style: WebTheme.eyebrow.copyWith(fontSize: 13)),
                         const SizedBox(height: 12),
                         _FooterLink(label: t('nav_about'), onTap: () => _push(context, const AboutScreen(), WebRoutes.about)),
                         _FooterLink(label: t('nav_stations'), onTap: () => _push(context, const StationsDirectoryScreen(), WebRoutes.stations)),
@@ -87,7 +87,7 @@ class WebFooter extends ConsumerWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(t('footer_resources'), style: WebTheme.eyebrow.copyWith(fontSize: 11)),
+                        Text(t('footer_resources'), style: WebTheme.eyebrow.copyWith(fontSize: 13)),
                         const SizedBox(height: 12),
                         _FooterLink(label: t('faq_title'), onTap: () => _push(context, const FaqScreen(), WebRoutes.faq)),
                         _FooterLink(label: t('verify_title'), onTap: () => _push(context, const VerifyAccreditationScreen(), WebRoutes.verify)),
@@ -110,7 +110,7 @@ class WebFooter extends ConsumerWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(t('footer_office'), style: WebTheme.eyebrow.copyWith(fontSize: 11)),
+                        Text(t('footer_office'), style: WebTheme.eyebrow.copyWith(fontSize: 13)),
                         const SizedBox(height: 12),
                         const Text('[Placeholder] Association Office Address, General Trias, Cavite', style: TextStyle(color: Colors.white70, fontSize: 13)),
                         const SizedBox(height: 4),
@@ -128,7 +128,7 @@ class WebFooter extends ConsumerWidget {
               const SizedBox(height: 24),
               const Divider(color: Colors.white24),
               const SizedBox(height: 12),
-              Text('© ${DateTime.now().year} GENTRI WASA. ${t('footer_rights')}', style: const TextStyle(color: Colors.white70, fontSize: 12)),
+              Text('© ${DateTime.now().year} GENTRI WASA. ${t('footer_rights')}', style: const TextStyle(color: Colors.white70, fontSize: 14)),
             ],
           ),
         ),

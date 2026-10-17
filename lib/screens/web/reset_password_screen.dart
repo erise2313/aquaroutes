@@ -8,6 +8,7 @@ import '../../widgets/hover_scale.dart';
 import '../../widgets/wasa_shield_logo.dart';
 import '../auth/login_screen.dart';
 import '../../utils/error_text.dart';
+import 'package:aquaroute/constants/brand_tokens.dart';
 
 /// Reached only via AuthGate detecting AuthChangeEvent.passwordRecovery --
 /// Supabase Flutter auto-detects the recovery token in the URL fragment on
@@ -69,7 +70,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Could not update password. ${describeError(e)}'), backgroundColor: Colors.redAccent),
+          SnackBar(content: Text('Could not update password. ${describeError(e)}'), backgroundColor: BrandStatus.danger),
         );
       }
     } finally {
@@ -96,7 +97,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                     const Center(child: WasaShieldLogo(size: 72)),
                     const SizedBox(height: 24),
 
-                    Text('PASSWORD RESET', textAlign: TextAlign.center, style: WebTheme.eyebrow.copyWith(fontSize: 11)),
+                    Text('PASSWORD RESET', textAlign: TextAlign.center, style: WebTheme.eyebrow.copyWith(fontSize: 13)),
                     const SizedBox(height: 8),
                     Text(
                       "Set a new password",

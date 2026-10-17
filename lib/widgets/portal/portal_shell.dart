@@ -134,7 +134,21 @@ class _PortalShellState extends State<PortalShell> {
 
   // -- Browser -----------------------------------------------------------
 
+  bool _selectLabel(String label) {
+    final i = widget.destinations.indexWhere((d) => d.label == label);
+    if (i < 0) return false;
+    // A section that was already open returns to its first page, so the
+    // switch always lands on the list rather than wherever it was left.
+    _navigatorKeys[i].currentState?.popUntil((r) => r.isFirst);
+    if (i != _index) setState(() => _index = i);
+    return true;
+  }
+
   Widget _buildWeb(BuildContext context) {
+    return PortalShellScope(selectLabel: _selectLabel, child: _buildWebLayout(context));
+  }
+
+  Widget _buildWebLayout(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
         final width = constraints.maxWidth;
@@ -203,6 +217,32 @@ class _PortalShellState extends State<PortalShell> {
 }
 
 enum _SidebarMode { expanded, rail, drawer }
+
+/// Lets a page inside the shell switch to another section -- a dashboard
+/// tile saying "3 permits to review" should take you to Permits with the
+/// sidebar showing where you are, not open a second copy of the page.
+///
+/// Only the browser layout registers it; in the app a section may live on
+/// the More tab, so callers fall back to pushing the page:
+///
+/// ```dart
+/// if (!PortalShellScope.select(context, 'Permits')) Navigator.push(...);
+/// ```
+class PortalShellScope extends InheritedWidget {
+  const PortalShellScope({super.key, required this.selectLabel, required super.child});
+
+  final bool Function(String label) selectLabel;
+
+  /// Switches to the section called [label]. False when there is no shell
+  /// to switch (the app) or no section by that name.
+  static bool select(BuildContext context, String label) {
+    final scope = context.getInheritedWidgetOfExactType<PortalShellScope>();
+    return scope?.selectLabel(label) ?? false;
+  }
+
+  @override
+  bool updateShouldNotify(PortalShellScope oldWidget) => false;
+}
 
 class _SectionNavigator extends StatelessWidget {
   const _SectionNavigator({required this.navigatorKey, required this.child, required this.maxContentWidth});

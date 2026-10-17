@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'admin_route.dart';
 import 'events_admin_screen.dart';
+import 'permit_queue_screen.dart';
 import 'permit_review_screen.dart';
 import 'resources_admin_screen.dart';
 import 'worker_clearance_screen.dart';
@@ -128,7 +129,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       final items = <_ReviewItem>[
         for (final p in permits)
           _ReviewItem(
-            label: 'Permit: ${p['permit_type']}',
+            label: 'Permit: ${_humanize(p['permit_type'] as String?)}',
             subtitle: (p['water_stations']?['station_name'] as String?) ?? 'Unknown station',
             createdAt: DateTime.parse(p['created_at'] as String),
             icon: Icons.description_outlined,
@@ -145,7 +146,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           ),
         for (final i in incidents)
           _ReviewItem(
-            label: 'Incident: ${i['incident_type']}',
+            label: 'Incident: ${_humanize(i['incident_type'] as String?)}',
             subtitle: (i['workers']?['full_name'] as String?) ?? 'Unknown worker',
             createdAt: DateTime.parse(i['created_at'] as String),
             icon: Icons.warning_amber_rounded,
@@ -155,7 +156,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           ),
         for (final c in credentials)
           _ReviewItem(
-            label: 'Credential: ${c['credential_type']}',
+            label: 'Credential: ${_humanize(c['credential_type'] as String?)}',
             subtitle: (c['workers']?['full_name'] as String?) ?? 'Unknown worker',
             createdAt: DateTime.parse(c['uploaded_at'] as String? ?? DateTime.now().toIso8601String()),
             icon: Icons.badge_outlined,
@@ -192,6 +193,21 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     }
   }
 
+  /// "business_permit" -> "Business permit". The queue showed database
+  /// values verbatim.
+  static String _humanize(String? raw) {
+    if (raw == null || raw.isEmpty) return 'Unknown';
+    final words = raw.replaceAll('_', ' ');
+    return words[0].toUpperCase() + words.substring(1);
+  }
+
+  /// Switches to a sidebar section in the browser; in the app, where the
+  /// section may be on the More tab, opens the page instead.
+  void _go(String section, Widget page) {
+    if (PortalShellScope.select(context, section)) return;
+    Navigator.push(context, adminRoute(page)).then((_) => _fetchStats());
+  }
+
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -215,20 +231,15 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                         padding: density.pagePadding,
                         children: [
                           PortalSection(
-                            title: 'Station accreditation',
-                            child: _buildAccreditationCard(),
-                          ),
-                          SizedBox(height: density.sectionGap),
-                          PortalSection(
                             title: 'Needs your attention',
                             subtitle: 'Queues that stay open until somebody works them',
                             child: Wrap(
                               spacing: 12,
                               runSpacing: 12,
                               children: [
-                                _kpiTile(icon: Icons.description_outlined, label: 'Permits to review', value: _pendingPermits, color: AdminTheme.harborBlue),
-                                _kpiTile(icon: Icons.warning_amber_rounded, label: 'Open incidents', value: _openIncidents, color: AppColors.pendingClearance),
-                                _kpiTile(icon: Icons.flag_outlined, label: 'Flagged workers', value: _flaggedWorkers, color: AppColors.flagged),
+                                _kpiTile(icon: Icons.description_outlined, label: 'Permits to review', value: _pendingPermits, color: AdminTheme.harborBlue, onTap: () => _go('Permits', const PermitQueueScreen())),
+                                _kpiTile(icon: Icons.warning_amber_rounded, label: 'Open incidents', value: _openIncidents, color: AppColors.pendingClearance, onTap: () => _go('Workers', const WorkerClearanceScreen(initialTabIndex: 0))),
+                                _kpiTile(icon: Icons.flag_outlined, label: 'Flagged workers', value: _flaggedWorkers, color: AppColors.flagged, onTap: () => _go('Workers', const WorkerClearanceScreen())),
                                 // When no approved permit carries an expiry date at
                                 // all, "0 expiring soon" is not an all-clear -- it means
                                 // expiry isn't being tracked. Showing the reassuring
@@ -246,14 +257,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                             ),
                           ),
                           SizedBox(height: density.sectionGap),
-                          if (_analytics != null) ...[
-                            PortalSection(
-                              title: 'Trends',
-                              subtitle: 'The last six months across the association',
-                              child: _buildCharts(_analytics!),
-                            ),
-                            SizedBox(height: density.sectionGap),
-                          ],
                           PortalSection(
                             title: 'Needs your review',
                             subtitle: 'Permits, incidents and credentials waiting on a decision',
@@ -283,6 +286,19 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                           ),
                           SizedBox(height: density.sectionGap),
                           PortalSection(
+                            title: 'Station accreditation',
+                            child: _buildAccreditationCard(),
+                          ),
+                          SizedBox(height: density.sectionGap),
+                          if (_analytics != null) ...[
+                            PortalSection(
+                              title: 'Trends',
+                              subtitle: 'The last six months across the association',
+                              child: _buildCharts(_analytics!),
+                            ),
+                            SizedBox(height: density.sectionGap),
+                          ],
+                          PortalSection(
                             title: 'Content management',
                             subtitle: 'What the association publishes to the public site',
                             child: Column(
@@ -292,14 +308,14 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                                   tone: AdminTheme.harborBlue,
                                   title: 'Resources Library',
                                   subtitle: 'Upload permit checklists, pricing schedules, and other downloads',
-                                  onTap: () => Navigator.push(context, adminRoute(const ResourcesAdminScreen())),
+                                  onTap: () => _go('Resources', const ResourcesAdminScreen()),
                                 ),
                                 _buildContentLink(
                                   icon: Icons.event_outlined,
                                   tone: AdminTheme.sealGold,
                                   title: 'Events',
                                   subtitle: 'Create and manage upcoming association events',
-                                  onTap: () => Navigator.push(context, adminRoute(const EventsAdminScreen())),
+                                  onTap: () => _go('Events', const EventsAdminScreen()),
                                   last: true,
                                 ),
                               ],
@@ -392,7 +408,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               children: [
                 Text(title, style: TextStyle(fontWeight: FontWeight.w600, color: palette.ink)),
                 const SizedBox(height: 2),
-                Text(subtitle, style: TextStyle(fontSize: 12.5, color: palette.inkMuted, height: 1.2)),
+                Text(subtitle, style: TextStyle(fontSize: 14, color: palette.inkMuted, height: 1.2)),
               ],
             ),
           ),
@@ -425,7 +441,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 const SizedBox(height: 2),
                 Text(
                   '${item.subtitle} · ${DateFormat('MMM d, yyyy').format(item.createdAt)}',
-                  style: TextStyle(fontSize: 12.5, color: palette.inkMuted, height: 1.2),
+                  style: TextStyle(fontSize: 14, color: palette.inkMuted, height: 1.2),
                 ),
               ],
             ),
@@ -449,13 +465,15 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     required Color color,
     String? overrideValue,
     String? note,
+    VoidCallback? onTap,
   }) {
     final palette = AdminPalette.of(context);
 
     return SizedBox(
-      width: 190,
+      width: 200,
       child: PortalCard(
         lift: false,
+        onTap: onTap,
         padding: const EdgeInsets.all(14),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -483,12 +501,12 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                           style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: palette.ink),
                         ),
                   const SizedBox(height: 2),
-                  Text(label, style: TextStyle(fontSize: 12.5, color: palette.inkMuted, height: 1.2)),
+                  Text(label, style: TextStyle(fontSize: 14, color: palette.inkMuted, height: 1.2)),
                   if (note != null) ...[
                     const SizedBox(height: 4),
                     Text(
                       note,
-                      style: TextStyle(fontSize: 11, height: 1.2, fontStyle: FontStyle.italic, color: AppColors.pendingClearance),
+                      style: TextStyle(fontSize: 13, height: 1.2, fontStyle: FontStyle.italic, color: AppColors.pendingClearance),
                     ),
                   ],
                 ],

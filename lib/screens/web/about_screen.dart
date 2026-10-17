@@ -109,7 +109,7 @@ class _AboutScreenState extends ConsumerState<AboutScreen> {
                             runSpacing: 8,
                             children: _barangays
                                 .map((b) => Chip(
-                                      label: Text(b, style: TextStyle(fontSize: 12, color: WebTheme.of(context).ink)),
+                                      label: Text(b, style: TextStyle(fontSize: 14, color: WebTheme.of(context).ink)),
                                       backgroundColor: WebTheme.of(context).foam,
                                       side: BorderSide.none,
                                     ))

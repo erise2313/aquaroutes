@@ -160,6 +160,13 @@ class _MerchantDashboardScreenState extends State<MerchantDashboardScreen> {
     }
   }
 
+  /// In a browser the page is in the sidebar, so switch to it there; in the
+  /// app (and as a fallback) open it, refreshing the dashboard on return.
+  void _go(String section, Widget page) {
+    if (PortalShellScope.select(context, section)) return;
+    Navigator.push(context, appRoute(page)).then((_) => _fetchDashboardData());
+  }
+
   @override
   Widget build(BuildContext context) {
     final density = PortalDensity.of(context);
@@ -220,28 +227,28 @@ class _MerchantDashboardScreenState extends State<MerchantDashboardScreen> {
                                 tone: AppColors.primary,
                                 title: 'Permit Vault',
                                 subtitle: 'Upload business, sanitary, and (if alkaline) technical permits',
-                                onTap: () => Navigator.push(context, appRoute(const PermitVaultScreen())),
+                                onTap: () => _go('Permit vault', const PermitVaultScreen()),
                               ),
                               _buildNavCard(
                                 icon: Icons.badge_outlined,
                                 tone: AppColors.accent,
                                 title: 'Worker Registry',
                                 subtitle: 'Manage worker clearance and file security incidents',
-                                onTap: () => Navigator.push(context, appRoute(const WorkerRegistryScreen())),
+                                onTap: () => _go('Worker registry', const WorkerRegistryScreen()),
                               ),
                               _buildNavCard(
                                 icon: Icons.fact_check_outlined,
                                 tone: AppColors.primary,
                                 title: 'Hire Check',
                                 subtitle: 'Search a worker\'s clearance history before hiring them',
-                                onTap: () => Navigator.push(context, appRoute(const HireCheckScreen())),
+                                onTap: () => _go('Hire check', const HireCheckScreen()),
                               ),
                               _buildNavCard(
                                 icon: Icons.swap_horiz,
                                 tone: AppColors.accent,
                                 title: 'Jug Clearinghouse',
                                 subtitle: 'Settle Slim/Round 5-gal jug balances with other stations',
-                                onTap: () => Navigator.push(context, appRoute(const JugClearinghouseScreen())),
+                                onTap: () => _go('Clearinghouse', const JugClearinghouseScreen()),
                                 last: true,
                               ),
                             ],
@@ -256,12 +263,7 @@ class _MerchantDashboardScreenState extends State<MerchantDashboardScreen> {
                             tone: AppColors.primary,
                             title: 'Track & Manage Drivers',
                             subtitle: 'Configure vehicle capacities, plates, and monitor idle drivers',
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                appRoute(const DriverManagementScreen()),
-                              ).then((_) => _fetchDashboardData());
-                            },
+                            onTap: () => _go('Drivers', const DriverManagementScreen()),
                             last: true,
                           ),
                         ),
@@ -380,7 +382,7 @@ class _MerchantDashboardScreenState extends State<MerchantDashboardScreen> {
       title: "Customers can't order from you yet",
       message: 'Add at least one product with a price so your station can take orders.',
       trailing: const Icon(Icons.chevron_right),
-      onTap: () => Navigator.push(context, appRoute(const ProductsScreen())).then((_) => _fetchDashboardData()),
+      onTap: () => _go('Products', const ProductsScreen()),
     );
   }
 
@@ -435,7 +437,7 @@ class _MerchantDashboardScreenState extends State<MerchantDashboardScreen> {
       title: _renewalDueCount == 1 ? '1 permit needs renewal soon' : '$_renewalDueCount permits need renewal soon',
       message: 'Expiring within 30 days, or already expired.',
       trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-      onTap: () => Navigator.push(context, appRoute(const PermitVaultScreen())).then((_) => _fetchDashboardData()),
+      onTap: () => _go('Permit vault', const PermitVaultScreen()),
     );
   }
 

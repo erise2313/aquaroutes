@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../utils/formatters.dart';
 import '../auth/auth_gate.dart';
 import '../app_route.dart';
+import 'package:aquaroute/constants/brand_tokens.dart';
 
 /// Post-submit confirmation for a guest quick-order. Persists the order id
 /// + phone locally (SharedPreferences) so TrackOrderScreen can offer "use my
@@ -54,7 +55,7 @@ class _OrderConfirmationScreenState extends State<OrderConfirmationScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.check_circle, color: Colors.green, size: 72),
+              const Icon(Icons.check_circle, color: BrandStatus.success, size: 72),
               const SizedBox(height: 16),
               Text('Order #$shortId placed!', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),
@@ -66,7 +67,7 @@ class _OrderConfirmationScreenState extends State<OrderConfirmationScreen> {
               // Order needs this full ID. Without it displayed somewhere,
               // a guest who loses this screen (different device, cleared
               // app data) has no way to ever look their order up again.
-              const Text('Save this Order ID to track your order later:', style: TextStyle(fontSize: 12, color: Colors.grey)),
+              Text('Save this Order ID to track your order later:', style: TextStyle(fontSize: 14, color: Theme.of(context).colorScheme.onSurfaceVariant)),
               const SizedBox(height: 4),
               Row(
                 mainAxisSize: MainAxisSize.min,

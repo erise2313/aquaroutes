@@ -25,6 +25,7 @@ import '../auth/login_screen.dart';
 import '../auth/registration_screen.dart';
 import '../app_route.dart';
 import '../../utils/error_text.dart';
+import 'package:aquaroute/constants/brand_tokens.dart';
 
 /// Reusable feed body (not a full Scaffold) shared by the guest home
 /// (screens/public/public_home_screen.dart) and the authenticated
@@ -519,7 +520,7 @@ class _BulletinFeedState extends ConsumerState<BulletinFeed> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                   decoration: BoxDecoration(color: categoryColor.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(8)),
-                  child: Text(categoryLabel, style: TextStyle(color: categoryColor, fontSize: 11, fontWeight: FontWeight.bold)),
+                  child: Text(categoryLabel, style: TextStyle(color: categoryColor, fontSize: 13, fontWeight: FontWeight.bold)),
                 ),
                 if (membership?.role == AppRole.wasaAdmin) ...[
                   const Spacer(),
@@ -530,7 +531,7 @@ class _BulletinFeedState extends ConsumerState<BulletinFeed> {
                     onPressed: () => _togglePin(bulletin),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.delete_outline, size: 18, color: Colors.red),
+                    icon: Icon(Icons.delete_outline, size: 18, color: Theme.of(context).colorScheme.error),
                     tooltip: 'Delete',
                     constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
                     onPressed: () => _deleteBulletin(bulletin),
@@ -555,14 +556,14 @@ class _BulletinFeedState extends ConsumerState<BulletinFeed> {
                 Expanded(
                   child: Text(
                     bulletin.authorName,
-                    style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
+                    style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                Text(DateFormat('MMM d, yyyy').format(bulletin.createdAt), style: TextStyle(color: Colors.grey.shade700, fontSize: 12)),
+                Text(DateFormat('MMM d, yyyy').format(bulletin.createdAt), style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 14)),
               ],
             ),
-            Text(bulletin.authorBadge, style: TextStyle(color: Colors.grey.shade700, fontSize: 12)),
+            Text(bulletin.authorBadge, style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 14)),
             const SizedBox(height: 4),
             Row(
               children: [
@@ -577,10 +578,10 @@ class _BulletinFeedState extends ConsumerState<BulletinFeed> {
                         Icon(
                           _myReactions.contains(bulletin.id) ? Icons.favorite : Icons.favorite_border,
                           size: 18,
-                          color: _myReactions.contains(bulletin.id) ? Colors.red : Colors.grey,
+                          color: _myReactions.contains(bulletin.id) ? BrandStatus.danger : Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
                         const SizedBox(width: 6),
-                        Text('${_reactionCounts[bulletin.id] ?? 0}', style: TextStyle(color: Colors.grey.shade700, fontSize: 12)),
+                        Text('${_reactionCounts[bulletin.id] ?? 0}', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 14)),
                       ],
                     ),
                   ),
@@ -597,11 +598,11 @@ class _BulletinFeedState extends ConsumerState<BulletinFeed> {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.mode_comment_outlined, size: 17, color: Colors.grey.shade700),
+                        Icon(Icons.mode_comment_outlined, size: 17, color: Theme.of(context).colorScheme.onSurfaceVariant),
                         const SizedBox(width: 6),
                         Text(
                           _commentCounts[bulletin.id]?.toString() ?? 'Comments',
-                          style: TextStyle(color: Colors.grey.shade700, fontSize: 12),
+                          style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 14),
                         ),
                       ],
                     ),

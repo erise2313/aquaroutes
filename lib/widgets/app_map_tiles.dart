@@ -90,7 +90,7 @@ class AppMapAttribution extends StatelessWidget {
         minimumSize: const Size(48, 48),
         padding: const EdgeInsets.symmetric(horizontal: 6),
         foregroundColor: const Color(0xFF0B3D6B),
-        textStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500),
+        textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
       ),
       child: Text(label, semanticsLabel: semanticsLabel),
     );

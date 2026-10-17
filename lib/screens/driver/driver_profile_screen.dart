@@ -14,6 +14,7 @@ import '../../services/worker_service.dart';
 import '../../widgets/account_settings_section.dart';
 import '../../utils/error_text.dart';
 import '../../utils/log.dart';
+import 'package:aquaroute/constants/brand_tokens.dart';
 
 /// Driver profile + the Digital WASA Worker QR Badge. Clearance status is
 /// read-only here -- it can only change via the worker_incidents review
@@ -117,7 +118,7 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Driver profile updated successfully!'), backgroundColor: Colors.green),
+          const SnackBar(content: Text('Driver profile updated successfully!'), backgroundColor: BrandStatus.success),
         );
       }
     } catch (e) {
@@ -221,7 +222,7 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
       await _workerService.switchStation(code);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Station updated successfully!'), backgroundColor: Colors.green),
+          const SnackBar(content: Text('Station updated successfully!'), backgroundColor: BrandStatus.success),
         );
       }
       _fetchDriverProfile();
@@ -403,7 +404,7 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('CURRENT STATION', style: TextStyle(color: driverPalette.text.withValues(alpha: 0.7), letterSpacing: 1.2, fontSize: 12)),
+          Text('CURRENT STATION', style: TextStyle(color: driverPalette.text.withValues(alpha: 0.7), letterSpacing: 1.2, fontSize: 14)),
           const SizedBox(height: 8),
           Text(
             isLinked ? (_stationName ?? 'Unknown Station') : 'Not currently linked to a station',
@@ -442,11 +443,11 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('MY CREDENTIALS', style: TextStyle(color: driverPalette.text.withValues(alpha: 0.7), letterSpacing: 1.2, fontSize: 12)),
+          Text('MY CREDENTIALS', style: TextStyle(color: driverPalette.text.withValues(alpha: 0.7), letterSpacing: 1.2, fontSize: 14)),
           const SizedBox(height: 8),
           Text(
             'Submit these for WASA to review and clear your account.',
-            style: TextStyle(color: driverPalette.text.withValues(alpha: 0.7), fontSize: 12),
+            style: TextStyle(color: driverPalette.text.withValues(alpha: 0.7), fontSize: 14),
           ),
           const SizedBox(height: 12),
           ..._credentials.map(_buildCredentialTile),
@@ -457,9 +458,9 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
 
   Widget _buildCredentialTile(WorkerCredential credential) {
     final (color, label) = switch (credential.status) {
-      PermitStatus.approved => (Colors.green, 'Approved'),
-      PermitStatus.pendingReview => (Colors.orange, 'Pending Review'),
-      PermitStatus.rejected => (Colors.red, 'Rejected'),
+      PermitStatus.approved => (BrandStatus.success, 'Approved'),
+      PermitStatus.pendingReview => (BrandStatus.warning, 'Pending Review'),
+      PermitStatus.rejected => (BrandStatus.danger, 'Rejected'),
       PermitStatus.missing => (Colors.grey, 'Not Uploaded'),
     };
 
@@ -472,7 +473,7 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
         children: [
           Text(label, style: TextStyle(color: color)),
           if (credential.status == PermitStatus.rejected && credential.rejectionReason != null && credential.rejectionReason!.isNotEmpty)
-            Text('Reason: ${credential.rejectionReason}', style: TextStyle(fontSize: 12, color: driverPalette.text.withValues(alpha: 0.7))),
+            Text('Reason: ${credential.rejectionReason}', style: TextStyle(fontSize: 14, color: driverPalette.text.withValues(alpha: 0.7))),
         ],
       ),
       trailing: TextButton(
@@ -498,7 +499,7 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
       ),
       child: Column(
         children: [
-          Text('GENTRI WASA WORKER BADGE', style: TextStyle(color: driverPalette.text.withValues(alpha: 0.7), letterSpacing: 1.5, fontSize: 12)),
+          Text('GENTRI WASA WORKER BADGE', style: TextStyle(color: driverPalette.text.withValues(alpha: 0.7), letterSpacing: 1.5, fontSize: 14)),
           const SizedBox(height: 16),
           Container(
             padding: const EdgeInsets.all(12),

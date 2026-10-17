@@ -11,7 +11,7 @@ class StarRatingDisplay extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (reviewCount == 0) {
-      return Text('No reviews yet', style: TextStyle(color: Colors.grey.shade600, fontSize: size * 0.75));
+      return Text('No reviews yet', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: size * 0.75));
     }
     return Row(
       mainAxisSize: MainAxisSize.min,
@@ -23,7 +23,7 @@ class StarRatingDisplay extends StatelessWidget {
         const SizedBox(width: 4),
         Text(
           reviewCount != null ? '${rating.toStringAsFixed(1)} ($reviewCount)' : rating.toStringAsFixed(1),
-          style: TextStyle(color: Colors.grey.shade700, fontSize: size * 0.75),
+          style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: size * 0.75),
         ),
       ],
     );

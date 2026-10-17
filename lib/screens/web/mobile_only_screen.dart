@@ -22,7 +22,7 @@ class MobileOnlyScreen extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.phone_android, size: 48, color: Colors.grey),
+              Icon(Icons.phone_android, size: 48, color: Theme.of(context).colorScheme.onSurfaceVariant),
               const SizedBox(height: 16),
               Text(
                 'This account type is only available on the GenTri: WASA mobile app.\n\n'

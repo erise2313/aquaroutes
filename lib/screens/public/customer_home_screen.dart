@@ -210,7 +210,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                   'WATER STATION ASSOCIATION · GENERAL TRIAS',
                   style: TextStyle(
                     color: Colors.white.withValues(alpha: 0.85),
-                    fontSize: 10.5,
+                    fontSize: 13,
                     fontWeight: FontWeight.w700,
                     letterSpacing: 1.6,
                   ),

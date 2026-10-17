@@ -288,7 +288,7 @@ class _StationsDirectoryScreenState extends ConsumerState<StationsDirectoryScree
                 final status = stationAvailabilityStatus(acceptsNewOrders: station.acceptsNewOrders, isOpenNow: station.isOpenNow);
                 return Text(
                   '${station.barangayName ?? station.stationAddress} · from ${formatPeso(station.pricePerJug)} · ${status.label}',
-                  style: TextStyle(fontSize: 12, color: status.isOpen ? null : Colors.redAccent, fontWeight: status.isOpen ? null : FontWeight.w600),
+                  style: TextStyle(fontSize: 14, color: status.isOpen ? null : Theme.of(context).colorScheme.error, fontWeight: status.isOpen ? null : FontWeight.w600),
                 );
               }),
               const SizedBox(height: 4),

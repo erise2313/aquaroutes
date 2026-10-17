@@ -64,7 +64,7 @@ class WebTheme {
 
   /// Gold on either background, so it needs no mode variant.
   static const TextStyle eyebrow = TextStyle(
-    fontSize: 12,
+    fontSize: 14,
     fontWeight: FontWeight.w700,
     letterSpacing: 2.2,
     color: sealGold,

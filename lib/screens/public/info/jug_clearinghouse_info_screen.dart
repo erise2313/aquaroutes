@@ -90,7 +90,7 @@ class _JugClearinghouseInfoScreenState extends State<JugClearinghouseInfoScreen>
           CircleAvatar(
             radius: 14,
             backgroundColor: AppColors.primary,
-            child: Text('$number', style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+            child: Text('$number', style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold)),
           ),
           const SizedBox(width: 14),
           Expanded(

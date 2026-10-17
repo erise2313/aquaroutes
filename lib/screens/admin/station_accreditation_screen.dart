@@ -395,7 +395,7 @@ class _StationAccreditationScreenState extends State<StationAccreditationScreen>
                 ),
                 Text(
                   isActive ? 'Active' : 'Inactive',
-                  style: TextStyle(fontSize: 11, color: palette.inkMuted, fontWeight: FontWeight.w600),
+                  style: TextStyle(fontSize: 13, color: palette.inkMuted, fontWeight: FontWeight.w600),
                 ),
               ],
             ),

@@ -126,7 +126,7 @@ class _AccountSettingsSectionState extends ConsumerState<AccountSettingsSection>
     final danger = theme.colorScheme.error;
     final pending = _pending;
 
-    final heading = TextStyle(color: muted, letterSpacing: 1.2, fontSize: 12, fontWeight: FontWeight.w600);
+    final heading = TextStyle(color: muted, letterSpacing: 1.2, fontSize: 14, fontWeight: FontWeight.w600);
     final themeMode = ref.watch(appThemeProvider);
 
     return Column(

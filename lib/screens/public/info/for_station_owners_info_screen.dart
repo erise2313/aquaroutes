@@ -76,7 +76,7 @@ class _ForStationOwnersInfoScreenState extends State<ForStationOwnersInfoScreen>
                       Card(
                         margin: const EdgeInsets.only(bottom: 8),
                         child: ListTile(
-                          leading: Icon(_benefitIcons[b.icon] ?? Icons.check_circle, color: Colors.blue.shade700),
+                          leading: Icon(_benefitIcons[b.icon] ?? Icons.check_circle, color: Theme.of(context).colorScheme.primary),
                           title: Text(b.title, style: const TextStyle(fontWeight: FontWeight.bold)),
                           subtitle: Text(b.body),
                         ),
@@ -84,7 +84,7 @@ class _ForStationOwnersInfoScreenState extends State<ForStationOwnersInfoScreen>
                     const SizedBox(height: 20),
                     const Text('What You\'ll Need', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                     const SizedBox(height: 8),
-                    Text(_requirementsSummary, style: const TextStyle(color: Colors.grey, height: 1.4)),
+                    Text(_requirementsSummary, style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, height: 1.4)),
                     const SizedBox(height: 20),
                     ElevatedButton(
                       onPressed: () => Navigator.push(context, appRoute(const RegistrationScreen())),

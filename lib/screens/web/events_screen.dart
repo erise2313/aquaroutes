@@ -135,7 +135,7 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
                 decoration: BoxDecoration(color: isPast ? WebTheme.of(context).border : WebTheme.harborBlue.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
                 child: Column(
                   children: [
-                    Text(DateFormat('MMM').format(event.eventDate).toUpperCase(), style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: isPast ? WebTheme.of(context).inkMuted : WebTheme.harborBlue)),
+                    Text(DateFormat('MMM').format(event.eventDate).toUpperCase(), style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: isPast ? WebTheme.of(context).inkMuted : WebTheme.harborBlue)),
                     Text('${event.eventDate.day}', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: isPast ? WebTheme.of(context).inkMuted : WebTheme.harborBlue)),
                   ],
                 ),
@@ -147,8 +147,8 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
                   children: [
                     Text(event.title, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: WebTheme.of(context).ink)),
                     const SizedBox(height: 4),
-                    Text(DateFormat('MMM d, yyyy · h:mm a').format(event.eventDate), style: TextStyle(color: WebTheme.of(context).inkMuted, fontSize: 12)),
-                    if (event.location != null) Text(event.location!, style: TextStyle(color: WebTheme.of(context).inkMuted, fontSize: 12)),
+                    Text(DateFormat('MMM d, yyyy · h:mm a').format(event.eventDate), style: TextStyle(color: WebTheme.of(context).inkMuted, fontSize: 14)),
+                    if (event.location != null) Text(event.location!, style: TextStyle(color: WebTheme.of(context).inkMuted, fontSize: 14)),
                     if (event.description != null) ...[
                       const SizedBox(height: 8),
                       Text(event.description!, style: const TextStyle(height: 1.4)),

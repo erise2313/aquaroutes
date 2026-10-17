@@ -127,7 +127,7 @@ class _AdminPortalWrongRoleScreen extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.admin_panel_settings_outlined, size: 48, color: Colors.grey),
+              Icon(Icons.admin_panel_settings_outlined, size: 48, color: Theme.of(context).colorScheme.onSurfaceVariant),
               const SizedBox(height: 16),
               const Text(
                 'This portal is for WASA staff only.',
@@ -135,9 +135,9 @@ class _AdminPortalWrongRoleScreen extends StatelessWidget {
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 8),
-              const Text(
+              Text(
                 'Station owners should sign in on the main GenTri: WASA website instead.',
-                style: TextStyle(color: Colors.grey),
+                style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 24),
@@ -180,7 +180,7 @@ class _UseAdminPortalScreen extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.admin_panel_settings_outlined, size: 48, color: Colors.grey),
+              Icon(Icons.admin_panel_settings_outlined, size: 48, color: Theme.of(context).colorScheme.onSurfaceVariant),
               const SizedBox(height: 16),
               const Text(
                 'WASA Admin has moved.',
@@ -188,9 +188,9 @@ class _UseAdminPortalScreen extends StatelessWidget {
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 8),
-              const Text(
+              Text(
                 'Admin sign-in is no longer available on the main site. Please use the dedicated admin portal instead.',
-                style: TextStyle(color: Colors.grey),
+                style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 24),

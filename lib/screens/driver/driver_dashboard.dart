@@ -23,6 +23,7 @@ import '../public/bulletin_board_screen.dart';
 import 'driver_profile_screen.dart';
 import '../../utils/error_text.dart';
 import '../../utils/log.dart';
+import 'package:aquaroute/constants/brand_tokens.dart';
 
 
 class DriverDashboardScreen extends StatefulWidget {
@@ -376,7 +377,7 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
                 const SizedBox(height: 16),
                 Text(
                   'Customer said this jug is from ${otherStationNames[declaredOrigin] ?? 'another station'}. Confirm or correct:',
-                  style: TextStyle(fontSize: 12.5, color: driverPalette.text.withValues(alpha: 0.7)),
+                  style: TextStyle(fontSize: 14, color: driverPalette.text.withValues(alpha: 0.7)),
                 ),
                 const SizedBox(height: 6),
                 CheckboxListTile(
@@ -516,7 +517,7 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Delivery Completed!'), backgroundColor: Colors.green),
+          const SnackBar(content: Text('Delivery Completed!'), backgroundColor: BrandStatus.success),
         );
         _fetchActiveDelivery();
       }

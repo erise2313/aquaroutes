@@ -67,7 +67,7 @@ class AdminChartCard extends StatelessWidget {
               const SizedBox(height: 8),
               Text(
                 footnote!,
-                style: TextStyle(fontSize: 12, color: AdminPalette.of(context).ink.withValues(alpha: 0.5), fontStyle: FontStyle.italic),
+                style: TextStyle(fontSize: 14, color: AdminPalette.of(context).ink.withValues(alpha: 0.5), fontStyle: FontStyle.italic),
               ),
             ],
           ],
@@ -116,7 +116,7 @@ class AdminMonthBarChart extends StatelessWidget {
               reservedSize: 32,
               getTitlesWidget: (value, _) => Text(
                 value.toInt().toString(),
-                style: TextStyle(color: AdminPalette.of(context).chartAxis, fontSize: 12),
+                style: TextStyle(color: AdminPalette.of(context).chartAxis, fontSize: 14),
               ),
             ),
           ),
@@ -131,7 +131,7 @@ class AdminMonthBarChart extends StatelessWidget {
                   padding: const EdgeInsets.only(top: 6),
                   child: Text(
                     buckets[i].label,
-                    style: TextStyle(color: AdminPalette.of(context).chartAxis, fontSize: 12, fontWeight: FontWeight.w600),
+                    style: TextStyle(color: AdminPalette.of(context).chartAxis, fontSize: 14, fontWeight: FontWeight.w600),
                   ),
                 );
               },
