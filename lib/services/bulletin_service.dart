@@ -111,6 +111,50 @@ class BulletinService {
     return _supabase.client.from('bulletins').update({'is_pinned': isPinned}).eq('id', bulletinId);
   }
 
+  /// Any signed-in member: flag a post for an officer to look at. One report
+  /// per person per post (bulletin_reports' unique key).
+  Future<void> reportBulletin(String bulletinId, String reason) {
+    return _supabase.client.from('bulletin_reports').insert({
+      'bulletin_id': bulletinId,
+      'reported_by': _supabase.client.auth.currentUser!.id,
+      'reason': reason,
+    });
+  }
+
+  /// Officers only (bulletins_admin_update): hide a post from every feed, or
+  /// bring it back. Hiding keeps the post for the record, unlike deleting.
+  Future<void> setHidden(String bulletinId, bool hidden) {
+    return _supabase.client.from('bulletins').update({
+      'is_hidden': hidden,
+      'hidden_by': hidden ? _supabase.client.auth.currentUser?.id : null,
+      'hidden_at': hidden ? DateTime.now().toUtc().toIso8601String() : null,
+    }).eq('id', bulletinId);
+  }
+
+  /// Officers only: unresolved reports, newest first, with the post they're
+  /// about.
+  Future<List<Map<String, dynamic>>> fetchOpenReports() async {
+    final rows = await _supabase.client
+        .from('bulletin_reports')
+        .select('id, reason, created_at, bulletin_id, bulletins(id, title, body, author_name, is_hidden), profiles!bulletin_reports_reported_by_fkey(full_name)')
+        .isFilter('resolved_at', null)
+        .order('created_at', ascending: false);
+    return List<Map<String, dynamic>>.from(rows);
+  }
+
+  /// Officers only: close every open report on a post once it's been dealt
+  /// with (hidden, or judged fine).
+  Future<void> resolveReports(String bulletinId) {
+    return _supabase.client
+        .from('bulletin_reports')
+        .update({
+          'resolved_at': DateTime.now().toUtc().toIso8601String(),
+          'resolved_by': _supabase.client.auth.currentUser?.id,
+        })
+        .eq('bulletin_id', bulletinId)
+        .isFilter('resolved_at', null);
+  }
+
   /// Reaction counts per bulletin, keyed by bulletin id -- reads the public
   /// bulletin_reaction_counts view (0008_bulletin.sql) rather than joining
   /// per-card, since a feed screen wants all counts in one round trip.

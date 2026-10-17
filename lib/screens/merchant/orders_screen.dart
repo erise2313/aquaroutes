@@ -488,6 +488,19 @@ class _MerchantOrdersScreenState extends State<MerchantOrdersScreen> {
               ],
             ),
           ],
+          // A driver reported this delivery as failed and it came back to the
+          // queue (driver_report_failed_delivery). Say so, and why, so the
+          // owner reassigns or calls the customer rather than wondering.
+          if (listType == 'pending' && order['failure_reason'] != null) ...[
+            const SizedBox(height: 12),
+            StatusCallout(
+              accent: AppColors.pendingClearance,
+              icon: Icons.report_gmailerrorred_outlined,
+              title: 'Last delivery attempt failed: ${order['failure_reason']}',
+              message: '${order['failed_at'] != null ? 'Reported ${DateFormat('MMM d, h:mm a').format(DateTime.parse(order['failed_at'] as String).toLocal())}. ' : ''}'
+                  'Reassign a driver, call the customer, or reject the order.',
+            ),
+          ],
           if (listType == 'pending') ...[
             const SizedBox(height: 14),
             PortalActionRow(

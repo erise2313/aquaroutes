@@ -31,6 +31,9 @@ class BrandColors {
 
   static const deepTeal = Color(0xFF0B4F5C);
 
+  /// Gold that can be read as text on the current surface.
+  static Color sealGoldTextFor(Brightness b) => b == Brightness.dark ? sealGold : sealGoldInk;
+
   /// The brand blue lifted for dark surfaces (7.9:1 on the dark page).
   static const harborBlueOnDark = Color(0xFF6FB1F0);
   static const onHarborBlueOnDark = Color(0xFF04243F);

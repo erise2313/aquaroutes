@@ -87,6 +87,15 @@ class WorkerIncident {
   final DateTime createdAt;
   final DateTime? resolvedAt;
 
+  /// The driver's appeal against a confirmed incident, and its outcome
+  /// (supabase/patch_overhaul_gaps.sql). appealStatus is null until one is
+  /// filed, then 'pending', 'upheld' or 'overturned'.
+  final String? appealText;
+  final String? appealStatus;
+  final String? appealDecisionNote;
+
+  bool get canAppeal => status == IncidentStatus.confirmedFlag && appealStatus == null;
+
   const WorkerIncident({
     required this.id,
     required this.workerId,
@@ -97,6 +106,9 @@ class WorkerIncident {
     required this.status,
     required this.createdAt,
     this.resolvedAt,
+    this.appealText,
+    this.appealStatus,
+    this.appealDecisionNote,
   });
 
   factory WorkerIncident.fromMap(Map<String, dynamic> map) {
@@ -110,6 +122,9 @@ class WorkerIncident {
       status: incidentStatusFromString(map['status'] as String? ?? 'pending_review'),
       createdAt: DateTime.parse(map['created_at'] as String),
       resolvedAt: map['resolved_at'] == null ? null : DateTime.parse(map['resolved_at'] as String),
+      appealText: map['appeal_text'] as String?,
+      appealStatus: map['appeal_status'] as String?,
+      appealDecisionNote: map['appeal_decision_note'] as String?,
     );
   }
 }

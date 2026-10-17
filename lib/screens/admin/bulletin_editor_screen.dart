@@ -6,6 +6,7 @@ import '../../models/bulletin.dart';
 import '../../models/order.dart';
 import '../../models/product.dart';
 import '../../services/bulletin_service.dart';
+import 'bulletin_reports_tab.dart';
 import '../../services/product_service.dart';
 import '../../services/supabase_service.dart';
 import '../../utils/formatters.dart';
@@ -158,13 +159,13 @@ class _BulletinEditorScreenState extends State<BulletinEditorScreen> {
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 3,
+      length: 4,
       child: Column(
         children: [
           const AdminPageHeader(
             eyebrow: 'Association',
             title: 'Bulletin & Prices',
-            subtitle: 'The price floor, the containers stations may list, and what members are told',
+            subtitle: 'What members are told, reported posts, the price floor and the containers stations may list',
           ),
           // A TabBar's height is fixed, so past about 130% system text its
           // labels clip -- the same clamp the bottom nav and the owner
@@ -175,10 +176,13 @@ class _BulletinEditorScreenState extends State<BulletinEditorScreen> {
             child: const TabBar(
               isScrollable: true,
               tabAlignment: TabAlignment.start,
+              // Posts first: the sidebar item is called Bulletin, and the
+              // test cases open it expecting the announcement editor.
               tabs: [
+                Tab(text: 'Bulletin posts'),
+                Tab(text: 'Reported posts'),
                 Tab(text: 'Floor prices'),
                 Tab(text: 'Containers'),
-                Tab(text: 'Bulletin posts'),
               ],
             ),
           ),
@@ -189,9 +193,10 @@ class _BulletinEditorScreenState extends State<BulletinEditorScreen> {
                 ? ErrorState(message: _error!, onRetry: _load)
                 : TabBarView(
                     children: [
+                      const BulletinFeed(),
+                      const BulletinReportsTab(),
                       _buildFloorPrices(),
                       _buildContainers(),
-                      const BulletinFeed(),
                     ],
                   ),
           ),

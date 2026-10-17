@@ -244,13 +244,22 @@ class _WorkerRegistryScreenState extends State<WorkerRegistryScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text('Incident history: ${worker.fullName}', style: Theme.of(context).textTheme.titleLarge),
+                      const SizedBox(height: 6),
+                      // Reports other stations filed stay between them and
+                      // WASA; whether the driver is flagged, and how many
+                      // confirmed incidents they have, is in Hire check.
+                      Text(
+                        'Reports your station filed. Reports from other stations are private to them and WASA -- '
+                        'Hire check shows whether this driver is flagged and how many incidents were confirmed.',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
                       const SizedBox(height: 12),
                       Expanded(
                         child: incidents.isEmpty
                             ? const PortalEmptyState(
                                 icon: Icons.verified_user_outlined,
-                                title: 'No incidents filed',
-                                message: 'Nothing has been reported against this worker.',
+                                title: 'No incidents filed by your station',
+                                message: 'You have not reported anything against this worker.',
                               )
                             : ListView.builder(
                                 controller: scrollController,

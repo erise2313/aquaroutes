@@ -32,8 +32,38 @@ List<Map<String, dynamic>> filterActivity(
   }).toList();
 }
 
-/// "Who did what" across the portal, read from the `admin_activity` view
-/// (supabase/patch_admin_activity_view.sql).
+/// Maps an audit_log row (supabase/patch_overhaul_gaps.sql) onto the shape
+/// the feed already renders. Top-level and pure so it's unit-testable.
+Map<String, dynamic> auditRowToActivity(Map<String, dynamic> row) {
+  const categories = {
+    'permits': 'Permit',
+    'water_stations': 'Accreditation',
+    'memberships': 'Account',
+    'worker_incidents': 'Worker incident',
+    'jug_settlements': 'Jug settlement',
+    'bulletins': 'Bulletin',
+    'web_page_sections': 'Website content',
+    'web_content_items': 'Website content',
+    'web_faq_entries': 'Website content',
+  };
+  final profile = row['profiles'] as Map<String, dynamic>?;
+  return {
+    'occurred_at': row['occurred_at'],
+    'actor_name': profile?['full_name'] ?? (row['actor_id'] == null ? 'System' : 'Unknown'),
+    'category': categories[row['table_name']] ?? 'Other',
+    'action': row['summary'] ?? row['action'],
+    'subject': '',
+  };
+}
+
+/// "Who did what" across the portal.
+///
+/// Reads the append-only audit_log (supabase/patch_overhaul_gaps.sql), which
+/// records every change with its author, including role changes and
+/// suspensions. Older history, from before the log existed, still comes from
+/// the derived `admin_activity` view (supabase/patch_admin_activity_view.sql),
+/// but only for the time before the first log entry, so nothing is listed
+/// twice.
 ///
 /// The actor columns behind this were already being written on nearly every
 /// admin mutation, but only one was ever read back, so questions like "who
@@ -78,14 +108,37 @@ class _ActivityScreenState extends State<ActivityScreen> {
       _error = null;
     });
     try {
-      final rows = await _supabase
+      final legacy = List<Map<String, dynamic>>.from(await _supabase
           .from('admin_activity')
           .select()
           .order('occurred_at', ascending: false)
-          .limit(_limit);
+          .limit(_limit));
+
+      // Best-effort: a project without patch_overhaul_gaps.sql has no
+      // audit_log, and the legacy feed alone is still worth showing.
+      var audit = <Map<String, dynamic>>[];
+      try {
+        audit = List<Map<String, dynamic>>.from(await _supabase
+                .from('audit_log')
+                .select('occurred_at, actor_id, table_name, action, summary, profiles(full_name)')
+                .order('occurred_at', ascending: false)
+                .limit(_limit))
+            .map(auditRowToActivity)
+            .toList();
+      } catch (_) {}
+
+      var rows = legacy;
+      if (audit.isNotEmpty) {
+        final firstLogged = audit.map((r) => r['occurred_at'] as String).reduce((a, b) => a.compareTo(b) < 0 ? a : b);
+        rows = [
+          ...audit,
+          ...legacy.where((r) => (r['occurred_at'] as String).compareTo(firstLogged) < 0),
+        ]..sort((a, b) => (b['occurred_at'] as String).compareTo(a['occurred_at'] as String));
+        if (rows.length > _limit) rows = rows.sublist(0, _limit);
+      }
       if (mounted) {
         setState(() {
-          _rows = List<Map<String, dynamic>>.from(rows);
+          _rows = rows;
           _isLoading = false;
         });
       }
@@ -105,6 +158,9 @@ class _ActivityScreenState extends State<ActivityScreen> {
     'Worker incident': AppColors.flagged,
     'Accreditation': AdminTheme.sealGold,
     'Website content': Color(0xFF0B4F5C),
+    'Account': Color(0xFF6A4C93),
+    'Jug settlement': Color(0xFF2E7D32),
+    'Bulletin': AdminTheme.harborBlue,
   };
 
   static const _categoryIcons = {
@@ -113,6 +169,9 @@ class _ActivityScreenState extends State<ActivityScreen> {
     'Worker incident': Icons.warning_amber_rounded,
     'Accreditation': Icons.verified_outlined,
     'Website content': Icons.web_outlined,
+    'Account': Icons.manage_accounts_outlined,
+    'Jug settlement': Icons.swap_horiz,
+    'Bulletin': Icons.campaign_outlined,
   };
 
   /// The audit trail, exportable for the association's records. Exports

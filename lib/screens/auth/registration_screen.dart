@@ -9,6 +9,8 @@ import '../../widgets/hover_scale.dart';
 import '../../widgets/wasa_shield_logo.dart';
 import '../../widgets/web_page_route.dart';
 import 'login_screen.dart';
+import '../web/privacy_policy_screen.dart';
+import '../../utils/log.dart';
 import '../../utils/error_text.dart';
 import 'package:aquaroute/constants/brand_tokens.dart';
 
@@ -30,6 +32,11 @@ class RegistrationScreen extends StatefulWidget {
 class _RegistrationScreenState extends State<RegistrationScreen> {
   final supabase = Supabase.instance.client;
   final _formKey = GlobalKey<FormState>();
+
+  /// Agreement to the privacy notice. Unticked by default, as RA 10173
+  /// expects consent to be an affirmative act.
+  bool _consented = false;
+  bool _showConsentError = false;
 
   // Shared Controllers
   final _emailController = TextEditingController();
@@ -108,7 +115,9 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
   }
 
   Future<void> _signUp() async {
-    if (!(_formKey.currentState?.validate() ?? false)) return;
+    final formOk = _formKey.currentState?.validate() ?? false;
+    setState(() => _showConsentError = !_consented);
+    if (!formOk || !_consented) return;
 
     setState(() => _isLoading = true);
 
@@ -190,6 +199,15 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
         await supabase.rpc('register_customer', params: {
           'p_full_name': _fullNameController.text.trim(),
         });
+      }
+
+      // Recorded once the account exists. Not allowed to block a sign-up that
+      // has otherwise succeeded: the box was ticked, and a project that
+      // hasn't had patch_overhaul_gaps.sql run yet has no such function.
+      try {
+        await supabase.rpc('record_privacy_consent', params: {'p_version': PrivacyPolicyScreen.lastUpdated});
+      } catch (e) {
+        logError('record privacy consent', e);
       }
 
       // AuthGate reacts to the resulting auth-state/membership change and
@@ -299,7 +317,17 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                       autofillHints: const [AutofillHints.newPassword],
                     ),
 
-                    const SizedBox(height: 32),
+                    const SizedBox(height: 20),
+                    _ConsentCheckbox(
+                      value: _consented,
+                      showError: _showConsentError,
+                      onChanged: (v) => setState(() {
+                        _consented = v;
+                        if (v) _showConsentError = false;
+                      }),
+                    ),
+
+                    const SizedBox(height: 24),
 
                     HoverScale(
                       child: ElevatedButton(
@@ -553,6 +581,79 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
             ),
           ],
         ),
+      ],
+    );
+  }
+}
+
+/// "I have read and agree to the Privacy Policy", with the policy one tap
+/// away. The whole row toggles the box, so the target is the full width
+/// rather than an 18px square.
+class _ConsentCheckbox extends StatelessWidget {
+  const _ConsentCheckbox({required this.value, required this.showError, required this.onChanged});
+
+  final bool value;
+  final bool showError;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        InkWell(
+          onTap: () => onChanged(!value),
+          borderRadius: BorderRadius.circular(8),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Checkbox(
+                  value: value,
+                  onChanged: (v) => onChanged(v ?? false),
+                  isError: showError,
+                ),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 12),
+                    child: Text(
+                      'I have read the Privacy Policy and agree to GenTri WASA collecting and using my information as it describes.',
+                      style: theme.textTheme.bodyMedium?.copyWith(color: scheme.onSurface),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.only(left: 44),
+          child: TextButton.icon(
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => Theme(
+                  data: Theme.of(context).brightness == Brightness.dark ? WebTheme.dark : WebTheme.light,
+                  child: const PrivacyPolicyScreen(standalone: true),
+                ),
+              ),
+            ),
+            icon: const Icon(Icons.open_in_new, size: 18),
+            label: const Text('Read the Privacy Policy'),
+          ),
+        ),
+        if (showError)
+          Padding(
+            padding: const EdgeInsets.only(left: 52, top: 2),
+            child: Text(
+              'Tick the box to agree before creating your account.',
+              style: theme.textTheme.bodySmall?.copyWith(color: scheme.error, fontWeight: FontWeight.w600),
+            ),
+          ),
       ],
     );
   }

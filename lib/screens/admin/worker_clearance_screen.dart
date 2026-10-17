@@ -45,6 +45,7 @@ class _WorkerClearanceScreenState extends State<WorkerClearanceScreen> {
   String? _error;
   List<Map<String, dynamic>> _incidents = [];
   List<Map<String, dynamic>> _credentials = [];
+  List<Map<String, dynamic>> _appeals = [];
 
   /// Credential ids ticked for a batch decision. Clearing a backlog one
   /// confirm dialog at a time was the single most repetitive job in the
@@ -75,10 +76,22 @@ class _WorkerClearanceScreenState extends State<WorkerClearanceScreen> {
           .select('*, workers(full_name, worker_code)')
           .eq('status', 'pending_review')
           .order('uploaded_at');
+      // Appeals arrive with patch_overhaul_gaps.sql. On a project that hasn't
+      // had it yet the column doesn't exist; the other two queues must still
+      // load, so a failure here just means "no appeals".
+      List<Map<String, dynamic>> appeals = [];
+      try {
+        appeals = List<Map<String, dynamic>>.from(await _supabase
+            .from('worker_incidents')
+            .select('*, workers(full_name, worker_code, water_stations(station_name))')
+            .eq('appeal_status', 'pending')
+            .order('appeal_submitted_at'));
+      } catch (_) {}
       if (mounted) {
         setState(() {
           _incidents = List<Map<String, dynamic>>.from(incidents);
           _credentials = List<Map<String, dynamic>>.from(credentials);
+          _appeals = appeals;
           _isLoading = false;
         });
       }
@@ -221,22 +234,23 @@ class _WorkerClearanceScreenState extends State<WorkerClearanceScreen> {
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 2,
+      length: 3,
       initialIndex: widget.initialTabIndex,
       child: Column(
         children: [
           AdminPageHeader(
             eyebrow: 'Association',
             title: 'Worker Clearance Review',
-            subtitle: 'Incidents filed by stations, and credentials waiting on a decision',
+            subtitle: 'Incidents filed by stations, credentials and driver appeals waiting on a decision',
+            // Colours from the theme: these used to be white for the old navy
+            // header band and would be invisible on the light one.
             bottom: TabBar(
-              labelColor: Colors.white,
-              unselectedLabelColor: Colors.white70,
-              indicatorColor: AdminTheme.sealGold,
-              indicatorWeight: 3,
+              isScrollable: true,
+              tabAlignment: TabAlignment.start,
               tabs: [
                 Tab(text: 'Incidents (${_incidents.length})'),
                 Tab(text: 'Credentials (${_credentials.length})'),
+                Tab(text: 'Appeals (${_appeals.length})'),
               ],
             ),
           ),
@@ -282,8 +296,108 @@ class _WorkerClearanceScreenState extends State<WorkerClearanceScreen> {
                                 ),
                               ],
                             ),
+                      _appeals.isEmpty
+                          ? const PortalEmptyState(
+                              icon: Icons.gavel_outlined,
+                              title: 'No appeals waiting',
+                              message: 'A flagged driver can appeal a confirmed incident once. Appeals appear here for a decision.',
+                            )
+                          : RefreshIndicator(
+                              onRefresh: _fetchAll,
+                              child: ListView.builder(
+                                padding: const EdgeInsets.all(16),
+                                itemCount: _appeals.length,
+                                itemBuilder: (context, index) => _buildAppealCard(_appeals[index]),
+                              ),
+                            ),
                     ],
                   ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _decideAppeal(String incidentId, bool overturn) async {
+    final controller = TextEditingController();
+    final note = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) => AlertDialog(
+          title: Text(overturn ? 'Accept the appeal?' : 'Reject the appeal?'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(overturn
+                  ? 'The incident is dismissed. If it was the only confirmed incident, the driver is no longer flagged.'
+                  : 'The flag stays. The driver is told your reason.'),
+              const SizedBox(height: 12),
+              TextField(
+                controller: controller,
+                autofocus: true,
+                maxLines: 3,
+                maxLength: 400,
+                decoration: const InputDecoration(labelText: 'Reason (sent to the driver)'),
+                onChanged: (_) => setDialogState(() {}),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')),
+            FilledButton(
+              onPressed: controller.text.trim().isEmpty ? null : () => Navigator.pop(dialogContext, controller.text.trim()),
+              child: Text(overturn ? 'Accept appeal' : 'Reject appeal'),
+            ),
+          ],
+        ),
+      ),
+    );
+    controller.dispose();
+    if (note == null) return;
+    try {
+      await _supabase.rpc('admin_decide_appeal', params: {
+        'p_incident_id': incidentId,
+        'p_overturn': overturn,
+        'p_note': note,
+      });
+      await _fetchAll();
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not record the decision. ${describeError(e)}')));
+    }
+  }
+
+  Widget _buildAppealCard(Map<String, dynamic> incident) {
+    final theme = Theme.of(context);
+    final worker = incident['workers'] as Map<String, dynamic>?;
+    final station = worker?['water_stations'] as Map<String, dynamic>?;
+    return PortalCard(
+      margin: const EdgeInsets.only(bottom: 12),
+      accent: AppColors.pendingClearance,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(worker?['full_name'] as String? ?? 'Unknown driver', style: theme.textTheme.titleMedium),
+          Text(
+            '${worker?['worker_code'] ?? ''}${station != null ? ' · ${station['station_name']}' : ''}',
+            style: theme.textTheme.bodySmall,
+          ),
+          const SizedBox(height: 10),
+          Text('Incident: ${incident['incident_type']}', style: theme.textTheme.titleSmall),
+          Text(incident['description'] as String? ?? ''),
+          const SizedBox(height: 10),
+          StatusCallout(
+            accent: AppColors.primary,
+            icon: Icons.record_voice_over_outlined,
+            title: "Driver's appeal",
+            message: incident['appeal_text'] as String? ?? '',
+          ),
+          const SizedBox(height: 12),
+          PortalActionRow(
+            children: [
+              OutlinedButton(onPressed: () => _decideAppeal(incident['id'] as String, false), child: const Text('Reject appeal')),
+              FilledButton(onPressed: () => _decideAppeal(incident['id'] as String, true), child: const Text('Accept appeal')),
+            ],
           ),
         ],
       ),

@@ -85,7 +85,7 @@ class PortalPageHeader extends StatelessWidget {
                             eyebrow!.toUpperCase(),
                             style: theme.textTheme.labelSmall?.copyWith(
                               // The seal gold is 2.4:1 on a light page.
-                              color: theme.brightness == Brightness.dark ? scheme.secondary : BrandColors.sealGoldInk,
+                              color: BrandColors.sealGoldTextFor(theme.brightness),
                               letterSpacing: 1.6,
                               fontWeight: FontWeight.w700,
                             ),

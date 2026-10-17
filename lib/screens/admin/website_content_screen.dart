@@ -8,6 +8,7 @@ import '../../services/permit_service.dart';
 import '../../services/supabase_service.dart';
 import '../../services/web_content_service.dart';
 import '../../widgets/admin_page_header.dart';
+import 'website_content_history.dart';
 import '../../widgets/confirm_dialog.dart';
 import '../../constants/app_colors.dart';
 import '../../widgets/error_state.dart';
@@ -45,10 +46,37 @@ extension on _ContentPage {
         _ContentPage.jugClearinghouse => 'Jug Clearinghouse',
         _ContentPage.permitLabels => 'Permit Checklist Labels',
       };
+
+  /// Key under which this page's sections and items are stored, for its
+  /// history. Null for the FAQ (its entries have no page key) and for the
+  /// permit labels, which keep no history.
+  String? get historyKey => switch (this) {
+        _ContentPage.about => 'about',
+        _ContentPage.contact => 'contact',
+        _ContentPage.forStationOwners => 'for_station_owners',
+        _ContentPage.howAccreditationWorks => 'how_accreditation_works',
+        _ContentPage.jugClearinghouse => 'jug_clearinghouse',
+        _ContentPage.faq || _ContentPage.permitLabels => null,
+      };
 }
 
 class _WebsiteContentScreenState extends State<WebsiteContentScreen> {
   _ContentPage _selected = _ContentPage.about;
+
+  /// Bumped after a restore so the editor rebuilds and reloads.
+  int _editorVersion = 0;
+
+  Future<void> _openHistory() async {
+    final restored = await showWebsiteContentHistory(
+      context,
+      title: _selected.label,
+      pageKey: _selected.historyKey,
+    );
+    if (restored && mounted) {
+      setState(() => _editorVersion++);
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Earlier version restored.')));
+    }
+  }
 
   Widget _buildEditor(_ContentPage page) {
     // _SectionsEditor/_ItemsEditor return a plain (non-scrolling) Column so
@@ -89,10 +117,18 @@ class _WebsiteContentScreenState extends State<WebsiteContentScreen> {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        const AdminPageHeader(
+        AdminPageHeader(
           eyebrow: 'Content management',
           title: 'Website Content',
           subtitle: 'Edit what shows on the public site and in the app',
+          actions: [
+            if (_selected != _ContentPage.permitLabels)
+              OutlinedButton.icon(
+                onPressed: _openHistory,
+                icon: const Icon(Icons.history),
+                label: const Text('History'),
+              ),
+          ],
         ),
         Expanded(
           child: LayoutBuilder(
@@ -121,7 +157,7 @@ class _WebsiteContentScreenState extends State<WebsiteContentScreen> {
                   ),
                 ),
                 const VerticalDivider(width: 1),
-                Expanded(child: _buildEditor(_selected)),
+                Expanded(child: KeyedSubtree(key: ValueKey((_selected, _editorVersion)), child: _buildEditor(_selected))),
               ],
             );
           }
@@ -147,7 +183,7 @@ class _WebsiteContentScreenState extends State<WebsiteContentScreen> {
                 ),
               ),
               const Divider(height: 1),
-              Expanded(child: _buildEditor(_selected)),
+              Expanded(child: KeyedSubtree(key: ValueKey((_selected, _editorVersion)), child: _buildEditor(_selected))),
             ],
           );
         },

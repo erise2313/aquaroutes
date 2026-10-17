@@ -55,6 +55,13 @@ class Bulletin {
   final String? imageUrl;
   final DateTime createdAt;
 
+  /// Who posted it -- so the feed doesn't offer to report your own post.
+  final String? postedBy;
+
+  /// Hidden by an officer after a report. Only officers and the author still
+  /// receive hidden posts (bulletins_public_read).
+  final bool isHidden;
+
   const Bulletin({
     required this.id,
     required this.category,
@@ -66,6 +73,8 @@ class Bulletin {
     this.authorStationName,
     this.imageUrl,
     required this.createdAt,
+    this.postedBy,
+    this.isHidden = false,
   });
 
   /// e.g. "Station Owner · Buenavista Water Refilling Station" or "WASA Admin".
@@ -94,6 +103,8 @@ class Bulletin {
       authorStationName: map['author_station_name'] as String?,
       imageUrl: map['image_url'] as String?,
       createdAt: DateTime.parse(map['created_at'] as String),
+      postedBy: map['posted_by'] as String?,
+      isHidden: map['is_hidden'] as bool? ?? false,
     );
   }
 }

@@ -1,5 +1,6 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../constants/app_colors.dart';
@@ -222,10 +223,28 @@ class _PermitVaultScreenState extends State<PermitVaultScreen> {
             runSpacing: 6,
             children: [
               StatusPill(label: statusLabel, color: statusColor),
-              if (permit.isRenewalDueSoon)
-                const StatusPill(label: 'RENEWAL DUE', color: AppColors.pendingClearance),
+              // Exact days rather than a bare "renewal due": an owner needs to
+              // know whether it's this week or next month.
+              if (permit.status == PermitStatus.approved && permit.daysUntilExpiry != null && permit.daysUntilExpiry! < 0)
+                const StatusPill(label: 'EXPIRED', color: AppColors.flagged, icon: Icons.event_busy)
+              else if (permit.status == PermitStatus.approved && permit.isRenewalDueSoon)
+                StatusPill(
+                  label: permit.daysUntilExpiry == 0
+                      ? 'EXPIRES TODAY'
+                      : 'EXPIRES IN ${permit.daysUntilExpiry} DAY${permit.daysUntilExpiry == 1 ? '' : 'S'}',
+                  color: AppColors.pendingClearance,
+                  icon: Icons.schedule,
+                ),
             ],
           ),
+          if (permit.status == PermitStatus.approved && permit.expiryDate != null) ...[
+            const SizedBox(height: 8),
+            Text(
+              '${(permit.daysUntilExpiry ?? 0) < 0 ? 'Expired' : 'Valid until'} ${DateFormat('MMMM d, yyyy').format(permit.expiryDate!)}'
+              '${(permit.daysUntilExpiry ?? 0) < 0 ? ' -- upload the renewed permit for WASA to review.' : ''}',
+              style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+            ),
+          ],
           if (permit.status == PermitStatus.rejected && permit.rejectionReason != null) ...[
             const SizedBox(height: 8),
             Text(

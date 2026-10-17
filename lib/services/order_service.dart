@@ -59,6 +59,16 @@ class OrderService {
     });
   }
 
+  /// The driver couldn't complete the delivery. The order goes back to the
+  /// station's queue, unassigned, and the customer and owner are told why
+  /// (driver_report_failed_delivery, supabase/patch_overhaul_gaps.sql).
+  Future<void> reportFailedDelivery(String orderId, String reason) {
+    return _supabase.client.rpc('driver_report_failed_delivery', params: {
+      'p_order_id': orderId,
+      'p_reason': reason,
+    });
+  }
+
   Future<void> startDelivery(String orderId) {
     return _supabase.client.rpc('set_order_status', params: {
       'p_order_id': orderId,

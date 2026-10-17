@@ -487,6 +487,38 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
     }
   }
 
+  /// Reasons a driver can pick without typing, which is what they'll want
+  /// at a doorstep. "Other" asks for a few words.
+  static const _failureReasons = [
+    'Nobody was home',
+    'Wrong or incomplete address',
+    'Customer refused the order',
+    'Customer could not be reached by phone',
+  ];
+
+  Future<void> _reportFailedDelivery() async {
+    if (_currentActiveOrder == null) return;
+    final reason = await showDialog<String>(
+      context: context,
+      builder: (context) => const _FailedDeliveryDialog(reasons: _failureReasons),
+    );
+    if (reason == null || !mounted) return;
+    setState(() => _isLoading = true);
+    try {
+      await _orderService.reportFailedDelivery(_currentActiveOrder!['id'] as String, reason);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Reported. The order is back with your station to reassign.')),
+      );
+      _fetchActiveDelivery();
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(describeError(e))));
+      }
+    }
+  }
+
   Future<void> _startDelivery() async {
     if (_currentActiveOrder == null) return;
     try {
@@ -861,6 +893,13 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
             ),
+          const SizedBox(height: 4),
+          // Quiet on purpose: the expected path is completing the delivery.
+          TextButton.icon(
+            onPressed: _reportFailedDelivery,
+            icon: Icon(Icons.report_gmailerrorred_outlined, color: driverPalette.alert),
+            label: Text("COULDN'T DELIVER", style: TextStyle(fontWeight: FontWeight.bold, color: driverPalette.alert)),
+          ),
         ],
       ),
     );
@@ -895,6 +934,76 @@ class _MapPin extends StatelessWidget {
         boxShadow: const [BoxShadow(color: Colors.black38, blurRadius: 4)],
       ),
       child: Icon(icon, color: Colors.white, size: 22),
+    );
+  }
+}
+
+/// Picks why a delivery couldn't be made: a few common reasons as one tap,
+/// or "Other" with a short note. Returns the reason, or null if cancelled.
+class _FailedDeliveryDialog extends StatefulWidget {
+  const _FailedDeliveryDialog({required this.reasons});
+
+  final List<String> reasons;
+
+  @override
+  State<_FailedDeliveryDialog> createState() => _FailedDeliveryDialogState();
+}
+
+class _FailedDeliveryDialogState extends State<_FailedDeliveryDialog> {
+  String? _selected;
+  final _other = TextEditingController();
+  static const _otherKey = '__other__';
+
+  @override
+  void dispose() {
+    _other.dispose();
+    super.dispose();
+  }
+
+  String? get _reason {
+    if (_selected == null) return null;
+    if (_selected == _otherKey) {
+      final t = _other.text.trim();
+      return t.isEmpty ? null : t;
+    }
+    return _selected;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text("Couldn't deliver"),
+      content: SingleChildScrollView(
+        child: RadioGroup<String>(
+          groupValue: _selected,
+          onChanged: (v) => setState(() => _selected = v),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('The order goes back to your station so it can be reassigned. The customer is told the reason.'),
+              const SizedBox(height: 8),
+              for (final r in widget.reasons) RadioListTile<String>(value: r, title: Text(r), contentPadding: EdgeInsets.zero),
+              const RadioListTile<String>(value: _otherKey, title: Text('Other'), contentPadding: EdgeInsets.zero),
+              if (_selected == _otherKey)
+                TextField(
+                  controller: _other,
+                  autofocus: true,
+                  maxLength: 120,
+                  decoration: const InputDecoration(labelText: 'What happened?'),
+                  onChanged: (_) => setState(() {}),
+                ),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+        FilledButton(
+          onPressed: _reason == null ? null : () => Navigator.pop(context, _reason),
+          child: const Text('Report'),
+        ),
+      ],
     );
   }
 }

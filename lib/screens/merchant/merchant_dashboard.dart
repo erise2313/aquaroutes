@@ -16,6 +16,9 @@ import '../../widgets/app_theme_toggle.dart';
 import '../../widgets/notification_bell.dart';
 import '../../widgets/portal/portal.dart';
 import '../../utils/log.dart';
+import '../../constants/brand_tokens.dart';
+import '../../utils/error_text.dart';
+import '../../widgets/confirm_dialog.dart';
 
 /// 'assigned' rolls into "active" alongside 'active' (both mean a driver is
 /// on it, just not picked up yet vs. en route); 'done' is counted on its
@@ -441,6 +444,35 @@ class _MerchantDashboardScreenState extends State<MerchantDashboardScreen> {
     );
   }
 
+  bool _regenerating = false;
+
+  /// A removed driver still knew the old code, which is how a flagged driver
+  /// could walk back in. The old code stops working the moment this returns.
+  Future<void> _regenerateInviteCode() async {
+    final confirmed = await showConfirmDialog(
+      context,
+      title: 'Issue a new invite code?',
+      message: 'The current code will stop working straight away. Drivers already on your roster are not affected; '
+          'anyone joining from now on needs the new code.',
+      confirmLabel: 'Issue new code',
+      isDestructive: false,
+    );
+    if (!confirmed || !mounted) return;
+    setState(() => _regenerating = true);
+    try {
+      final code = await supabase.rpc('owner_regenerate_invite_code') as String;
+      if (!mounted) return;
+      setState(() => _inviteCode = code);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('New invite code: $code')));
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not change the code. ${describeError(e)}')));
+      }
+    } finally {
+      if (mounted) setState(() => _regenerating = false);
+    }
+  }
+
   Widget _buildInviteCodeCard(String code) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
@@ -463,7 +495,7 @@ class _MerchantDashboardScreenState extends State<MerchantDashboardScreen> {
                 Text(
                   'STATION INVITE CODE',
                   style: theme.textTheme.labelSmall?.copyWith(
-                    color: scheme.secondary,
+                    color: BrandColors.sealGoldTextFor(theme.brightness),
                     letterSpacing: 1.6,
                     fontWeight: FontWeight.w700,
                   ),
@@ -485,11 +517,18 @@ class _MerchantDashboardScreenState extends State<MerchantDashboardScreen> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Your drivers and helpers enter this to join your station.',
+                  'Your drivers and helpers enter this to join your station. '
+                  'Issue a new code if a driver leaves -- the old one stops working.',
                   style: theme.textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
                 ),
               ],
             ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.autorenew),
+            color: scheme.primary,
+            tooltip: 'Issue a new invite code',
+            onPressed: !isCode || _regenerating ? null : _regenerateInviteCode,
           ),
           IconButton(
             icon: const Icon(Icons.copy_outlined),

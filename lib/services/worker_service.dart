@@ -52,6 +52,14 @@ class WorkerService {
     return rows.map((r) => WorkerIncident.fromMap(r)).toList();
   }
 
+  /// Driver self-service: contest a confirmed incident, once, in writing.
+  Future<void> submitAppeal(String incidentId, String text) {
+    return _supabase.client.rpc('driver_submit_appeal', params: {
+      'p_incident_id': incidentId,
+      'p_text': text,
+    });
+  }
+
   /// Driver self-service: leave the current station (e.g. quitting). Nulls
   /// workers.station_id/memberships.station_id and closes the active
   /// worker_station_history row -- all inside the driver_leave_station() RPC

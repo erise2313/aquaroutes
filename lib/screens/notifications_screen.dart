@@ -92,6 +92,8 @@ class NotificationsScreen extends ConsumerWidget {
                     'permit' => Icons.folder_shared_outlined,
                     'accreditation' => Icons.verified_outlined,
                     'account' => Icons.manage_accounts_outlined,
+                    'worker' => Icons.gavel_outlined,
+                    'bulletin' => Icons.campaign_outlined,
                     _ => Icons.local_shipping_outlined,
                   },
                   color: notification.isRead ? Theme.of(context).colorScheme.onSurfaceVariant : Theme.of(context).colorScheme.primary,

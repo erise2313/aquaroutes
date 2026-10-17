@@ -42,6 +42,7 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
   String? _stationName;
   String? _avatarUrl;
   List<WorkerCredential> _credentials = [];
+  List<WorkerIncident> _incidents = [];
 
   final TextEditingController _fullNameController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
@@ -78,6 +79,13 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
 
       final worker = Worker.fromMap(data);
       final credentials = await _credentialService.fetchWorkerCredentials(worker.id);
+      // The driver reads incidents about themselves (incidents_self_read) so
+      // they can see what a flag is for and appeal it. Best-effort: a project
+      // without that policy yet just shows no incidents.
+      List<WorkerIncident> incidents = [];
+      try {
+        incidents = await _workerService.fetchIncidentsForWorker(worker.id);
+      } catch (_) {}
 
       String? stationName;
       if (worker.stationId != null) {
@@ -91,6 +99,7 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
           _stationName = stationName;
           _avatarUrl = profile?['avatar_url'] as String?;
           _credentials = credentials;
+          _incidents = incidents;
           _fullNameController.text = worker.fullName;
           _phoneController.text = worker.phoneNumber ?? '';
           _vehiclePlateController.text = worker.vehiclePlate ?? '';
@@ -294,6 +303,10 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
                   if (_worker != null) _buildStationSection(_worker!),
                   const SizedBox(height: 24),
                   if (_worker != null) _buildCredentialsSection(),
+                  if (_incidents.any((i) => i.status == IncidentStatus.confirmedFlag)) ...[
+                    const SizedBox(height: 16),
+                    _buildIncidentsSection(),
+                  ],
                   const SizedBox(height: 24),
                   TextField(
                     controller: _fullNameController,
@@ -454,6 +467,97 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
         ],
       ),
     );
+  }
+
+  /// Confirmed incidents on the driver's record, each with its appeal state.
+  /// A flag follows a driver to every station, so they need to see why and
+  /// have one way to contest it.
+  Widget _buildIncidentsSection() {
+    final confirmed = _incidents.where((i) => i.status == IncidentStatus.confirmedFlag || i.appealStatus != null).toList();
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(color: driverPalette.surface, borderRadius: BorderRadius.circular(16)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('INCIDENTS ON YOUR RECORD', style: TextStyle(color: driverPalette.text.withValues(alpha: 0.7), letterSpacing: 1.2, fontSize: 14)),
+          const SizedBox(height: 8),
+          Text(
+            'WASA confirmed these. If you think one is wrong, you can appeal it once.',
+            style: TextStyle(color: driverPalette.text.withValues(alpha: 0.7), fontSize: 14),
+          ),
+          for (final i in confirmed) ...[
+            const SizedBox(height: 12),
+            Text(i.incidentType, style: TextStyle(color: driverPalette.text, fontWeight: FontWeight.bold, fontSize: 16)),
+            const SizedBox(height: 2),
+            Text(i.description, style: TextStyle(color: driverPalette.text)),
+            const SizedBox(height: 6),
+            if (i.canAppeal)
+              OutlinedButton.icon(
+                onPressed: () => _appeal(i),
+                icon: Icon(Icons.gavel_outlined, color: driverPalette.text),
+                label: Text('Appeal this', style: TextStyle(color: driverPalette.text)),
+              )
+            else
+              Text(
+                switch (i.appealStatus) {
+                  'pending' => 'Appeal sent -- waiting for WASA.',
+                  'overturned' => 'Appeal accepted${i.appealDecisionNote != null ? ': ${i.appealDecisionNote}' : '.'}',
+                  'upheld' => 'Appeal not accepted${i.appealDecisionNote != null ? ': ${i.appealDecisionNote}' : '.'}',
+                  _ => '',
+                },
+                style: TextStyle(color: driverPalette.text.withValues(alpha: 0.85), fontStyle: FontStyle.italic),
+              ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Future<void> _appeal(WorkerIncident incident) async {
+    final controller = TextEditingController();
+    final text = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) => AlertDialog(
+          title: const Text('Appeal this incident'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Explain what happened. A WASA officer reads it and decides; you can only appeal once.'),
+              const SizedBox(height: 12),
+              TextField(
+                controller: controller,
+                autofocus: true,
+                maxLines: 5,
+                maxLength: 1000,
+                decoration: const InputDecoration(labelText: 'Your appeal'),
+                onChanged: (_) => setDialogState(() {}),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')),
+            FilledButton(
+              onPressed: controller.text.trim().length < 10 ? null : () => Navigator.pop(dialogContext, controller.text.trim()),
+              child: const Text('Send appeal'),
+            ),
+          ],
+        ),
+      ),
+    );
+    controller.dispose();
+    if (text == null || !mounted) return;
+    try {
+      await _workerService.submitAppeal(incident.id, text);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Appeal sent. You will be notified of the decision.')));
+      }
+      _fetchDriverProfile();
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(describeError(e))));
+    }
   }
 
   Widget _buildCredentialTile(WorkerCredential credential) {

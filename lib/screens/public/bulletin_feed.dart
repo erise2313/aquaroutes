@@ -466,6 +466,74 @@ class _BulletinFeedState extends ConsumerState<BulletinFeed> {
     }
   }
 
+  Future<void> _toggleHidden(Bulletin bulletin) async {
+    try {
+      await _bulletinService.setHidden(bulletin.id, !bulletin.isHidden);
+      if (!bulletin.isHidden) await _bulletinService.resolveReports(bulletin.id);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(bulletin.isHidden ? 'Post is visible again.' : 'Post hidden from the board.'),
+        ));
+      }
+      _load();
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(describeError(e))));
+    }
+  }
+
+  Future<void> _reportBulletin(Bulletin bulletin) async {
+    final controller = TextEditingController();
+    final reason = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) => AlertDialog(
+          title: const Text('Report this post'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('"${bulletin.title}"', style: const TextStyle(fontWeight: FontWeight.w600)),
+              const SizedBox(height: 8),
+              const Text('A WASA officer will review it. The person who posted it is not told who reported it.'),
+              const SizedBox(height: 12),
+              TextField(
+                controller: controller,
+                autofocus: true,
+                maxLength: 300,
+                maxLines: 3,
+                decoration: const InputDecoration(labelText: 'What is wrong with it?'),
+                onChanged: (_) => setDialogState(() {}),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')),
+            FilledButton(
+              onPressed: controller.text.trim().isEmpty ? null : () => Navigator.pop(dialogContext, controller.text.trim()),
+              child: const Text('Send report'),
+            ),
+          ],
+        ),
+      ),
+    );
+    controller.dispose();
+    if (reason == null || !mounted) return;
+    try {
+      await _bulletinService.reportBulletin(bulletin.id, reason);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Thanks. An officer will review the post.')));
+      }
+    } on PostgrestException catch (e) {
+      if (!mounted) return;
+      final already = e.code == '23505';
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(already ? 'You have already reported this post.' : describeError(e)),
+      ));
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(describeError(e))));
+    }
+  }
+
   Future<void> _togglePin(Bulletin bulletin) async {
     try {
       await _bulletinService.togglePin(bulletin.id, !bulletin.isPinned);
@@ -531,16 +599,44 @@ class _BulletinFeedState extends ConsumerState<BulletinFeed> {
                     onPressed: () => _togglePin(bulletin),
                   ),
                   IconButton(
+                    icon: Icon(bulletin.isHidden ? Icons.visibility_outlined : Icons.visibility_off_outlined, size: 18),
+                    tooltip: bulletin.isHidden ? 'Show this post again' : 'Hide from the board',
+                    constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+                    onPressed: () => _toggleHidden(bulletin),
+                  ),
+                  IconButton(
                     icon: Icon(Icons.delete_outline, size: 18, color: Theme.of(context).colorScheme.error),
                     tooltip: 'Delete',
                     constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
                     onPressed: () => _deleteBulletin(bulletin),
                   ),
+                ] else if (membership != null && bulletin.postedBy != Supabase.instance.client.auth.currentUser?.id) ...[
+                  const Spacer(),
+                  // Any signed-in member can flag a post for an officer.
+                  PopupMenuButton<String>(
+                    tooltip: 'More options',
+                    icon: const Icon(Icons.more_vert, size: 20),
+                    onSelected: (_) => _reportBulletin(bulletin),
+                    itemBuilder: (_) => const [
+                      PopupMenuItem(
+                        value: 'report',
+                        child: ListTile(leading: Icon(Icons.flag_outlined), title: Text('Report post')),
+                      ),
+                    ],
+                  ),
                 ],
               ],
             ),
+            if (bulletin.isHidden) ...[
+              const SizedBox(height: 8),
+              const StatusPill(
+                label: 'Hidden from the board',
+                color: AppColors.flagged,
+                icon: Icons.visibility_off_outlined,
+              ),
+            ],
             const SizedBox(height: 8),
-            Text(bulletin.title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            Text(bulletin.title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 17)),
             const SizedBox(height: 6),
             Text(bulletin.body),
             if (bulletin.imageUrl != null) ...[

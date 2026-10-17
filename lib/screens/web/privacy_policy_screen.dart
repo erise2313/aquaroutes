@@ -25,7 +25,12 @@ import 'contact_screen.dart';
 /// than the app does is a rejection. If a column or a third-party call is
 /// added later, this page is part of that change, not an afterthought.
 class PrivacyPolicyScreen extends StatelessWidget {
-  const PrivacyPolicyScreen({super.key});
+  const PrivacyPolicyScreen({super.key, this.standalone = false});
+
+  /// Opened from the sign-up form's consent checkbox rather than as a page of
+  /// the website: a plain back bar instead of the site's navigation and
+  /// footer, and no links away from the form.
+  final bool standalone;
 
   /// Last substantive revision. Play expects a policy that is evidently
   /// maintained, and reviewers do look at whether this moves.
@@ -55,7 +60,9 @@ class PrivacyPolicyScreen extends StatelessWidget {
       backgroundColor: palette.paper,
       // No nav tab of its own; it's linked from the footer, beside the
       // account-deletion page it pairs with.
-      appBar: const WebNavBar(currentPage: WebPage.faq),
+      appBar: standalone
+          ? AppBar(title: const Text('Privacy Policy'))
+          : const WebNavBar(currentPage: WebPage.faq) as PreferredSizeWidget,
       body: SingleChildScrollView(
         child: Column(
           children: [
@@ -140,11 +147,13 @@ class PrivacyPolicyScreen extends StatelessWidget {
                       const _Body(
                         'Customers can delete an account from within the app at any time, under My account. This removes your login, name, phone number, photo, reviews and comments, and it cannot be undone. Station owners, drivers and administrators send a deletion request instead, because those accounts are tied to association records that an administrator has to close first; you can withdraw that request until it is completed.',
                       ),
-                      const SizedBox(height: 14),
-                      _LinkRow(
-                        label: 'Full instructions for deleting your account',
-                        onTap: () => _openAccountDeletion(context),
-                      ),
+                      if (!standalone) ...[
+                        const SizedBox(height: 14),
+                        _LinkRow(
+                          label: 'Full instructions for deleting your account',
+                          onTap: () => _openAccountDeletion(context),
+                        ),
+                      ],
 
                       const _Heading('Your choices'),
                       const _Bullets([
@@ -167,17 +176,19 @@ class PrivacyPolicyScreen extends StatelessWidget {
                       const _Body(
                         'For any question about this policy, or to make a request about your information, contact the General Trias Water Station Association.',
                       ),
-                      const SizedBox(height: 14),
-                      _LinkRow(
-                        label: 'Association contact details',
-                        onTap: () => _openContact(context),
-                      ),
+                      if (!standalone) ...[
+                        const SizedBox(height: 14),
+                        _LinkRow(
+                          label: 'Association contact details',
+                          onTap: () => _openContact(context),
+                        ),
+                      ],
                     ],
                   ),
                 ),
               ),
             ),
-            const WebFooter(),
+            if (!standalone) const WebFooter(),
           ],
         ),
       ),
