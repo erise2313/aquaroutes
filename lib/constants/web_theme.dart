@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import 'brand_theme.dart';
+import 'brand_tokens.dart';
+
 /// Design tokens for the public website only (lib/screens/web/, web_nav_bar,
 /// web_footer). Deliberately separate from constants/app_colors.dart so the
 /// mobile app's screens are untouched by this pass.
@@ -24,10 +27,10 @@ class WebTheme {
   WebTheme._();
 
   // -- Brand accents: identical in both modes. --------------------------
-  static const inkNavy = Color(0xFF0B2545);
-  static const harborBlue = Color(0xFF1565C0);
-  static const sealGold = Color(0xFFC99A3B);
-  static const deepTeal = Color(0xFF0B4F5C);
+  static const inkNavy = BrandColors.inkNavy;
+  static const harborBlue = BrandColors.harborBlue;
+  static const sealGold = BrandColors.sealGold;
+  static const deepTeal = BrandColors.deepTeal;
 
   /// Legacy light-mode surface constants. Still referenced by the mobile
   /// app's info screens, which are not part of the website's theming and
@@ -67,39 +70,11 @@ class WebTheme {
     color: sealGold,
   );
 
+  /// Component styling is shared with the app and admin portal
+  /// ([BrandTheme]); the website only adds its own palette extension.
   static ThemeData themeFor(Brightness brightness) {
     final palette = brightness == Brightness.dark ? WebPalette.dark : WebPalette.light;
-    final base = ThemeData(
-      brightness: brightness,
-      useMaterial3: true,
-      colorScheme: ColorScheme.fromSeed(
-        seedColor: harborBlue,
-        brightness: brightness,
-      ).copyWith(
-        primary: brightness == Brightness.dark ? const Color(0xFF6FB1F0) : harborBlue,
-        secondary: sealGold,
-        surface: palette.card,
-        onSurface: palette.ink,
-      ),
-      scaffoldBackgroundColor: palette.paper,
-    );
-
-    return base.copyWith(
-      extensions: [palette],
-      // Pin body/display colours to the palette rather than letting Material
-      // pick near-black or pure white -- the site's own surfaces are warm
-      // paper and deep navy, and Material's defaults sit wrong on both.
-      textTheme: base.textTheme.apply(
-        bodyColor: palette.ink,
-        displayColor: palette.ink,
-      ),
-      cardTheme: base.cardTheme.copyWith(
-        color: palette.card,
-        surfaceTintColor: Colors.transparent,
-      ),
-      dividerTheme: DividerThemeData(color: palette.border),
-      iconTheme: IconThemeData(color: palette.ink),
-    );
+    return BrandTheme.build(brightness, extensions: [palette]);
   }
 
   static ThemeData get light => themeFor(Brightness.light);
@@ -140,29 +115,25 @@ class WebPalette extends ThemeExtension<WebPalette> {
   /// re-deriving it from a colour comparison.
   final bool isDark;
 
-  static const light = WebPalette(
-    paper: Color(0xFFF7F5F0),
-    foam: Color(0xFFEAF3F5),
-    card: Colors.white,
-    ink: Color(0xFF0B2545),
-    inkMuted: Color(0xFF5A6675),
-    border: Color(0xFFE3DFD3),
-    isDark: false,
-  );
+  static final light = WebPalette.fromSurfaces(BrandSurfaces.light, isDark: false);
 
   /// Not a pure-black dark mode: the navy the brand already uses is carried
   /// down into the backgrounds so the dark site still reads as the same
   /// product, and large text stays off-white rather than #FFF to keep the
   /// contrast comfortable on a bright screen.
-  static const dark = WebPalette(
-    paper: Color(0xFF0A1826),
-    foam: Color(0xFF102434),
-    card: Color(0xFF15293B),
-    ink: Color(0xFFEDF2F7),
-    inkMuted: Color(0xFF9AAABC),
-    border: Color(0xFF23384C),
-    isDark: true,
-  );
+  static final dark = WebPalette.fromSurfaces(BrandSurfaces.dark, isDark: true);
+
+  /// Built from the shared tokens so the website's surfaces can never drift
+  /// from the app's and the admin portal's again.
+  factory WebPalette.fromSurfaces(BrandSurfaces s, {required bool isDark}) => WebPalette(
+        paper: s.paper,
+        foam: s.foam,
+        card: s.card,
+        ink: s.ink,
+        inkMuted: s.inkMuted,
+        border: s.border,
+        isDark: isDark,
+      );
 
   @override
   WebPalette copyWith({

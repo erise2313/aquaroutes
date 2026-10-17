@@ -1,27 +1,19 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../constants/admin_theme.dart';
-import '../providers/admin_theme_provider.dart';
-import 'account_settings_section.dart';
-import 'notification_bell.dart';
+import 'portal/portal_page_header.dart';
 
-/// The single header on an admin page -- an in-body header rather than an
-/// AppBar, so admin pages render exactly one navy bar instead of the two
-/// that stacking a page AppBar under the nav shell's AppBar produced.
+/// The header on an admin page.
 ///
-/// Adapts to how the page was reached: a tab page (nothing to pop) gets
-/// sign-out on the right, while a pushed page (e.g. Worker Clearance opened
-/// from the Dashboard's review queue) gets a back button instead -- without
-/// it a pushed page using this header would have no visible way back, since
-/// it has no AppBar to supply one.
+/// It used to be a navy band with a gold rule, drawn on every admin page.
+/// Against the app's light, paper-coloured screens that band was the most
+/// visible reason the portal read as a different product, so it now renders
+/// the same [PortalPageHeader] the station-owner portal and the app use. The
+/// constructor is unchanged, so no admin screen had to change to adopt it.
 ///
-/// The gold underline echoes the public website's active-nav-tab treatment
-/// (widgets/web_nav_bar.dart) -- same "you are here / this matters" motif,
-/// carried onto admin, and matched by AdminTheme's appBarTheme shape so
-/// pushed screens that do keep a real AppBar terminate identically.
+/// The theme toggle, notifications and account menu live in the portal's
+/// sidebar (widgets/portal/portal_sidebar_shell.dart), the same three
+/// controls on every page; page-specific [actions] such as Export still
+/// belong here. A pushed page gets a back button.
 class AdminPageHeader extends StatelessWidget {
   const AdminPageHeader({
     super.key,
@@ -30,157 +22,29 @@ class AdminPageHeader extends StatelessWidget {
     this.subtitle,
     this.actions = const [],
     this.bottom,
-    this.showSignOut = false,
+    @Deprecated('The shell carries the account controls now; this has no effect.') this.showSignOut = false,
   });
 
   final String title;
 
   /// Small caps above the title -- which part of the portal this page
-  /// belongs to. The same rhythm the public site and the owner portal use
-  /// (widgets/portal/portal_page_header.dart), in admin's own gold.
+  /// belongs to.
   final String? eyebrow;
 
   final String? subtitle;
   final List<Widget> actions;
   final Widget? bottom;
 
-  /// Whether this header carries the theme toggle, the bell and the account
-  /// menu.
-  ///
-  /// Now false by default: those moved up into the portal's shared top bar
-  /// (widgets/portal/portal_shell.dart), where they are the same three
-  /// controls on every admin page, and rendering them in both places would
-  /// offer each one twice. Page-specific [actions] -- Export and the like --
-  /// are unaffected and still belong here.
-  ///
-  /// It stays a flag rather than being deleted because the admin build's
-  /// pushed screens once relied on it, and a pushed page shows a back button
-  /// instead either way.
   final bool showSignOut;
 
   @override
   Widget build(BuildContext context) {
-    final canPop = ModalRoute.of(context)?.canPop ?? false;
-
-    return Container(
-      decoration: const BoxDecoration(
-        color: AdminTheme.inkNavy,
-        border: Border(bottom: BorderSide(color: AdminTheme.sealGold, width: 3)),
-      ),
-      child: SafeArea(
-        bottom: false,
-        child: Padding(
-          padding: EdgeInsets.fromLTRB(24, 20, 20, bottom == null ? 20 : 16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
-                children: [
-                  if (canPop)
-                    Padding(
-                      padding: const EdgeInsets.only(right: 8),
-                      child: IconButton(
-                        icon: const Icon(Icons.arrow_back, color: Colors.white),
-                        tooltip: 'Back',
-                        onPressed: () => Navigator.of(context).maybePop(),
-                      ),
-                    ),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        if (eyebrow != null) ...[
-                          Text(
-                            eyebrow!.toUpperCase(),
-                            style: const TextStyle(
-                              color: AdminTheme.sealGold,
-                              fontSize: 11,
-                              letterSpacing: 1.6,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                        ],
-                        Text(title, style: GoogleFonts.fraunces(fontSize: 24, fontWeight: FontWeight.w600, color: Colors.white)),
-                        if (subtitle != null) ...[
-                          const SizedBox(height: 4),
-                          Text(subtitle!, style: const TextStyle(color: Colors.white70, fontSize: 14)),
-                        ],
-                      ],
-                    ),
-                  ),
-                  // Actions sit on the dark header, not the light body --
-                  // force white icon/text regardless of the admin theme's
-                  // default (harbor-blue) button colors, which would be
-                  // low-contrast here.
-                  IconTheme.merge(
-                    data: const IconThemeData(color: Colors.white),
-                    child: TextButtonTheme(
-                      data: TextButtonThemeData(style: TextButton.styleFrom(foregroundColor: Colors.white)),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          ...actions,
-                          // The portal's own light/dark switch. It doesn't
-                          // follow the browser on purpose -- see
-                          // providers/admin_theme_provider.dart.
-                          if (showSignOut && !canPop)
-                            Consumer(
-                              builder: (context, ref, _) {
-                                final isDark = ref.watch(adminThemeProvider) == AdminThemeMode.dark;
-                                return IconButton(
-                                  tooltip: isDark ? 'Switch to light mode' : 'Switch to dark mode',
-                                  icon: Icon(isDark ? Icons.light_mode_outlined : Icons.dark_mode_outlined),
-                                  onPressed: () => ref.read(adminThemeProvider.notifier).toggle(),
-                                );
-                              },
-                            ),
-                          if (showSignOut && !canPop) const NotificationBell(),
-                          // An account menu rather than a bare sign-out button,
-                          // so admins can also change their password.
-                          if (showSignOut && !canPop)
-                            PopupMenuButton<String>(
-                              tooltip: 'Account',
-                              icon: const Icon(Icons.account_circle_outlined),
-                              onSelected: (value) {
-                                if (value == 'account') {
-                                  showDialog(
-                                    context: context,
-                                    builder: (dialogContext) => AlertDialog(
-                                      title: const Text('Account'),
-                                      contentPadding: const EdgeInsets.fromLTRB(8, 16, 8, 0),
-                                      content: const SizedBox(width: 420, child: AccountSettingsSection()),
-                                      actions: [
-                                        TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Close')),
-                                      ],
-                                    ),
-                                  );
-                                } else {
-                                  Supabase.instance.client.auth.signOut();
-                                }
-                              },
-                              itemBuilder: (_) => const [
-                                PopupMenuItem(
-                                  value: 'account',
-                                  child: ListTile(leading: Icon(Icons.manage_accounts_outlined), title: Text('Account & password')),
-                                ),
-                                PopupMenuItem(
-                                  value: 'signout',
-                                  child: ListTile(leading: Icon(Icons.logout), title: Text('Sign out')),
-                                ),
-                              ],
-                            ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              if (bottom != null) ...[const SizedBox(height: 16), bottom!],
-            ],
-          ),
-        ),
-      ),
+    return PortalPageHeader(
+      title: title,
+      eyebrow: eyebrow,
+      subtitle: subtitle,
+      actions: actions,
+      bottom: bottom,
     );
   }
 }

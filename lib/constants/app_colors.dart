@@ -1,16 +1,18 @@
 import 'package:flutter/material.dart';
 
+import 'brand_tokens.dart';
+
 /// Central color palette. Replaces the old pattern of hardcoding
 /// `Colors.blue.shade600` etc. inline in every screen.
 class AppColors {
   AppColors._();
 
-  static const Color primary = Color(0xFF1565C0);
+  static const Color primary = BrandColors.harborBlue;
   static const Color accent = Color(0xFF00ACC1);
 
-  static const Color cleared = Color(0xFF2E7D32);
-  static const Color pendingClearance = Color(0xFFF9A825);
-  static const Color flagged = Color(0xFFC62828);
+  static const Color cleared = BrandStatus.success;
+  static const Color pendingClearance = BrandStatus.warning;
+  static const Color flagged = BrandStatus.danger;
 
   static const Color alkalineGlowCyan = Color(0xFF00E5FF);
   static const Color alkalineGlowPurple = Color(0xFF9C27B0);
@@ -30,14 +32,14 @@ class AppColors {
   // adding tokens can't shift anything that already renders correctly.
 
   /// Primary text. Same ink navy the website and admin portal use.
-  static const Color ink = Color(0xFF0B2545);
+  static const Color ink = BrandColors.inkNavy;
 
   /// Secondary text -- captions, metadata, helper lines. Replaces the
   /// Colors.grey.shade600/700 that carried this job by default.
-  static const Color inkMuted = Color(0xFF5A6675);
+  static const Color inkMuted = Color(0xFF434D5A); // = BrandSurfaces.light.inkMuted
 
   /// Page background. Warm paper rather than pure white, matching the site.
-  static const Color surface = Color(0xFFF7F5F0);
+  static const Color surface = Color(0xFFF7F5F0); // = BrandSurfaces.light.paper
 
   /// Tinted background for callouts and alternating blocks.
   static const Color surfaceAlt = Color(0xFFEAF3F5);
@@ -50,7 +52,7 @@ class AppColors {
   /// The association's seal gold. Reserved for accreditation and
   /// verification, exactly as on the website and in admin -- it should never
   /// become a general-purpose accent, or it stops meaning anything.
-  static const Color seal = Color(0xFFC99A3B);
+  static const Color seal = BrandColors.sealGold;
 
   /// High-contrast palette for the Driver/Helper portal (daylight-road
   /// readability -- large targets, strong contrast, not the default

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'brand_tokens.dart';
+
 /// Surfaces and text for the WASA Admin portal, in both modes.
 ///
 /// Same split as [WebPalette] and [AppPalette]: the brand accents in
@@ -46,28 +48,21 @@ class AdminPalette extends ThemeExtension<AdminPalette> {
   static AdminPalette of(BuildContext context) =>
       Theme.of(context).extension<AdminPalette>() ?? AdminPalette.light;
 
-  static const light = AdminPalette(
-    paper: Color(0xFFEAF3F5),
-    foam: Color(0xFFEAF3F5),
-    card: Colors.white,
-    ink: Color(0xFF0B2545),
-    inkMuted: Color(0xFF4C6376),
-    border: Color(0xFFD5DFE6),
-    isDark: false,
-  );
+  /// The same surfaces as the app and the website. Admin used to sit on a
+  /// blue-grey page of its own, which is a large part of why it read as a
+  /// different product during the evaluation.
+  static final light = AdminPalette.fromSurfaces(BrandSurfaces.light, isDark: false);
+  static final dark = AdminPalette.fromSurfaces(BrandSurfaces.dark, isDark: true);
 
-  /// Navy carried down into the backgrounds rather than a pure-black dark
-  /// mode, so the portal still reads as the same product, with off-white
-  /// text to stay comfortable on a large monitor.
-  static const dark = AdminPalette(
-    paper: Color(0xFF0C1A2A),
-    foam: Color(0xFF13273A),
-    card: Color(0xFF16293C),
-    ink: Color(0xFFEDF2F4),
-    inkMuted: Color(0xFF9FB2C2),
-    border: Color(0xFF26394C),
-    isDark: true,
-  );
+  factory AdminPalette.fromSurfaces(BrandSurfaces s, {required bool isDark}) => AdminPalette(
+        paper: s.paper,
+        foam: s.foam,
+        card: s.card,
+        ink: s.ink,
+        inkMuted: s.inkMuted,
+        border: s.border,
+        isDark: isDark,
+      );
 
   @override
   AdminPalette copyWith({

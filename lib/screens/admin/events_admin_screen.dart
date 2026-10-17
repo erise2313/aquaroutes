@@ -180,15 +180,6 @@ class _EventsAdminScreenState extends State<EventsAdminScreen> {
             // "less important", not "already happened" -- and an admin
             // scheduling the next assembly had to scroll through history.
             bottom: SegmentedButton<bool>(
-              style: SegmentedButton.styleFrom(
-                backgroundColor: AdminTheme.inkNavy,
-                foregroundColor: Colors.white70,
-                selectedForegroundColor: AdminTheme.inkNavy,
-                selectedBackgroundColor: Colors.white,
-                side: const BorderSide(color: Colors.white54),
-                textStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
-                minimumSize: const Size(0, 48),
-              ),
               segments: [
                 ButtonSegment(value: false, icon: const Icon(Icons.upcoming), label: Text('Upcoming (${upcoming.length})')),
                 ButtonSegment(value: true, icon: const Icon(Icons.history), label: Text('Past (${past.length})')),

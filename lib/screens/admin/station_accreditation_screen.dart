@@ -203,15 +203,6 @@ class _StationAccreditationScreenState extends State<StationAccreditationScreen>
               bottom: sideBySide
                   ? null
                   : SegmentedButton<bool>(
-                      style: SegmentedButton.styleFrom(
-                        backgroundColor: AdminTheme.inkNavy,
-                        foregroundColor: Colors.white70,
-                        selectedForegroundColor: AdminTheme.inkNavy,
-                        selectedBackgroundColor: Colors.white,
-                        side: const BorderSide(color: Colors.white54),
-                        textStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
-                        minimumSize: const Size(0, 48),
-                      ),
                       segments: const [
                         ButtonSegment(value: false, icon: Icon(Icons.list), label: Text('List View')),
                         ButtonSegment(value: true, icon: Icon(Icons.map_outlined), label: Text('Map View')),

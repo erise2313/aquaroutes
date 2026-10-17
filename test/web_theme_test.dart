@@ -41,14 +41,25 @@ void main() {
   });
 
   group('WebTheme', () {
-    test('registers the matching palette on each ThemeData', () {
-      expect(WebTheme.light.extension<WebPalette>()!.isDark, isFalse);
-      expect(WebTheme.dark.extension<WebPalette>()!.isDark, isTrue);
+    // Pumped rather than bare test()s: the shared BrandTheme builds Fraunces
+    // headings through GoogleFonts, whose font load needs a widget lifecycle
+    // to settle in (see the note in app_theme_test.dart).
+    testWidgets('registers the matching palette on each ThemeData', (tester) async {
+      final light = WebTheme.light;
+      final dark = WebTheme.dark;
+      await tester.pumpWidget(MaterialApp(theme: light, home: const SizedBox()));
+      await tester.pumpAndSettle();
+      expect(light.extension<WebPalette>()!.isDark, isFalse);
+      expect(dark.extension<WebPalette>()!.isDark, isTrue);
     });
 
-    test('pins body text to the palette rather than Material defaults', () {
-      expect(WebTheme.dark.textTheme.bodyMedium!.color, WebPalette.dark.ink);
-      expect(WebTheme.light.textTheme.bodyMedium!.color, WebPalette.light.ink);
+    testWidgets('pins body text to the palette rather than Material defaults', (tester) async {
+      final light = WebTheme.light;
+      final dark = WebTheme.dark;
+      await tester.pumpWidget(MaterialApp(theme: light, home: const SizedBox()));
+      await tester.pumpAndSettle();
+      expect(dark.textTheme.bodyMedium!.color, WebPalette.dark.ink);
+      expect(light.textTheme.bodyMedium!.color, WebPalette.light.ink);
     });
 
     // Brand accents must be identical across modes: WebSeal is reused inside

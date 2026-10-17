@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'app_colors.dart';
+import 'brand_tokens.dart';
 
 /// Surfaces and text for the app's customer and station-owner screens, in
 /// both modes. Mirrors WebPalette (constants/web_theme.dart) deliberately:
@@ -41,29 +42,23 @@ class AppPalette extends ThemeExtension<AppPalette> {
   static AppPalette of(BuildContext context) =>
       Theme.of(context).extension<AppPalette>() ?? AppPalette.light;
 
-  static const light = AppPalette(
-    paper: AppColors.surface,
-    foam: AppColors.surfaceAlt,
-    card: AppColors.card,
-    ink: AppColors.ink,
-    inkMuted: AppColors.inkMuted,
-    border: AppColors.border,
-    isDark: false,
-  );
+  static final light = AppPalette.fromSurfaces(BrandSurfaces.light, isDark: false);
 
   /// The same navy the brand already uses, carried down into the
   /// backgrounds, and off-white text rather than pure white so a phone at
   /// full brightness in a dark room isn't glaring. Matches the website's
   /// dark palette so the two products still look like one.
-  static const dark = AppPalette(
-    paper: Color(0xFF0A1826),
-    foam: Color(0xFF102434),
-    card: Color(0xFF15293B),
-    ink: Color(0xFFEDF2F7),
-    inkMuted: Color(0xFF9AAABC),
-    border: Color(0xFF23384C),
-    isDark: true,
-  );
+  static final dark = AppPalette.fromSurfaces(BrandSurfaces.dark, isDark: true);
+
+  factory AppPalette.fromSurfaces(BrandSurfaces s, {required bool isDark}) => AppPalette(
+        paper: s.paper,
+        foam: s.foam,
+        card: s.card,
+        ink: s.ink,
+        inkMuted: s.inkMuted,
+        border: s.border,
+        isDark: isDark,
+      );
 
   @override
   AppPalette copyWith({
@@ -155,7 +150,7 @@ class DriverPalette extends ThemeExtension<DriverPalette> {
     text: AppColors.ink,
     textMuted: AppColors.inkMuted,
     onDuty: Color(0xFF1B7F3B),
-    offDuty: Color(0xFF5A6675),
+    offDuty: Color(0xFF434D5A),
     alert: Color(0xFFC62828),
     isDark: false,
   );
