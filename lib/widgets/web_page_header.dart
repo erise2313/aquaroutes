@@ -30,7 +30,7 @@ class WebPageHeader extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   if (eyebrow != null) ...[
-                    Text(eyebrow!, style: WebTheme.eyebrow),
+                    Text(eyebrow!, style: WebTheme.eyebrowFor(context)),
                     const SizedBox(height: 10),
                   ],
                   Text(title, style: WebTheme.display(fontSize: 32)),

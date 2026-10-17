@@ -128,7 +128,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     const Center(child: WasaShieldLogo(size: 72)),
                     const SizedBox(height: 24),
 
-                    Text('WELCOME BACK', textAlign: TextAlign.center, style: WebTheme.eyebrow.copyWith(fontSize: 13)),
+                    Text('WELCOME BACK', textAlign: TextAlign.center, style: WebTheme.eyebrowFor(context)),
                     const SizedBox(height: 8),
                     Text(
                       "Log in to GenTri: WASA",

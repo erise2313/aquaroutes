@@ -62,9 +62,11 @@ class WebTheme {
     return GoogleFonts.fraunces(fontSize: 48, fontWeight: FontWeight.w600, color: color, height: 1.1);
   }
 
-  /// Gold on either background, so it needs no mode variant.
+  /// Gold small caps for a fixed navy background (the hero, the footer).
+  /// On a page that follows the mode use [eyebrowFor]: this gold is only
+  /// 2.4:1 on the light paper.
   static const TextStyle eyebrow = TextStyle(
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: FontWeight.w700,
     letterSpacing: 2.2,
     color: sealGold,
@@ -76,6 +78,12 @@ class WebTheme {
     final palette = brightness == Brightness.dark ? WebPalette.dark : WebPalette.light;
     return BrandTheme.build(brightness, extensions: [palette]);
   }
+
+  /// Eyebrow for a surface that follows light/dark: the darker gold ink in
+  /// light mode (5.3:1), the bright seal gold in dark mode.
+  static TextStyle eyebrowFor(BuildContext context) => eyebrow.copyWith(
+        color: Theme.of(context).brightness == Brightness.dark ? sealGold : BrandColors.sealGoldInk,
+      );
 
   static ThemeData get light => themeFor(Brightness.light);
   static ThemeData get dark => themeFor(Brightness.dark);

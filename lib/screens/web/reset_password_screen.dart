@@ -97,7 +97,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                     const Center(child: WasaShieldLogo(size: 72)),
                     const SizedBox(height: 24),
 
-                    Text('PASSWORD RESET', textAlign: TextAlign.center, style: WebTheme.eyebrow.copyWith(fontSize: 13)),
+                    Text('PASSWORD RESET', textAlign: TextAlign.center, style: WebTheme.eyebrowFor(context)),
                     const SizedBox(height: 8),
                     Text(
                       "Set a new password",

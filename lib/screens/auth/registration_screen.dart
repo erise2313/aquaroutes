@@ -241,7 +241,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                   children: [
                     const Center(child: WasaShieldLogo(size: 56)),
                     const SizedBox(height: 20),
-                    Text('JOIN THE ASSOCIATION', textAlign: TextAlign.center, style: WebTheme.eyebrow.copyWith(fontSize: 13)),
+                    Text('JOIN THE ASSOCIATION', textAlign: TextAlign.center, style: WebTheme.eyebrowFor(context)),
                     const SizedBox(height: 8),
                     Text(
                       "Create an Account",

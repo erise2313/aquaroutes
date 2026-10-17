@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../constants/brand_tokens.dart';
 import 'portal_density.dart';
 
 /// The portals' page header: an eyebrow, a title in the display face, an
@@ -83,7 +84,8 @@ class PortalPageHeader extends StatelessWidget {
                           Text(
                             eyebrow!.toUpperCase(),
                             style: theme.textTheme.labelSmall?.copyWith(
-                              color: scheme.secondary,
+                              // The seal gold is 2.4:1 on a light page.
+                              color: theme.brightness == Brightness.dark ? scheme.secondary : BrandColors.sealGoldInk,
                               letterSpacing: 1.6,
                               fontWeight: FontWeight.w700,
                             ),
