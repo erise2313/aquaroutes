@@ -40,6 +40,10 @@ class PortalStatTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final tone = accent ?? theme.colorScheme.primary;
+    final valueStyle = theme.textTheme.headlineMedium!.copyWith(
+      color: StatusTint.onTint(context, tone),
+      fontWeight: FontWeight.w600,
+    );
 
     final content = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -48,14 +52,11 @@ class PortalStatTile extends StatelessWidget {
         Row(
           children: [
             Expanded(
-              child: CountUpText(
-                value: value,
-                start: animate,
-                style: theme.textTheme.headlineMedium!.copyWith(
-                  color: StatusTint.onTint(context, tone),
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
+              // animate: false means "show the number", not "stay at 0":
+              // CountUpText's start flag holds at 0 until it flips.
+              child: animate
+                  ? CountUpText(value: value, start: true, style: valueStyle)
+                  : Text('$value', style: valueStyle),
             ),
             if (icon != null) Icon(icon, color: StatusTint.onTint(context, tone), size: 22),
           ],

@@ -48,6 +48,9 @@ class MerchantNavigation extends StatelessWidget {
               selectedItemColor: AppColors.primary,
               onBrandTap: () => _leavePortal(context),
               footerActions: const [AppThemeToggle(), NotificationBell()],
+              // Wider than the old 1100 prose column: beside a sidebar on a
+              // laptop that left a gutter either side of every page.
+              maxContentWidth: 1280,
               // On the web every page is in the sidebar. Permit vault, Worker
               // registry, Hire check, Clearinghouse and Drivers used to be
               // reachable only from dashboard tiles. In the app they still
