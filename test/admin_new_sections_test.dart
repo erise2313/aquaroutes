@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:aquaroute/models/membership.dart';
 import 'package:aquaroute/screens/admin/admin_orders_screen.dart';
 import 'package:aquaroute/screens/admin/admin_reviews_screen.dart';
 import 'package:aquaroute/screens/admin/user_management_screen.dart';
@@ -98,6 +99,19 @@ void main() {
       expect(membershipRoleLabel('station_owner'), 'Station Owner');
       expect(membershipRoleLabel('driver'), 'Driver / Helper');
       expect(membershipRoleLabel(null), 'No role');
+    });
+
+    test('super admins and station staff read back from the database', () {
+      expect(appRoleFromString('wasa_superadmin'), AppRole.wasaSuperadmin);
+      expect(appRoleFromString('station_staff'), AppRole.stationStaff);
+      for (final role in AppRole.values) {
+        expect(appRoleFromString(appRoleToString(role)), role);
+      }
+      expect(AppRole.wasaSuperadmin.isOfficer, isTrue);
+      expect(AppRole.stationStaff.isOfficer, isFalse);
+      expect(AppRole.stationStaff.isStationSide, isTrue);
+      expect(membershipRoleLabel('wasa_superadmin'), 'WASA Super Admin');
+      expect(membershipRoleLabel('station_staff'), 'Station Staff');
     });
 
     test('a customer can be found by phone number', () {

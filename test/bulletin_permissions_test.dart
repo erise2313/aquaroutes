@@ -44,13 +44,18 @@ void main() {
       );
     });
 
-    test('only admins may post announcements and price changes', () {
+    // Officers and super admins (who hold every officer power).
+    test('only officers may post announcements and price changes', () {
       for (final role in AppRole.values) {
         final allowed = service.allowedCategoriesFor(role);
         final privileged = allowed.contains(BulletinCategory.announcement) ||
             allowed.contains(BulletinCategory.priceChange);
-        expect(privileged, role == AppRole.wasaAdmin, reason: 'role: $role');
+        expect(privileged, role.isOfficer, reason: 'role: $role');
       }
+    });
+
+    test('station staff read the board but do not post', () {
+      expect(service.allowedCategoriesFor(AppRole.stationStaff), isEmpty);
     });
   });
 }

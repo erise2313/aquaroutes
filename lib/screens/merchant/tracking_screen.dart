@@ -9,6 +9,7 @@ import '../../widgets/app_map_tiles.dart';
 import '../../widgets/custom_map_marker.dart';
 import '../../utils/error_text.dart';
 import '../../utils/log.dart';
+import '../../services/my_station.dart';
 
 class TrackingScreen extends StatefulWidget {
   const TrackingScreen({super.key});
@@ -43,13 +44,8 @@ class _TrackingScreenState extends State<TrackingScreen> {
     setState(() => _isGeneratingRoute = true);
 
     try {
-      final userId = supabase.auth.currentUser!.id;
-
-      final stationData = await supabase
-          .from('water_stations')
-          .select('id, latitude, longitude')
-          .eq('owner_profile_id', userId)
-          .maybeSingle();
+      // Owner or staff (services/my_station.dart).
+      final stationData = await fetchMyStation(supabase, columns: 'id, latitude, longitude');
 
       if (stationData == null) {
         if (mounted) {

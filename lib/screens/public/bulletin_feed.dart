@@ -647,7 +647,7 @@ class _BulletinFeedState extends ConsumerState<BulletinFeed> {
                   decoration: BoxDecoration(color: categoryColor.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(8)),
                   child: Text(categoryLabel, style: TextStyle(color: categoryColor, fontSize: 16, fontWeight: FontWeight.bold)),
                 ),
-                if (membership?.role == AppRole.wasaAdmin) ...[
+                if (membership?.role.isOfficer ?? false) ...[
                   const Spacer(),
                   IconButton(
                     icon: Icon(bulletin.isPinned ? Icons.push_pin : Icons.push_pin_outlined, size: 18),

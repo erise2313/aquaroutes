@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:aquaroute/screens/merchant/driver_management.dart';
 import 'package:aquaroute/screens/merchant/hire_check_screen.dart';
 import 'package:aquaroute/screens/merchant/jug_clearinghouse_screen.dart';
 import 'package:aquaroute/screens/merchant/permit_vault_screen.dart';
 import 'package:aquaroute/screens/merchant/station_reviews_screen.dart';
+import 'package:aquaroute/screens/merchant/team_screen.dart';
 import 'package:aquaroute/screens/merchant/worker_registry_screen.dart';
 import 'package:aquaroute/services/permit_service.dart';
 import 'package:aquaroute/services/supabase_service.dart';
@@ -100,6 +102,10 @@ class _MerchantDashboardScreenState extends State<MerchantDashboardScreen> {
   bool _hasNoProducts = false;
   SalesTotals _sales = const SalesTotals();
   String _inviteCode = "Loading...";
+
+  /// When the driver invite code stops working (null: codes issued before
+  /// expiry existed, which stay valid until renewed).
+  DateTime? _inviteExpires;
   bool _isLoading = true;
 
   @override
@@ -115,7 +121,7 @@ class _MerchantDashboardScreenState extends State<MerchantDashboardScreen> {
       // 1. Get the owner's station id and invite code.
       final stationData = await supabase
           .from('water_stations')
-          .select('id, invite_code')
+          .select('id, invite_code, invite_code_expires_at')
           .eq('owner_profile_id', userId)
           .maybeSingle();
 
@@ -139,6 +145,7 @@ class _MerchantDashboardScreenState extends State<MerchantDashboardScreen> {
             _doneCount = counts['done']!;
             _renewalDueCount = renewalDueCount;
             _inviteCode = inviteCode;
+            _inviteExpires = DateTime.tryParse(stationData['invite_code_expires_at'] as String? ?? '')?.toLocal();
             _isLoading = false;
           });
         }
@@ -263,13 +270,24 @@ class _MerchantDashboardScreenState extends State<MerchantDashboardScreen> {
 
                         PortalSection(
                           title: 'Fleet management',
-                          child: _buildNavCard(
-                            icon: Icons.local_shipping_outlined,
-                            tone: AppColors.primary,
-                            title: 'Track & Manage Drivers',
-                            subtitle: 'Configure vehicle capacities, plates, and monitor idle drivers',
-                            onTap: () => _go('Drivers', const DriverManagementScreen()),
-                            last: true,
+                          child: Column(
+                            children: [
+                              _buildNavCard(
+                                icon: Icons.local_shipping_outlined,
+                                tone: AppColors.primary,
+                                title: 'Track & Manage Drivers',
+                                subtitle: 'Configure vehicle capacities, plates, and monitor idle drivers',
+                                onTap: () => _go('Drivers', const DriverManagementScreen()),
+                              ),
+                              _buildNavCard(
+                                icon: Icons.badge_outlined,
+                                tone: AppColors.accent,
+                                title: 'Team',
+                                subtitle: 'Counter and dispatch staff, and their staff code',
+                                onTap: () => _go('Team', const TeamScreen()),
+                                last: true,
+                              ),
+                            ],
                           ),
                         ),
                         SizedBox(height: density.sectionGap),
@@ -478,6 +496,7 @@ class _MerchantDashboardScreenState extends State<MerchantDashboardScreen> {
       final code = await supabase.rpc('owner_regenerate_invite_code') as String;
       if (!mounted) return;
       setState(() => _inviteCode = code);
+      _fetchDashboardData(); // picks up the new expiry
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('New invite code: $code')));
     } catch (e) {
       if (mounted) {
@@ -536,6 +555,20 @@ class _MerchantDashboardScreenState extends State<MerchantDashboardScreen> {
                   'Issue a new code if a driver leaves -- the old one stops working.',
                   style: theme.textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
                 ),
+                if (isCode && _inviteExpires != null) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    _inviteExpires!.isBefore(DateTime.now())
+                        ? 'Expired -- issue a new code before a driver joins.'
+                        : 'Valid until ${DateFormat('MMM d, yyyy').format(_inviteExpires!)}',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: _inviteExpires!.isBefore(DateTime.now())
+                          ? BrandStatus.dangerFor(theme.brightness)
+                          : scheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
               ],
             ),
           ),

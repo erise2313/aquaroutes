@@ -71,7 +71,7 @@ of how the schema was reached rather than a way to rebuild it.
 > to `reset_and_rebuild.sql` as well as writing the migration. The script is
 > only useful while it stays current.
 
-Confirm it worked — this should return **35**:
+Confirm it worked — this should return **36**:
 
 ```sql
 select count(*) from information_schema.tables where table_schema = 'public';

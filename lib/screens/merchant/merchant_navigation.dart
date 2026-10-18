@@ -14,6 +14,7 @@ import 'tracking_screen.dart';
 import 'merchant_profile_screens.dart';
 import 'products_screen.dart';
 import 'station_reviews_screen.dart';
+import 'team_screen.dart';
 import '../../providers/app_theme_provider.dart';
 import '../../web_router.dart';
 import '../../widgets/app_theme_toggle.dart';
@@ -75,6 +76,13 @@ class MerchantNavigation extends StatelessWidget {
                   onPhone: false,
                 ),
                 NavShellDestination(
+                  icon: Icons.badge_outlined,
+                  selectedIcon: Icons.badge,
+                  label: 'Team',
+                  group: 'Operations',
+                  onPhone: false,
+                ),
+                NavShellDestination(
                   icon: Icons.folder_shared_outlined,
                   selectedIcon: Icons.folder_shared,
                   label: 'Permit vault',
@@ -117,6 +125,7 @@ class MerchantNavigation extends StatelessWidget {
                 ProductsScreen(),
                 TrackingScreen(),
                 DriverManagementScreen(),
+                TeamScreen(),
                 PermitVaultScreen(),
                 WorkerRegistryScreen(),
                 HireCheckScreen(),

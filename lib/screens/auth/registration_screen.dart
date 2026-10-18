@@ -189,6 +189,16 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
             if (!isInviteCodeCollision || attempt >= 4) rethrow;
           }
         }
+      } else if (_selectedRole == 'station_staff') {
+        // Counter / dispatch staff join with the station's STAFF code, which
+        // the owner issues from Team -- a different code from the drivers',
+        // so a driver code can't make someone staff or the reverse. See
+        // register_staff_for_station() (patch_roles_governance.sql).
+        await supabase.rpc('register_staff_for_station', params: {
+          'p_staff_code': _inviteCodeController.text.trim(),
+          'p_full_name': _fullNameController.text.trim(),
+          'p_phone_number': null,
+        });
       } else if (_selectedRole == 'driver') {
         // Single RPC creates the workers row, opens the first
         // worker_station_history entry, and inserts the driver membership
@@ -288,6 +298,8 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
 
                     if (_selectedRole == 'driver')
                       _buildDriverFields()
+                    else if (_selectedRole == 'station_staff')
+                      _buildStaffFields()
                     else if (_selectedRole == 'public_consumer')
                       _buildCustomerFields()
                     else
@@ -421,6 +433,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
       items: const [
         DropdownMenuItem(value: 'station_owner', child: Text("Water Station Owner")),
         DropdownMenuItem(value: 'driver', child: Text("Driver / Helper")),
+        DropdownMenuItem(value: 'station_staff', child: Text("Station Staff (counter / dispatch)")),
         DropdownMenuItem(value: 'public_consumer', child: Text("Resident / Customer Account")),
       ],
       onChanged: (String? newValue) {
@@ -561,6 +574,37 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
             ),
           );
         }),
+      ],
+    );
+  }
+
+  /// Staff need only their name and the station's staff code.
+  Widget _buildStaffFields() {
+    return Column(
+      children: [
+        AuthTextField(
+          controller: _fullNameController,
+          label: "Your Full Name",
+          icon: Icons.person_outline,
+          textInputAction: TextInputAction.next,
+          validator: (v) => _requiredField(v, 'your full name'),
+          autofillHints: const [AutofillHints.name],
+        ),
+        const SizedBox(height: 16),
+        AuthTextField(
+          controller: _inviteCodeController,
+          label: "Station Staff Code",
+          icon: Icons.vpn_key,
+          textInputAction: TextInputAction.next,
+          validator: (v) => _requiredField(v, 'the staff code from the station owner'),
+        ),
+        const SizedBox(height: 8),
+        Builder(
+          builder: (context) => Text(
+            'Ask the station owner for the staff code (Team page). It is not the driver code.',
+            style: TextStyle(fontSize: 16, color: Theme.of(context).colorScheme.onSurfaceVariant),
+          ),
+        ),
       ],
     );
   }

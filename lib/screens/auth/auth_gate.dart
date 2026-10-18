@@ -18,6 +18,7 @@ import 'account_suspended_screen.dart';
 import 'login_screen.dart';
 import 'no_membership_screen.dart';
 import '../../constants/portal_build.dart';
+import '../staff/staff_navigation.dart';
 
 /// Root routing widget. Restores an existing session on relaunch (the old
 /// app always opened LoginScreen regardless of session state) and routes by
@@ -63,7 +64,7 @@ class AuthGate extends ConsumerWidget {
           error: (_, _) => kIsAdminPortalBuild ? const _AdminThemed(child: LoginScreen()) : (kIsWeb ? const OrgHomeScreen() : const PublicHomeScreen()),
           data: (membership) {
             if (membership == null) return const _NoActiveMembershipRouter();
-            if (kIsAdminPortalBuild && membership.role != AppRole.wasaAdmin) {
+            if (kIsAdminPortalBuild && !membership.role.isOfficer) {
               return const _AdminThemed(child: _AdminPortalWrongRoleScreen());
             }
             // Admin access on the main site is intentionally being retired
@@ -72,12 +73,17 @@ class AuthGate extends ConsumerWidget {
             // from gentri-wasa-admin.web.app. Mobile is untouched (this
             // guard only applies to the main *website* build), since admin
             // access there wasn't part of this change.
-            if (kIsWeb && !kIsAdminPortalBuild && membership.role == AppRole.wasaAdmin) {
+            if (kIsWeb && !kIsAdminPortalBuild && membership.role.isOfficer) {
               return const _UseAdminPortalScreen();
             }
             switch (membership.role) {
               case AppRole.wasaAdmin:
+              case AppRole.wasaSuperadmin:
                 return const AdminNavigation();
+              case AppRole.stationStaff:
+                // Website and app alike: dispatch is done at a counter as
+                // often as on a phone.
+                return const StaffNavigation();
               case AppRole.stationOwner:
                 return const MerchantNavigation();
               case AppRole.driver:

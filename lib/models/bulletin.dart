@@ -81,7 +81,10 @@ class Bulletin {
   String get authorBadge {
     switch (authorRole) {
       case AppRole.wasaAdmin:
+      case AppRole.wasaSuperadmin:
         return 'WASA Admin';
+      case AppRole.stationStaff:
+        return authorStationName == null ? 'Station Staff' : 'Station Staff · $authorStationName';
       case AppRole.stationOwner:
         return authorStationName == null ? 'Station Owner' : 'Station Owner · $authorStationName';
       case AppRole.driver:

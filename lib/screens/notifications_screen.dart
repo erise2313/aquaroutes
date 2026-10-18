@@ -26,7 +26,7 @@ class NotificationsScreen extends ConsumerWidget {
     if (notification.orderId == null) return null;
     return switch (role) {
       AppRole.publicConsumer => const MyOrdersScreen(),
-      AppRole.stationOwner => const MerchantOrdersScreen(),
+      AppRole.stationOwner || AppRole.stationStaff => const MerchantOrdersScreen(),
       _ => null,
     };
   }

@@ -8,6 +8,9 @@
 --   customer2@gentriwasa.test  Customer123!  second customer
 --   suspended@gentriwasa.test  Customer123!  customer whose account is suspended
 --   owner3@gentriwasa.test     Owner123!     owner of a station not yet accredited
+--   superadmin1@gentriwasa.test Admin123!    WASA super admin (association president)
+--   superadmin2@gentriwasa.test Admin123!    WASA super admin (secretary)
+--   staff1@gentriwasa.test     Staff123!     station staff (dispatcher), Buenavista
 --
 -- Why each one:
 --   * admin2 -- the Users list shows officers now; with two, an officer can
@@ -19,6 +22,10 @@
 --     follow their driver.
 --   * suspended -- signing in shows the "account suspended" screen; the
 --     server also refuses their orders.
+--   * superadmin1/2 -- the two super admins (patch_roles_governance.sql):
+--     manage officers, transfer stations, association settings. Two, so
+--     neither can be locked out by the other leaving.
+--   * staff1 -- a dispatcher at Buenavista: orders, drivers, tracking only.
 --   * owner3 -- a station at the start of the process: permits waiting to
 --     be uploaded, not accredited, not on the public map. Walks the whole
 --     accreditation flow (Permit vault -> Admin Permits -> accredited).
@@ -54,7 +61,10 @@ begin
       ('driver4@gentriwasa.test',   'Driver123!',   'Joy Villanueva',  '09171230003', 'driver'),
       ('customer2@gentriwasa.test', 'Customer123!', 'Ramon Garcia',    '09171230004', 'public_consumer'),
       ('suspended@gentriwasa.test', 'Customer123!', 'Susana Lim',      '09171230005', 'public_consumer'),
-      ('owner3@gentriwasa.test',    'Owner123!',    'Elena Ramos',     '09171230006', 'station_owner')
+      ('owner3@gentriwasa.test',    'Owner123!',    'Elena Ramos',     '09171230006', 'station_owner'),
+      ('superadmin1@gentriwasa.test', 'Admin123!',  'Teresa Aquino',   '09171230007', 'wasa_superadmin'),
+      ('superadmin2@gentriwasa.test', 'Admin123!',  'Nestor Villaroman', '09171230008', 'wasa_superadmin'),
+      ('staff1@gentriwasa.test',    'Staff123!',    'Mylene Castro',   '09171230009', 'station_staff')
     ) as t(email, password, full_name, phone, role)
   loop
     if exists (select 1 from auth.users where email = acct.email) then
@@ -80,7 +90,11 @@ begin
     update profiles set phone_number = acct.phone, privacy_consented_at = now(), privacy_notice_version = 'seed'
      where id = v_id;
 
-    if acct.role = 'wasa_admin' or acct.role = 'public_consumer' then
+    if acct.role = 'station_staff' then
+      insert into memberships (profile_id, association_id, role, station_id)
+      values (v_id, v_association_id, 'station_staff', v_station1);
+
+    elsif acct.role in ('wasa_admin', 'wasa_superadmin', 'public_consumer') then
       insert into memberships (profile_id, association_id, role, status)
       values (v_id, v_association_id, acct.role::app_role,
               case when acct.email = 'suspended@gentriwasa.test' then 'suspended' else 'active' end);

@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'activity_screen.dart';
 import 'admin_clearinghouse_screen.dart';
 import 'admin_dashboard.dart';
+import 'admin_officers_screen.dart';
+import 'admin_settings_screen.dart';
 import 'admin_orders_screen.dart';
 import 'admin_reviews_screen.dart';
 import 'bulletin_editor_screen.dart';
@@ -15,6 +17,8 @@ import 'user_management_screen.dart';
 import 'website_content_screen.dart';
 import 'worker_clearance_screen.dart';
 import '../../providers/admin_theme_provider.dart';
+import '../../providers/app_state.dart';
+import '../../models/membership.dart';
 import '../../providers/admin_queue_provider.dart';
 import '../../widgets/notification_bell.dart';
 import '../../widgets/portal/portal.dart';
@@ -43,6 +47,9 @@ class AdminNavigation extends ConsumerWidget {
     // Badges are best-effort: if the count query fails the items simply show
     // no badge rather than the shell failing to render.
     final counts = ref.watch(adminQueueCountsProvider).value;
+    // Officers and Settings are a super admin's alone; the database refuses
+    // the changes to anyone else, so plain officers aren't shown the pages.
+    final isSuperadmin = ref.watch(currentMembershipProvider).value?.role == AppRole.wasaSuperadmin;
     final theme = adminThemeDataFor(ref.watch(adminThemeProvider));
 
     return Theme(
@@ -140,21 +147,38 @@ class AdminNavigation extends ConsumerWidget {
               group: 'People',
               phoneTab: false,
             ),
+            if (isSuperadmin) ...const [
+              NavShellDestination(
+                icon: Icons.admin_panel_settings_outlined,
+                selectedIcon: Icons.admin_panel_settings,
+                label: 'Officers',
+                group: 'Super admin',
+                phoneTab: false,
+              ),
+              NavShellDestination(
+                icon: Icons.tune_outlined,
+                selectedIcon: Icons.tune,
+                label: 'Settings',
+                group: 'Super admin',
+                phoneTab: false,
+              ),
+            ],
           ],
-          pages: const [
-            AdminDashboardScreen(),
-            StationAccreditationScreen(),
-            PermitQueueScreen(),
-            WorkerClearanceScreen(),
-            AdminOrdersScreen(),
-            AdminClearinghouseScreen(),
-            BulletinEditorScreen(),
-            AdminReviewsScreen(),
-            EventsAdminScreen(),
-            ResourcesAdminScreen(),
-            WebsiteContentScreen(),
-            UserManagementScreen(),
-            ActivityScreen(),
+          pages: [
+            const AdminDashboardScreen(),
+            const StationAccreditationScreen(),
+            const PermitQueueScreen(),
+            const WorkerClearanceScreen(),
+            const AdminOrdersScreen(),
+            const AdminClearinghouseScreen(),
+            const BulletinEditorScreen(),
+            const AdminReviewsScreen(),
+            const EventsAdminScreen(),
+            const ResourcesAdminScreen(),
+            const WebsiteContentScreen(),
+            const UserManagementScreen(),
+            const ActivityScreen(),
+            if (isSuperadmin) ...const [AdminOfficersScreen(), AdminSettingsScreen()],
           ],
         ),
       ),

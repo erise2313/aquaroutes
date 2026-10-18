@@ -10,6 +10,7 @@ import '../../services/supabase_service.dart';
 import '../../services/worker_service.dart';
 import '../../widgets/portal/portal.dart';
 import '../../utils/log.dart';
+import '../../services/my_station.dart';
 
 /// Station-scoped fleet roster. Fixes the most severe bug found in the old
 /// app: the previous version streamed ALL rows where role='driver' with no
@@ -18,7 +19,11 @@ import '../../utils/log.dart';
 /// RLS (0009_rls.sql) enforces the same boundary server-side even if this
 /// client-side filter is ever dropped again.
 class DriverManagementScreen extends StatefulWidget {
-  const DriverManagementScreen({super.key});
+  const DriverManagementScreen({super.key, this.readOnly = false});
+
+  /// Station staff see the roster, duty status and idle drivers and can call
+  /// them, but vehicle details and capacities are the owner's to change.
+  final bool readOnly;
 
   @override
   State<DriverManagementScreen> createState() => _DriverManagementScreenState();
@@ -65,7 +70,8 @@ class _DriverManagementScreenState extends State<DriverManagementScreen> {
       if (mounted) setState(() => _isLoading = false);
       return;
     }
-    final station = await _supabase.from('water_stations').select('id').eq('owner_profile_id', userId).maybeSingle();
+    // Owner or staff (services/my_station.dart).
+    final station = await fetchMyStation(_supabase);
     if (mounted) {
       setState(() {
         _stationId = station?['id'] as String?;
@@ -83,7 +89,7 @@ class _DriverManagementScreenState extends State<DriverManagementScreen> {
         children: [
           PortalPageHeader(
             eyebrow: 'Fleet management',
-            title: 'Track & Manage Drivers',
+            title: widget.readOnly ? 'Drivers' : 'Track & Manage Drivers',
             subtitle: 'Vehicle details, duty status, and who has gone quiet',
             actions: [
               IconButton(
@@ -179,7 +185,7 @@ class _DriverManagementScreenState extends State<DriverManagementScreen> {
                 : AppColors.cleared;
 
         return PortalCard(
-          onTap: () => _showEditDialog(worker),
+          onTap: widget.readOnly ? null : () => _showEditDialog(worker),
           accent: dutyTone,
           margin: EdgeInsets.only(bottom: last ? 0 : density.gap),
           child: Column(

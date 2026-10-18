@@ -2,7 +2,20 @@
 /// and the `app_role` enum. Replaces the old flat `user_profiles.role` string
 /// entirely -- a role is now a scoped membership row, not a column on the
 /// user's identity.
-enum AppRole { wasaAdmin, stationOwner, driver, publicConsumer }
+///
+/// [wasaSuperadmin] (president and secretary) holds every officer power plus
+/// officer management, station transfer and association settings;
+/// [stationStaff] is a station's dispatcher. Both arrived with
+/// supabase/patch_roles_governance.sql.
+enum AppRole { wasaAdmin, stationOwner, driver, publicConsumer, wasaSuperadmin, stationStaff }
+
+extension AppRoleX on AppRole {
+  /// An officer or a super admin -- anyone who can use the admin portal.
+  bool get isOfficer => this == AppRole.wasaAdmin || this == AppRole.wasaSuperadmin;
+
+  /// Works the station side of a station: its owner or its staff.
+  bool get isStationSide => this == AppRole.stationOwner || this == AppRole.stationStaff;
+}
 
 AppRole appRoleFromString(String value) {
   switch (value) {
@@ -12,6 +25,10 @@ AppRole appRoleFromString(String value) {
       return AppRole.stationOwner;
     case 'driver':
       return AppRole.driver;
+    case 'wasa_superadmin':
+      return AppRole.wasaSuperadmin;
+    case 'station_staff':
+      return AppRole.stationStaff;
     default:
       return AppRole.publicConsumer;
   }
@@ -27,6 +44,10 @@ String appRoleToString(AppRole role) {
       return 'driver';
     case AppRole.publicConsumer:
       return 'public_consumer';
+    case AppRole.wasaSuperadmin:
+      return 'wasa_superadmin';
+    case AppRole.stationStaff:
+      return 'station_staff';
   }
 }
 

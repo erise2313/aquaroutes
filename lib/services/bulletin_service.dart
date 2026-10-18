@@ -33,10 +33,13 @@ class BulletinService {
   List<BulletinCategory> allowedCategoriesFor(AppRole? role) {
     switch (role) {
       case AppRole.wasaAdmin:
+      case AppRole.wasaSuperadmin:
         return BulletinCategory.values;
       case AppRole.stationOwner:
       case AppRole.driver:
         return const [BulletinCategory.event, BulletinCategory.discussion];
+      // Staff read the board; posting for the station is the owner's.
+      case AppRole.stationStaff:
       case AppRole.publicConsumer:
       case null:
         return const [];

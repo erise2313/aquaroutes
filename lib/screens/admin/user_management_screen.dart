@@ -50,6 +50,8 @@ String membershipRoleLabel(String? role) => switch (role) {
       'driver' => 'Driver / Helper',
       'public_consumer' => 'Customer',
       'wasa_admin' => 'WASA Officer',
+      'wasa_superadmin' => 'WASA Super Admin',
+      'station_staff' => 'Station Staff',
       _ => 'No role',
     };
 
@@ -81,6 +83,10 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
   String? _error;
   List<Map<String, dynamic>> _memberships = [];
 
+  /// Officer rows can only be changed by a super admin (the database
+  /// enforces it); everyone else sees who they are but no button.
+  bool _viewerIsSuperadmin = false;
+
   String _query = '';
   String? _roleFilter;
   String? _statusFilter;
@@ -108,9 +114,11 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
           .from('memberships')
           .select('id, profile_id, role, status, profiles(full_name, phone_number), water_stations(station_name)')
           .order('role');
+      final isSuper = await _supabase.rpc('auth_is_superadmin');
       if (mounted) {
         setState(() {
           _memberships = List<Map<String, dynamic>>.from(rows);
+          _viewerIsSuperadmin = isSuper == true;
           _isLoading = false;
         });
       }
@@ -224,7 +232,9 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                             'public_consumer': 'Customers',
                             'driver': 'Drivers',
                             'station_owner': 'Station Owners',
+                            'station_staff': 'Station Staff',
                             'wasa_admin': 'Officers',
+                            'wasa_superadmin': 'Super Admins',
                           },
                           selected: _roleFilter,
                           onChanged: (v) => setState(() => _roleFilter = v),
@@ -290,6 +300,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
     // An officer suspending their own account would lock themselves out of
     // the portal with no one left to undo it.
     final isSelf = membership['profile_id'] == _supabase.auth.currentUser?.id;
+    final isOfficerRow = membership['role'] == 'wasa_admin' || membership['role'] == 'wasa_superadmin';
 
     return PortalCard(
       lift: false,
@@ -330,6 +341,14 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               child: Text('You', style: TextStyle(color: palette.inkMuted, fontWeight: FontWeight.w600)),
+            )
+          else if (isOfficerRow && !_viewerIsSuperadmin)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              child: Tooltip(
+                message: 'Officer accounts are managed by the super admins (Officers page).',
+                child: Text('Super admins manage', style: TextStyle(color: palette.inkMuted)),
+              ),
             )
           else
             TextButton(

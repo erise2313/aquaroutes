@@ -119,7 +119,7 @@ class _BulletinCommentsState extends ConsumerState<BulletinComments> {
   Widget build(BuildContext context) {
     ref.watch(authStateProvider); // show the input once someone signs in
     final viewerId = Supabase.instance.client.auth.currentUser?.id;
-    final viewerIsAdmin = ref.watch(currentMembershipProvider).value?.role == AppRole.wasaAdmin;
+    final viewerIsAdmin = ref.watch(currentMembershipProvider).value?.role.isOfficer ?? false;
     final scheme = Theme.of(context).colorScheme;
     final muted = scheme.onSurfaceVariant;
 

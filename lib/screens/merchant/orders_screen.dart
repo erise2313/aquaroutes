@@ -14,6 +14,7 @@ import '../../widgets/portal/portal.dart';
 import '../../utils/error_text.dart';
 import '../../utils/formatters.dart';
 import '../../utils/log.dart';
+import '../../services/my_station.dart';
 
 /// How one order's status reads on screen: its pill, its colour and the icon
 /// on its card. Kept in one place so "assigned" doesn't mean amber on one
@@ -74,13 +75,8 @@ class _MerchantOrdersScreenState extends State<MerchantOrdersScreen> {
 
   void _setupRealtimeSubscription() async {
     try {
-      final userId = supabase.auth.currentUser!.id;
-
-      final stationData = await supabase
-          .from('water_stations')
-          .select('id')
-          .eq('owner_profile_id', userId)
-          .maybeSingle();
+      // Owner or staff (services/my_station.dart).
+      final stationData = await fetchMyStation(supabase);
 
       if (stationData == null) {
         if (mounted) setState(() => _isLoading = false);
