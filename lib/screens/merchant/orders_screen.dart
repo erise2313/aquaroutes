@@ -145,7 +145,10 @@ class _MerchantOrdersScreenState extends State<MerchantOrdersScreen> {
         .from('workers')
         .select('id, full_name, vehicle_plate, phone_number, clearance_status')
         .eq('station_id', _stationId!)
-        .neq('clearance_status', 'flagged');
+        // Only cleared drivers deliver: a new driver waits for WASA to
+        // check their documents, and an open incident puts a driver back to
+        // pending (set_order_status refuses both).
+        .eq('clearance_status', 'cleared');
     _availableDrivers = driversResponse;
   }
 
@@ -226,7 +229,10 @@ class _MerchantOrdersScreenState extends State<MerchantOrdersScreen> {
 
     if (_availableDrivers.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No eligible drivers yet. Share your station\'s invite code from the Worker Registry so a driver can register.')),
+        const SnackBar(
+          content: Text('No cleared drivers. A new driver can deliver once WASA approves their documents; '
+              'share your invite code from the Worker Registry to add one.'),
+        ),
       );
       return;
     }

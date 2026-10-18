@@ -10,6 +10,7 @@ import '../../utils/error_text.dart';
 import '../../widgets/confirm_dialog.dart';
 import '../../widgets/error_state.dart';
 import '../../widgets/portal/portal.dart';
+import '../../widgets/rejection_reason_dialog.dart';
 import '../../widgets/skeleton_loader.dart';
 
 /// Every worker across all member stations, with their clearance -- the
@@ -280,22 +281,7 @@ class _WorkerRecordDialogState extends State<_WorkerRecordDialog> {
   Future<void> _reviewCredential(Map<String, dynamic> credential, bool approve) async {
     String? reason;
     if (!approve) {
-      final controller = TextEditingController();
-      reason = await showDialog<String>(
-        context: context,
-        builder: (dialogContext) => AlertDialog(
-          title: const Text('Rejection reason'),
-          content: TextField(
-            controller: controller,
-            autofocus: true,
-            decoration: const InputDecoration(hintText: 'Why is this being rejected?'),
-          ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')),
-            FilledButton(onPressed: () => Navigator.pop(dialogContext, controller.text.trim()), child: const Text('Reject')),
-          ],
-        ),
-      );
+      reason = await promptRejectionReason(context);
       if (reason == null) return;
     }
     await _run(

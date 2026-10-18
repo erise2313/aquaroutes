@@ -15,6 +15,7 @@ import '../../widgets/error_state.dart';
 import '../../widgets/portal/portal.dart';
 import '../../widgets/skeleton_loader.dart';
 import '../../utils/error_text.dart';
+import '../../widgets/rejection_reason_dialog.dart';
 import '../../constants/admin_palette.dart';
 
 /// wasa_admin review of worker security incidents AND worker credential
@@ -259,20 +260,7 @@ class _WorkerClearanceScreenState extends State<WorkerClearanceScreen> with Sing
     await _fetchAll();
   }
 
-  Future<String?> _promptRejectionReason() async {
-    final controller = TextEditingController();
-    return showDialog<String>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Rejection Reason'),
-        content: TextField(controller: controller, decoration: const InputDecoration(hintText: 'Why is this being rejected?')),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-          ElevatedButton(onPressed: () => Navigator.pop(context, controller.text.trim()), child: const Text('Reject')),
-        ],
-      ),
-    );
-  }
+  Future<String?> _promptRejectionReason() => promptRejectionReason(context);
 
   Future<void> _viewCredentialDocument(String? storagePath) async {
     if (storagePath == null) return;
