@@ -25,15 +25,10 @@ import '../../widgets/skeleton_loader.dart';
 /// complaint an officer will be asked about; the export carries the same set.
 const adminOrdersLimit = 500;
 
-/// The columns the Orders screen reads. Two foreign keys point at
-/// water_stations (the delivering station and a jug exchange's origin), so
-/// the station embed names its key.
-const adminOrdersSelect = 'id, status, created_at, scheduled_for, jugs_ordered, water_type, jug_type, product_kind, '
-    'total_amount, payment_method, payment_collected, customer_phone, guest_name, guest_phone, '
-    'failure_reason, failed_at, '
-    'water_stations!orders_station_id_fkey(station_name), '
-    'profiles!orders_customer_profile_id_fkey(full_name, phone_number), '
-    'workers!orders_driver_worker_id_fkey(full_name)';
+/// Shown where a customer's name would be: officers see who placed an order
+/// only once a report about it has been filed with WASA (decision of
+/// 18 Oct 2026 -- a station's customers belong to that station).
+const adminOrderHiddenCustomer = 'Hidden -- no complaint on file';
 
 /// Narrows loaded orders by free text (customer name or phone, station,
 /// order number) plus an optional status and age. Top-level and pure so the
@@ -55,23 +50,22 @@ List<Map<String, dynamic>> filterAdminOrders(
     }
     if (q.isEmpty) return true;
     final fields = [
-      adminOrderCustomerName(row),
+      row['customer_name'] as String?,
       adminOrderCustomerPhone(row),
-      row['water_stations']?['station_name'] as String?,
+      row['station_name'] as String?,
       row['id'] as String?,
     ];
     return fields.any((f) => f != null && f.toLowerCase().contains(q));
   }).toList();
 }
 
-/// The customer's name: their account name, or the name given on an old
-/// guest order.
+/// The customer's name -- only when the order has a report on file
+/// (admin_list_orders leaves it out otherwise).
 String adminOrderCustomerName(Map<String, dynamic> row) =>
-    (row['profiles']?['full_name'] as String?) ?? (row['guest_name'] as String?) ?? 'Customer';
+    (row['customer_name'] as String?) ?? (row['has_report'] == true ? 'Customer' : adminOrderHiddenCustomer);
 
-/// The contact number given for the delivery, falling back to the account's.
-String? adminOrderCustomerPhone(Map<String, dynamic> row) =>
-    (row['customer_phone'] as String?) ?? (row['guest_phone'] as String?) ?? (row['profiles']?['phone_number'] as String?);
+/// The delivery's contact number, under the same rule.
+String? adminOrderCustomerPhone(Map<String, dynamic> row) => row['customer_phone'] as String?;
 
 /// The short order number customers and stations see ("#A1B2C3").
 String adminOrderNumber(Map<String, dynamic> row) => '#${(row['id'] as String).substring(0, 6).toUpperCase()}';
@@ -128,14 +122,12 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
       _error = null;
     });
     try {
-      final rows = await _supabase
-          .from('orders')
-          .select(adminOrdersSelect)
-          .order('created_at', ascending: false)
-          .limit(adminOrdersLimit);
+      // Through admin_list_orders (patch_public_trust.sql): officers no
+      // longer read the orders table itself.
+      final rows = await _supabase.rpc('admin_list_orders', params: {'p_limit': adminOrdersLimit});
       if (mounted) {
         setState(() {
-          _orders = List<Map<String, dynamic>>.from(rows);
+          _orders = List<Map<String, dynamic>>.from(rows as List);
           _isLoading = false;
         });
       }
@@ -164,13 +156,13 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
           .map((o) => [
                 adminOrderNumber(o),
                 fmt.format(DateTime.parse(o['created_at'] as String).toLocal()),
-                (o['water_stations']?['station_name'] as String?) ?? '',
+                (o['station_name'] as String?) ?? '',
                 adminOrderCustomerName(o),
                 adminOrderCustomerPhone(o) ?? '',
                 _orderLine(o),
                 ((o['total_amount'] as num?) ?? 0).toStringAsFixed(2),
                 o['status'] as String? ?? '',
-                (o['workers']?['full_name'] as String?) ?? '',
+                (o['driver_name'] as String?) ?? '',
                 (o['failure_reason'] as String?) ?? '',
               ])
           .toList(),
@@ -296,7 +288,7 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '${adminOrderNumber(order)} · ${(order['water_stations']?['station_name'] as String?) ?? 'Unknown station'}',
+                  '${adminOrderNumber(order)} · ${(order['station_name'] as String?) ?? 'Unknown station'}',
                   style: TextStyle(fontWeight: FontWeight.w600, color: palette.ink),
                 ),
                 const SizedBox(height: 2),
@@ -363,8 +355,8 @@ class _AdminOrderDialogState extends State<_AdminOrderDialog> {
     String? when(String key) => o[key] == null ? null : fmt.format(DateTime.parse(o[key] as String).toLocal());
 
     final rows = <(String, String?)>[
-      ('Station', o['water_stations']?['station_name'] as String?),
-      ('Customer', adminOrderCustomerName(o) + (o['profiles'] == null && o['guest_name'] != null ? ' (guest order)' : '')),
+      ('Station', o['station_name'] as String?),
+      ('Customer', adminOrderCustomerName(o)),
       ('Contact number', adminOrderCustomerPhone(o)),
       ('Items', _orderLine(o)),
       ('Total', formatPeso((o['total_amount'] as num?) ?? 0)),
@@ -374,7 +366,7 @@ class _AdminOrderDialogState extends State<_AdminOrderDialog> {
       ].where((s) => s.isNotEmpty).join(' · ')),
       ('Placed', when('created_at')),
       ('Scheduled for', when('scheduled_for')),
-      ('Driver', o['workers']?['full_name'] as String?),
+      ('Driver', o['driver_name'] as String?),
       ('Delivery failed', o['failure_reason'] == null ? null : '${o['failure_reason']} (${when('failed_at')})'),
     ];
 

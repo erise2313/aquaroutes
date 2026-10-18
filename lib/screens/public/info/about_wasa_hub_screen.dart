@@ -10,6 +10,7 @@ import 'faq_info_screen.dart';
 import 'for_station_owners_info_screen.dart';
 import 'how_accreditation_works_info_screen.dart';
 import 'jug_clearinghouse_info_screen.dart';
+import 'safe_water_info_screen.dart';
 
 /// Menu into the info pages that used to be website-only (About, FAQ,
 /// Contact, For Station Owners, How Accreditation Works, Jug
@@ -30,6 +31,7 @@ class AboutWasaHubScreen extends StatelessWidget {
       (Icons.storefront_outlined, 'For Station Owners', 'Why join, and what you\'ll need', (_) => const ForStationOwnersInfoScreen()),
       (Icons.verified_outlined, 'How Accreditation Works', 'The full permit checklist and review process', (_) => const HowAccreditationWorksInfoScreen()),
       (Icons.swap_horiz, 'Jug Clearinghouse', 'How inter-station jug settlement works', (_) => const JugClearinghouseInfoScreen()),
+      (Icons.water_drop_outlined, 'Safe Drinking Water', 'Water tests, clean jugs, and storing water at home', (_) => const SafeWaterInfoScreen()),
     ];
 
     return Scaffold(

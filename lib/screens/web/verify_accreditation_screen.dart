@@ -1,16 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../constants/web_theme.dart';
 import '../../models/station.dart';
+import '../../models/station_standing.dart';
 import '../../providers/web_locale_provider.dart';
 import '../../services/station_service.dart';
 import '../../services/supabase_service.dart';
+import '../../web_router.dart';
 import '../../web_strings.dart';
 import '../../widgets/back_to_top_button.dart';
 import '../../widgets/error_state.dart';
 import '../../widgets/fade_slide_in.dart';
 import '../../widgets/skeleton_loader.dart';
+import '../../widgets/station_trust_facts.dart';
 import '../../widgets/web_footer.dart';
 import '../../widgets/web_nav_bar.dart';
 import '../../widgets/web_page_header.dart';
@@ -18,11 +22,12 @@ import '../../widgets/web_seal.dart';
 import '../../utils/error_text.dart';
 import 'package:aquaroute/constants/brand_tokens.dart';
 
-/// "Confirm this station is really WASA-accredited" lookup -- reuses the
-/// existing public_stations data (is_colorum_verified/is_accredited), no
-/// new backend needed. Only accredited, colorum-verified stations appear in
-/// public_stations at all, so a search with no result IS the negative case
-/// (rather than needing a separate "not accredited" flag to check).
+/// "Confirm this station is really WASA-accredited" lookup over
+/// public_stations. A match says what is true of it -- accredited, or
+/// listed with the association but not (or no longer) accredited, with its
+/// standing in words. No match is stated neutrally: "not listed" is a fact
+/// about the directory, not an accusation against a business that may
+/// simply not be a member.
 class VerifyAccreditationScreen extends ConsumerStatefulWidget {
   const VerifyAccreditationScreen({super.key});
 
@@ -111,7 +116,7 @@ class _VerifyAccreditationScreenState extends ConsumerState<VerifyAccreditationS
                           else if (_error != null)
                             ErrorState(message: _error!, onRetry: _load)
                           else if (_hasSearched && _searchController.text.trim().isNotEmpty)
-                            matches.isEmpty ? _buildNotFoundCard() : Column(children: matches.map(_buildVerifiedCard).toList()),
+                            matches.isEmpty ? _buildNotFoundCard() : Column(children: matches.map(_buildMatchCard).toList()),
                         ],
                       ),
                     ),
@@ -127,14 +132,34 @@ class _VerifyAccreditationScreenState extends ConsumerState<VerifyAccreditationS
     );
   }
 
-  Widget _buildVerifiedCard(PublicStation station) {
+  Widget _buildMatchCard(PublicStation station) {
+    final palette = WebTheme.of(context);
+    final accent = station.isAccredited ? WebTheme.sealGold : palette.inkMuted;
+    final look = StandingLook.of(stationStandingFromString(station.standing));
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(color: WebTheme.sealGold.withValues(alpha: 0.10), borderRadius: BorderRadius.circular(10), border: Border.all(color: WebTheme.sealGold.withValues(alpha: 0.3))),
+      decoration: BoxDecoration(
+        color: accent.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: accent.withValues(alpha: 0.4)),
+      ),
       child: ListTile(
-        leading: const WebSeal(size: 36),
-        title: Text(station.stationName, style: TextStyle(fontWeight: FontWeight.bold, color: WebTheme.of(context).ink)),
-        subtitle: Text('${station.barangayName ?? station.stationAddress} · WASA-accredited and verified'),
+        leading: station.isAccredited ? const WebSeal(size: 36) : Icon(look.icon, color: palette.inkMuted, size: 32),
+        title: Text(station.stationName, style: TextStyle(fontWeight: FontWeight.bold, color: palette.ink)),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              station.isAccredited
+                  ? '${station.barangayName ?? station.stationAddress} · WASA-accredited'
+                  : '${station.barangayName ?? station.stationAddress} · Listed with WASA, not accredited',
+            ),
+            const SizedBox(height: 6),
+            StationStandingPills(station: station),
+          ],
+        ),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: () => context.go(WebRoutes.station(station.id)),
       ),
     );
   }
@@ -143,15 +168,17 @@ class _VerifyAccreditationScreenState extends ConsumerState<VerifyAccreditationS
     return Container(
       // Translucent rather than red.shade50, which stayed pale pink in dark
       // mode under light text. Mirrors the found card's gold treatment.
+      // Neutral, not red: a business that isn't a member hasn't done
+      // anything wrong by that alone.
       decoration: BoxDecoration(
-        color: BrandStatus.danger.withValues(alpha: 0.10),
+        color: BrandStatus.info.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: BrandStatus.danger.withValues(alpha: 0.3)),
+        border: Border.all(color: WebTheme.of(context).border),
       ),
       child: ListTile(
-        leading: Icon(Icons.error_outline, color: BrandStatus.danger, size: 32),
-        title: Text('No accredited station found by that name', style: TextStyle(fontWeight: FontWeight.bold, color: WebTheme.of(context).ink)),
-        subtitle: Text('Double-check the spelling, or the station may not be WASA-accredited.'),
+        leading: Icon(Icons.info_outline, color: WebTheme.of(context).inkMuted, size: 32),
+        title: Text('This station is not listed with GenTri WASA', style: TextStyle(fontWeight: FontWeight.bold, color: WebTheme.of(context).ink)),
+        subtitle: const Text('Check the spelling. A station that is not listed has no WASA accreditation to show.'),
       ),
     );
   }

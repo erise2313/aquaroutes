@@ -6,6 +6,7 @@ import '../../models/order.dart';
 import '../../models/order_status_look.dart';
 import '../../services/order_service.dart';
 import '../../services/review_service.dart';
+import '../../widgets/report_problem_dialog.dart';
 import '../../services/supabase_service.dart';
 import '../../utils/formatters.dart';
 import '../../widgets/confirm_dialog.dart';
@@ -250,6 +251,18 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
                     icon: const Icon(Icons.star_border, size: 18),
                     label: const Text('Rate this station'),
                   ),
+                // Water quality, a dirty jug or a driver's conduct go to the
+                // association, not just the station (patch_public_trust.sql).
+                TextButton.icon(
+                  onPressed: () => showReportProblemDialog(
+                    context,
+                    stationId: order['station_id'] as String,
+                    stationName: stationName,
+                    orderId: order['id'] as String,
+                  ),
+                  icon: const Icon(Icons.flag_outlined, size: 18),
+                  label: const Text('Report a problem to WASA'),
+                ),
               ],
             ),
           ],

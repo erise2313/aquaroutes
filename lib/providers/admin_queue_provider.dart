@@ -7,11 +7,15 @@ class AdminQueueCounts {
     required this.pendingPermits,
     required this.pendingIncidents,
     required this.pendingCredentials,
+    this.newReports = 0,
   });
 
   final int pendingPermits;
   final int pendingIncidents;
   final int pendingCredentials;
+
+  /// Customer reports to WASA nobody has picked up yet.
+  final int newReports;
 
   /// Both worker queues live behind the single "Workers" tab, so its badge
   /// has to represent their sum or it would under-report the backlog.
@@ -30,11 +34,13 @@ final adminQueueCountsProvider = FutureProvider.autoDispose<AdminQueueCounts>((r
     client.from('permits').select('id').eq('status', 'pending_review').count(CountOption.exact),
     client.from('worker_incidents').select('id').eq('status', 'pending_review').count(CountOption.exact),
     client.from('worker_credentials').select('id').eq('status', 'pending_review').count(CountOption.exact),
+    client.from('station_reports').select('id').eq('status', 'new').count(CountOption.exact),
   ]);
 
   return AdminQueueCounts(
     pendingPermits: results[0].count,
     pendingIncidents: results[1].count,
     pendingCredentials: results[2].count,
+    newReports: results[3].count,
   );
 });

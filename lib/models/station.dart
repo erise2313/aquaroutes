@@ -145,6 +145,20 @@ class PublicStation {
   final String? opensAt;
   final String? closesAt;
 
+  /// The association facts a customer can check (patch_public_trust.sql):
+  /// standing in words, when it joined and was accredited, its last passed
+  /// water test, and how long its sanitary permit runs.
+  final String? standing;
+  final DateTime? memberSince;
+  final DateTime? accreditedAt;
+  final DateTime? lastWaterTestAt;
+  final DateTime? sanitaryValidUntil;
+
+  /// "New member" for the first 90 days after accreditation -- so a new
+  /// station isn't read as an unknown one.
+  bool isNewMember([DateTime? now]) =>
+      isAccredited && accreditedAt != null && (now ?? DateTime.now()).difference(accreditedAt!).inDays < 90;
+
   /// See Station.isOrderable's doc comment -- same combined check.
   bool get isOrderable => isActive && acceptsNewOrders && isOpenNow;
 
@@ -172,6 +186,11 @@ class PublicStation {
     this.operatingDays,
     this.opensAt,
     this.closesAt,
+    this.standing,
+    this.memberSince,
+    this.accreditedAt,
+    this.lastWaterTestAt,
+    this.sanitaryValidUntil,
   });
 
   bool get offersAlkaline => offeredWaterTypes.contains('alkaline');
@@ -199,8 +218,55 @@ class PublicStation {
       operatingDays: (map['operating_days'] as List?)?.map((d) => (d as num).toInt()).toList(),
       opensAt: map['opens_at'] as String?,
       closesAt: map['closes_at'] as String?,
+      standing: map['standing'] as String?,
+      memberSince: _date(map['member_since']),
+      accreditedAt: _date(map['accredited_at']),
+      lastWaterTestAt: _date(map['last_water_test_at']),
+      sanitaryValidUntil: _date(map['sanitary_valid_until']),
     );
   }
+
+  static DateTime? _date(Object? value) => value is String ? DateTime.tryParse(value)?.toLocal() : null;
+}
+
+/// The order a customer sees stations in (Rollout plan, fairness): accredited
+/// first, then nearest, and stations the same distance apart -- or every
+/// station, when there's no location -- in an order that changes each day,
+/// so no one station always sits at the top by accident of its name.
+List<PublicStation> orderStationsForCustomers(
+  List<PublicStation> stations, {
+  double Function(PublicStation)? distanceKm,
+  DateTime? today,
+}) {
+  final day = today ?? DateTime.now();
+  final seed = day.year * 10000 + day.month * 100 + day.day;
+  // A polynomial hash of the id, XORed with the date and stirred by a few
+  // Lehmer steps, so each day is a different shuffle. Not Object.hash or
+  // String.hashCode: those are seeded per run, so the order would change on
+  // every reload. Kept below 2^47 so it is exact on the web too, where ints
+  // are doubles.
+  int rotation(PublicStation s) {
+    var h = 7;
+    for (final unit in s.id.codeUnits) {
+      h = (h * 131 + unit) % 2147483647;
+    }
+    var x = (h ^ seed) % 2147483647;
+    for (var i = 0; i < 3; i++) {
+      x = (x * 48271) % 2147483647;
+    }
+    return x;
+  }
+  final sorted = [...stations];
+  sorted.sort((a, b) {
+    if (a.isAccredited != b.isAccredited) return a.isAccredited ? -1 : 1;
+    if (distanceKm != null) {
+      // Tenths of a kilometre: closer than that is a tie, not a ranking.
+      final byDistance = (distanceKm(a) * 10).round().compareTo((distanceKm(b) * 10).round());
+      if (byDistance != 0) return byDistance;
+    }
+    return rotation(a).compareTo(rotation(b));
+  });
+  return sorted;
 }
 
 /// True if unset (no schedule declared -- always open, preserves the

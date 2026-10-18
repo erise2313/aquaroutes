@@ -9,6 +9,7 @@ import 'admin_notices_screen.dart';
 import 'admin_officers_screen.dart';
 import 'admin_settings_screen.dart';
 import 'admin_orders_screen.dart';
+import 'admin_reports_screen.dart';
 import 'admin_reviews_screen.dart';
 import 'bulletin_editor_screen.dart';
 import 'events_admin_screen.dart';
@@ -101,6 +102,14 @@ class AdminNavigation extends ConsumerWidget {
               group: 'Compliance',
               phoneTab: false,
             ),
+            NavShellDestination(
+              icon: Icons.flag_outlined,
+              selectedIcon: Icons.flag,
+              label: 'Reports',
+              badgeCount: counts?.newReports,
+              group: 'Compliance',
+              phoneTab: false,
+            ),
             const NavShellDestination(
               icon: Icons.receipt_long_outlined,
               selectedIcon: Icons.receipt_long,
@@ -187,6 +196,7 @@ class AdminNavigation extends ConsumerWidget {
             const WorkerClearanceScreen(),
             const AdminNoticesScreen(),
             const AdminCasesScreen(),
+            const AdminReportsScreen(),
             const AdminOrdersScreen(),
             const AdminClearinghouseScreen(),
             const BulletinEditorScreen(),

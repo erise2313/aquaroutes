@@ -14,6 +14,7 @@ import '../../web_router.dart';
 import '../../widgets/error_state.dart';
 import '../../widgets/skeleton_loader.dart';
 import '../../widgets/star_rating.dart';
+import '../../widgets/station_trust_facts.dart';
 import '../../widgets/web_footer.dart';
 import '../../widgets/web_nav_bar.dart';
 import '../../widgets/web_seal.dart';
@@ -317,9 +318,19 @@ class _StationDetailScreenState extends State<StationDetailScreen> {
       closesAt: station.closesAt,
     );
 
+    final palette = WebTheme.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        _sectionTitle('Association record'),
+        const SizedBox(height: 12),
+        StationTrustPanel(station: station, textColor: palette.ink, mutedColor: palette.inkMuted),
+        Text(
+          'Had a problem with water or a delivery from this station? Report it to WASA from '
+          'the station or the order in the GenTri WASA app. The station is not told who reported it.',
+          style: TextStyle(fontSize: 16, height: 1.5, color: palette.inkMuted),
+        ),
+        const SizedBox(height: 28),
         _sectionTitle('What they offer'),
         const SizedBox(height: 12),
         _factRow(Icons.local_drink_outlined, 'Water types', _titleCaseList(station.offeredWaterTypes)),

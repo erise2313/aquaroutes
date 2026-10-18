@@ -95,15 +95,12 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
 
   int get _barangaysServed => _stations.map((s) => s.barangayName).whereType<String>().toSet().length;
 
-  /// Verified stations first, then the ones a customer can actually order
-  /// from right now -- a teaser that leads with a closed station wastes the
-  /// three slots it has.
+  /// Accredited stations only, the ones a customer can order from right now
+  /// first (a teaser that leads with a closed station wastes its three
+  /// slots), in the daily rotation so the same three aren't always shown.
   List<PublicStation> get _featured {
-    final sorted = [..._stations]..sort((a, b) {
-        final verified = (b.isColorumVerified ? 1 : 0) - (a.isColorumVerified ? 1 : 0);
-        if (verified != 0) return verified;
-        return (b.isOrderable ? 1 : 0) - (a.isOrderable ? 1 : 0);
-      });
+    final rotated = orderStationsForCustomers(_stations.where((s) => s.isAccredited).toList());
+    final sorted = [...rotated.where((s) => s.isOrderable), ...rotated.where((s) => !s.isOrderable)];
     return sorted.take(3).toList();
   }
 

@@ -6,7 +6,9 @@ import '../../services/review_service.dart';
 import '../../services/supabase_service.dart';
 import '../../utils/error_text.dart';
 import '../../widgets/error_state.dart';
+import '../../constants/brand_tokens.dart';
 import '../../widgets/portal/portal.dart';
+import '../../widgets/report_problem_dialog.dart';
 import '../../widgets/star_rating.dart';
 
 /// What customers have said about the owner's station.
@@ -16,6 +18,10 @@ import '../../widgets/star_rating.dart';
 /// Reviewers are shown without their names: a customer's profile is private
 /// to them and to WASA. A review the owner thinks is abusive or false is
 /// for WASA to remove (Admin portal, Reviews), which this screen says.
+///
+/// The second tab lists problems customers reported to WASA about the
+/// station (owner_list_reports, patch_public_trust.sql) -- what and when,
+/// never who -- and lets the owner answer each one in writing.
 class StationReviewsScreen extends StatefulWidget {
   const StationReviewsScreen({super.key});
 
@@ -30,6 +36,7 @@ class _StationReviewsScreenState extends State<StationReviewsScreen> {
   String? _error;
   bool _hasStation = true;
   List<Map<String, dynamic>> _reviews = [];
+  List<Map<String, dynamic>> _reports = [];
 
   @override
   void initState() {
@@ -56,10 +63,12 @@ class _StationReviewsScreenState extends State<StationReviewsScreen> {
         return;
       }
       final reviews = await _reviewService.fetchStationReviews(station['id'] as String);
+      final reports = await _supabase.rpc('owner_list_reports');
       if (mounted) {
         setState(() {
           _hasStation = true;
           _reviews = reviews;
+          _reports = List<Map<String, dynamic>>.from(reports as List);
           _isLoading = false;
         });
       }
@@ -73,17 +82,157 @@ class _StationReviewsScreenState extends State<StationReviewsScreen> {
     }
   }
 
+  Future<void> _respond(Map<String, dynamic> report) async {
+    final controller = TextEditingController(text: report['station_response'] as String?);
+    final text = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Your response to WASA'),
+        content: SizedBox(
+          width: 520,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(report['details'] as String),
+              const SizedBox(height: 12),
+              TextField(
+                controller: controller,
+                autofocus: true,
+                minLines: 3,
+                maxLines: 6,
+                decoration: const InputDecoration(labelText: 'What happened, and what you did about it'),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')),
+          FilledButton(onPressed: () => Navigator.pop(dialogContext, controller.text.trim()), child: const Text('Send response')),
+        ],
+      ),
+    );
+    if (text == null || text.isEmpty) return;
+    try {
+      await _supabase.rpc('owner_respond_report', params: {'p_report_id': report['id'], 'p_response': text});
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Response sent to WASA.')));
+      await _load();
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(describeError(e))));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Column(
+    final open = _reports.where((r) => r['status'] == 'new' || r['status'] == 'reviewing').length;
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
+        body: Column(
+          children: [
+            PortalPageHeader(
+              eyebrow: 'Your station',
+              title: 'Customer Reviews',
+              subtitle: 'Ratings customers leave after a delivery, and problems they reported to WASA',
+              bottom: TabBar(
+                isScrollable: true,
+                tabAlignment: TabAlignment.start,
+                tabs: [
+                  Tab(text: 'Reviews (${_reviews.length})'),
+                  Tab(text: 'Reports to WASA${open > 0 ? ' ($open open)' : ''}'),
+                ],
+              ),
+            ),
+            Expanded(
+              child: TabBarView(
+                children: [
+                  _buildBody(),
+                  _isLoading
+                      ? const Center(child: CircularProgressIndicator())
+                      : _error != null
+                          ? ErrorState(message: _error!, onRetry: _load)
+                          : _buildReports(),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildReports() {
+    final theme = Theme.of(context);
+    if (_reports.isEmpty) {
+      return RefreshIndicator(
+        onRefresh: _load,
+        child: ListView(
+          children: const [
+            SizedBox(height: 48),
+            PortalEmptyState(
+              icon: Icons.flag_outlined,
+              title: 'No reports',
+              message: 'If a customer reports a problem with your water or a delivery to WASA, it appears here '
+                  'so you can answer it. You are not told who reported it.',
+            ),
+          ],
+        ),
+      );
+    }
+    return RefreshIndicator(
+      onRefresh: _load,
+      child: ListView(
+        padding: PortalDensity.of(context).pagePadding,
         children: [
-          const PortalPageHeader(
-            eyebrow: 'Your station',
-            title: 'Customer Reviews',
-            subtitle: 'Ratings and comments customers leave after a delivery',
-          ),
-          Expanded(child: _buildBody()),
+          for (final r in _reports)
+            PortalCard(
+              lift: false,
+              margin: const EdgeInsets.only(bottom: 10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 6,
+                    children: [
+                      Text(stationReportCategories[r['category']] ?? '', style: theme.textTheme.titleMedium),
+                      StatusPill(
+                        label: stationReportStatuses[r['status']] ?? '',
+                        color: switch (r['status']) {
+                          'resolved' => BrandStatus.success,
+                          'reviewing' => BrandStatus.warning,
+                          'dismissed' => Colors.blueGrey,
+                          _ => BrandStatus.info,
+                        },
+                      ),
+                    ],
+                  ),
+                  Text(
+                    '${DateFormat('MMM d, yyyy').format(DateTime.parse(r['created_at'] as String).toLocal())}'
+                    '${r['about_an_order'] == true ? ' · about a delivery' : ''}',
+                    style: theme.textTheme.bodySmall,
+                  ),
+                  const SizedBox(height: 6),
+                  Text(r['details'] as String),
+                  if (r['officer_note'] != null) ...[
+                    const SizedBox(height: 6),
+                    Text("WASA's note: ${r['officer_note']}", style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700)),
+                  ],
+                  if (r['station_response'] != null) ...[
+                    const SizedBox(height: 6),
+                    Text('Your response: ${r['station_response']}', style: theme.textTheme.bodySmall),
+                  ],
+                  if (r['status'] == 'new' || r['status'] == 'reviewing') ...[
+                    const SizedBox(height: 10),
+                    OutlinedButton.icon(
+                      onPressed: () => _respond(r),
+                      icon: const Icon(Icons.edit_note),
+                      label: Text(r['station_response'] == null ? 'Respond in writing' : 'Edit your response'),
+                    ),
+                  ],
+                ],
+              ),
+            ),
         ],
       ),
     );

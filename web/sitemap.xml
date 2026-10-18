@@ -17,5 +17,6 @@
   <url><loc>https://gentri-wasa.web.app/resources</loc><priority>0.6</priority></url>
   <url><loc>https://gentri-wasa.web.app/faq</loc><priority>0.7</priority></url>
   <url><loc>https://gentri-wasa.web.app/jug-clearinghouse</loc><priority>0.6</priority></url>
+  <url><loc>https://gentri-wasa.web.app/safe-water</loc><priority>0.6</priority></url>
   <url><loc>https://gentri-wasa.web.app/contact</loc><priority>0.7</priority></url>
 </urlset>

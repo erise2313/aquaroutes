@@ -11,11 +11,14 @@ import '../../services/station_service.dart';
 import '../../services/supabase_service.dart';
 import '../../utils/formatters.dart';
 import '../../constants/app_colors.dart';
+import '../../constants/brand_tokens.dart';
 import '../../widgets/custom_map_marker.dart';
 import '../../widgets/error_state.dart';
 import '../../widgets/permission_rationale_dialog.dart';
 import '../../widgets/portal/portal.dart';
+import '../../widgets/report_problem_dialog.dart';
 import '../../widgets/star_rating.dart';
+import '../../widgets/station_trust_facts.dart';
 import '../../widgets/app_map_tiles.dart';
 import '../../utils/error_text.dart';
 import '../../utils/log.dart';
@@ -26,8 +29,10 @@ import '../../utils/log.dart';
 /// stations apart from unregistered ("colorum") ones at a glance. A station
 /// that's temporarily not accepting orders or outside its declared hours
 /// still shows (dimmed) instead of vanishing; an admin-deactivated station
-/// doesn't appear here at all (filtered server-side by public_stations). A
-/// best-effort "near me" sort is applied when location is available.
+/// doesn't appear here at all (filtered server-side by public_stations).
+/// "Accredited only" is on by default; the order is accredited first, then
+/// nearest when location is available, with ties rotated daily
+/// (orderStationsForCustomers).
 class StationMapScreen extends StatefulWidget {
   const StationMapScreen({super.key, this.waterTypeFilter});
 
@@ -47,6 +52,7 @@ class _StationMapScreenState extends State<StationMapScreen> {
   List<PublicStation> _stations = [];
   Set<String> _favoriteIds = {};
   String? _filter;
+  bool _accreditedOnly = true;
   bool _showList = false;
   double? _userLat;
   double? _userLng;
@@ -151,7 +157,6 @@ class _StationMapScreenState extends State<StationMapScreen> {
     setState(() {
       _userLat = position.latitude;
       _userLng = position.longitude;
-      _stations = _nearbyService.sortByDistance(_stations, position.latitude, position.longitude);
     });
 
     // The map is already on screen by the time a fix arrives, and
@@ -165,13 +170,20 @@ class _StationMapScreenState extends State<StationMapScreen> {
     } catch (_) {}
   }
 
-  /// Filter first, then pin: a favourite that the active water-type filter
-  /// excludes stays excluded, rather than being pulled back in by its star.
+  /// Filter first, then order, then pin: a favourite that the active
+  /// filters exclude stays excluded, rather than being pulled back in by its
+  /// star.
   List<PublicStation> get _filteredStations {
-    final filtered = _filter == null
-        ? _stations
-        : _stations.where((s) => s.offeredWaterTypes.contains(_filter)).toList();
-    return FavoriteStationService.pinFavorites(filtered, _favoriteIds);
+    final filtered = _stations
+        .where((s) => _filter == null || s.offeredWaterTypes.contains(_filter))
+        .where((s) => !_accreditedOnly || s.isAccredited)
+        .toList();
+    final lat = _userLat, lng = _userLng;
+    final ordered = orderStationsForCustomers(
+      filtered,
+      distanceKm: lat == null || lng == null ? null : (s) => _nearbyService.distanceKm(lat, lng, s),
+    );
+    return FavoriteStationService.pinFavorites(ordered, _favoriteIds);
   }
 
   @override
@@ -202,6 +214,13 @@ class _StationMapScreenState extends State<StationMapScreen> {
                     scrollDirection: Axis.horizontal,
                     child: Row(
                       children: [
+                        FilterChip(
+                          label: const Text('Accredited only'),
+                          avatar: const Icon(Icons.verified_outlined, size: 18),
+                          selected: _accreditedOnly,
+                          onSelected: (v) => setState(() => _accreditedOnly = v),
+                        ),
+                        const SizedBox(width: 16),
                         _filterChip('All', null),
                         const SizedBox(width: 8),
                         _filterChip('Purified', 'purified'),
@@ -262,8 +281,16 @@ class _StationMapScreenState extends State<StationMapScreen> {
       return PortalEmptyState(
         icon: Icons.search_off,
         title: 'No stations match',
-        message: 'Nothing matches the water type you picked. Try another, or clear the filter.',
-        action: _filter == null
+        message: _accreditedOnly
+            ? 'No accredited station matches. Turn off "Accredited only" to see every listed station.'
+            : 'Nothing matches the water type you picked. Try another, or clear the filter.',
+        action: _accreditedOnly
+            ? TextButton.icon(
+                onPressed: () => setState(() => _accreditedOnly = false),
+                icon: const Icon(Icons.filter_alt_off_outlined),
+                label: const Text('Show all stations'),
+              )
+            : _filter == null
             ? null
             : TextButton.icon(
                 onPressed: () => setState(() => _filter = null),
@@ -360,9 +387,18 @@ class _StationMapScreenState extends State<StationMapScreen> {
           // On its own line rather than as a ListTile trailing: a pill beside
           // an expanded name is laid out with unbounded width and can never
           // wrap.
-          if (!station.isOrderable) ...[
+          if (!station.isOrderable || station.standing == 'lapsed' || station.isNewMember()) ...[
             const SizedBox(height: 10),
-            const StatusPill(label: 'CLOSED', color: AppColors.flagged),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                if (!station.isOrderable) const StatusPill(label: 'CLOSED', color: AppColors.flagged),
+                // Lapsed stays orderable (decision of 18 Oct 2026) but says so.
+                if (station.standing == 'lapsed') const StatusPill(label: 'LAPSED', color: BrandStatus.danger, icon: Icons.error_outline),
+                if (station.isNewMember()) const StatusPill(label: 'NEW MEMBER', color: BrandStatus.info, icon: Icons.fiber_new_outlined),
+              ],
+            ),
           ],
         ],
       ),
@@ -372,7 +408,8 @@ class _StationMapScreenState extends State<StationMapScreen> {
   void _showStationSheet(PublicStation station) {
     showModalBottomSheet(
       context: context,
-      builder: (context) => Padding(
+      isScrollControlled: true,
+      builder: (context) => SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -425,6 +462,16 @@ class _StationMapScreenState extends State<StationMapScreen> {
             ),
             const SizedBox(height: 8),
             Text('From ${formatPeso(station.pricePerJug)} · ${formatPeso(station.deliveryFee)} delivery'),
+            const SizedBox(height: 16),
+            Text('Association record', style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 8),
+            StationTrustPanel(station: station),
+            if (_favoriteService.isSignedIn)
+              TextButton.icon(
+                onPressed: () => showReportProblemDialog(context, stationId: station.id, stationName: station.stationName),
+                icon: const Icon(Icons.flag_outlined),
+                label: const Text('Report a problem to WASA'),
+              ),
           ],
         ),
       ),

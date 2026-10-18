@@ -16,17 +16,19 @@ void main() {
         'status': 'pending',
         'created_at': '2026-10-18T08:00:00Z',
         'customer_phone': '09171234567',
-        'water_stations': {'station_name': 'Buenavista Water'},
-        'profiles': {'full_name': 'Maria Santos', 'phone_number': '09170000000'},
+        'customer_name': 'Maria Santos',
+        'has_report': true,
+        'station_name': 'Buenavista Water',
       },
       {
         'id': 'bbbbbbbb-1111-2222-3333-444444444444',
         'status': 'done',
         'created_at': '2026-09-01T08:00:00Z',
-        'guest_name': 'Old Guest',
-        'guest_phone': '09998887777',
-        'water_stations': {'station_name': 'Navarro Springs'},
-        'profiles': null,
+        // No report on file: admin_list_orders leaves the customer out.
+        'customer_name': null,
+        'customer_phone': null,
+        'has_report': false,
+        'station_name': 'Navarro Springs',
       },
     ];
 
@@ -43,21 +45,22 @@ void main() {
       expect(filterAdminOrders(rows, withinDays: 1, now: now).length, 1);
     });
 
-    test('search matches customer, phone, station and order number', () {
+    test('search matches station, order number, and identity only where shown', () {
       expect(filterAdminOrders(rows, query: 'maria').length, 1);
       expect(filterAdminOrders(rows, query: '0917123').length, 1);
       expect(filterAdminOrders(rows, query: 'navarro').length, 1);
       expect(filterAdminOrders(rows, query: 'AAAAAA').length, 1);
-      expect(filterAdminOrders(rows, query: 'old guest').length, 1);
+      // The "Hidden" placeholder is not something to search by.
+      expect(filterAdminOrders(rows, query: 'hidden'), isEmpty);
     });
 
-    test('names and numbers fall back sensibly', () {
+    test('identity is shown only for an order with a report', () {
       expect(adminOrderCustomerName(rows[0]), 'Maria Santos');
-      expect(adminOrderCustomerName(rows[1]), 'Old Guest');
+      expect(adminOrderCustomerName(rows[1]), adminOrderHiddenCustomer);
       expect(adminOrderCustomerPhone(rows[0]), '09171234567');
-      expect(adminOrderCustomerPhone(rows[1]), '09998887777');
+      expect(adminOrderCustomerPhone(rows[1]), isNull);
       expect(adminOrderNumber(rows[0]), '#AAAAAA');
-      expect(adminOrderCustomerName(<String, dynamic>{'profiles': null}), 'Customer');
+      expect(adminOrderCustomerName(<String, dynamic>{'has_report': true}), 'Customer');
     });
 
     test('a row with a broken date is dropped from an age filter, not crashed on', () {

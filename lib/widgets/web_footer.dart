@@ -15,6 +15,7 @@ import '../screens/web/faq_screen.dart';
 import '../screens/web/jug_clearinghouse_explainer_screen.dart';
 import '../screens/web/news_screen.dart';
 import '../screens/web/resources_screen.dart';
+import '../screens/web/safe_water_screen.dart';
 import '../screens/web/stations_directory_screen.dart';
 import '../screens/web/verify_accreditation_screen.dart';
 import '../screens/web/privacy_policy_screen.dart';
@@ -91,6 +92,7 @@ class WebFooter extends ConsumerWidget {
                         const SizedBox(height: 12),
                         _FooterLink(label: t('faq_title'), onTap: () => _push(context, const FaqScreen(), WebRoutes.faq)),
                         _FooterLink(label: t('verify_title'), onTap: () => _push(context, const VerifyAccreditationScreen(), WebRoutes.verify)),
+                        _FooterLink(label: 'Safe drinking water', onTap: () => _push(context, const SafeWaterScreen(), WebRoutes.safeWater)),
                         _FooterLink(label: t('jug_clearinghouse_title'), onTap: () => _push(context, const JugClearinghouseExplainerScreen(), WebRoutes.jugClearinghouse)),
                         _FooterLink(label: t('resources_title'), onTap: () => _push(context, const ResourcesScreen(), WebRoutes.resources)),
                         _FooterLink(label: t('events_title'), onTap: () => _push(context, const EventsScreen(), WebRoutes.events)),

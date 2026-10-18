@@ -19,6 +19,7 @@ import '../../widgets/fade_slide_in.dart';
 import '../../widgets/hover_scale.dart';
 import '../../widgets/skeleton_loader.dart';
 import '../../widgets/star_rating.dart';
+import '../../widgets/station_trust_facts.dart';
 import '../../widgets/web_footer.dart';
 import '../../widgets/web_nav_bar.dart';
 import '../../widgets/web_page_header.dart';
@@ -49,6 +50,7 @@ class _StationsDirectoryScreenState extends ConsumerState<StationsDirectoryScree
   final _scrollController = ScrollController();
   String? _waterTypeFilter;
   String? _barangayFilter;
+  bool _accreditedOnly = true;
 
   @override
   void initState() {
@@ -88,12 +90,15 @@ class _StationsDirectoryScreenState extends ConsumerState<StationsDirectoryScree
 
   List<PublicStation> get _filtered {
     final query = _searchController.text.trim().toLowerCase();
-    return _stations.where((s) {
+    // Accredited first, then a daily rotation -- the site has no location,
+    // so no station sits on top every day by accident of its name.
+    return orderStationsForCustomers(_stations.where((s) {
+      if (_accreditedOnly && !s.isAccredited) return false;
       if (query.isNotEmpty && !s.stationName.toLowerCase().contains(query)) return false;
       if (_waterTypeFilter != null && !s.offeredWaterTypes.contains(_waterTypeFilter)) return false;
       if (_barangayFilter != null && s.barangayName != _barangayFilter) return false;
       return true;
-    }).toList();
+    }).toList());
   }
 
   List<String> get _availableBarangays {
@@ -157,9 +162,19 @@ class _StationsDirectoryScreenState extends ConsumerState<StationsDirectoryScree
                                   width: isWide ? 420 : double.infinity,
                                   child: filtered.isEmpty
                                       ? Center(
-                                          child: Text(
-                                            _stations.isEmpty ? 'No verified stations yet.' : 'No stations match your filters.',
-                                            style: TextStyle(color: WebTheme.of(context).inkMuted),
+                                          child: Column(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Text(
+                                                _stations.isEmpty ? 'No verified stations yet.' : 'No stations match your filters.',
+                                                style: TextStyle(color: WebTheme.of(context).inkMuted),
+                                              ),
+                                              if (_accreditedOnly && _stations.isNotEmpty)
+                                                TextButton(
+                                                  onPressed: () => setState(() => _accreditedOnly = false),
+                                                  child: const Text('Include stations not yet accredited'),
+                                                ),
+                                            ],
                                           ),
                                         )
                                       : ListView.builder(
@@ -219,7 +234,14 @@ class _StationsDirectoryScreenState extends ConsumerState<StationsDirectoryScree
     return Wrap(
       spacing: 12,
       runSpacing: 12,
+      crossAxisAlignment: WrapCrossAlignment.center,
       children: [
+        FilterChip(
+          label: const Text('Accredited only'),
+          avatar: const Icon(Icons.verified_outlined, size: 18),
+          selected: _accreditedOnly,
+          onSelected: (v) => setState(() => _accreditedOnly = v),
+        ),
         SizedBox(
           width: 260,
           child: TextField(
@@ -293,6 +315,10 @@ class _StationsDirectoryScreenState extends ConsumerState<StationsDirectoryScree
               }),
               const SizedBox(height: 4),
               StarRatingDisplay(rating: station.avgRating, reviewCount: station.reviewCount, size: 14),
+              if (station.standing == 'lapsed' || station.isNewMember()) ...[
+                const SizedBox(height: 6),
+                StationStandingPills(station: station),
+              ],
             ],
           ),
           isThreeLine: true,

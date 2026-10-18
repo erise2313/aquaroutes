@@ -292,7 +292,7 @@ class _OrgHomeScreenState extends ConsumerState<OrgHomeScreen> {
           Wrap(
             spacing: 16,
             runSpacing: 16,
-            children: _stations.take(3).map(_stationTeaserCard).toList(),
+            children: orderStationsForCustomers(_stations.where((s) => s.isAccredited).toList()).take(3).map(_stationTeaserCard).toList(),
           ),
       ],
     );

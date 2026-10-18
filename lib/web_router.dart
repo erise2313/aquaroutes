@@ -17,6 +17,7 @@ import 'screens/web/how_accreditation_works_screen.dart';
 import 'screens/web/jug_clearinghouse_explainer_screen.dart';
 import 'screens/web/news_screen.dart';
 import 'screens/web/resources_screen.dart';
+import 'screens/web/safe_water_screen.dart';
 import 'screens/web/station_detail_screen.dart';
 import 'screens/web/stations_directory_screen.dart';
 import 'screens/web/verify_accreditation_screen.dart';
@@ -47,6 +48,7 @@ class WebRoutes {
   static const jugClearinghouse = '/jug-clearinghouse';
   static const resources = '/resources';
   static const events = '/events';
+  static const safeWater = '/safe-water';
 
   /// Google Play's required "how to delete your account" page.
   static const accountDeletion = '/account-deletion';
@@ -73,6 +75,7 @@ class WebRoutes {
     WebPage.jugClearinghouse: jugClearinghouse,
     WebPage.resources: resources,
     WebPage.events: events,
+    WebPage.safeWater: safeWater,
   };
 }
 
@@ -154,6 +157,7 @@ GoRouter buildWebRouter() {
       GoRoute(path: WebRoutes.jugClearinghouse, pageBuilder: (_, _) => _page(const JugClearinghouseExplainerScreen())),
       GoRoute(path: WebRoutes.resources, pageBuilder: (_, _) => _page(const ResourcesScreen())),
       GoRoute(path: WebRoutes.events, pageBuilder: (_, _) => _page(const EventsScreen())),
+      GoRoute(path: WebRoutes.safeWater, pageBuilder: (_, _) => _page(const SafeWaterScreen())),
       GoRoute(path: WebRoutes.accountDeletion, pageBuilder: (_, _) => _page(const AccountDeletionScreen())),
       GoRoute(path: WebRoutes.privacy, pageBuilder: (_, _) => _page(const PrivacyPolicyScreen())),
     ],

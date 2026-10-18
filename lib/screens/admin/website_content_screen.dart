@@ -34,7 +34,7 @@ class WebsiteContentScreen extends StatefulWidget {
   State<WebsiteContentScreen> createState() => _WebsiteContentScreenState();
 }
 
-enum _ContentPage { about, faq, contact, forStationOwners, howAccreditationWorks, jugClearinghouse, permitLabels }
+enum _ContentPage { about, faq, contact, forStationOwners, howAccreditationWorks, jugClearinghouse, safeWater, permitLabels }
 
 extension on _ContentPage {
   String get label => switch (this) {
@@ -44,6 +44,7 @@ extension on _ContentPage {
         _ContentPage.forStationOwners => 'For Station Owners',
         _ContentPage.howAccreditationWorks => 'How Accreditation Works',
         _ContentPage.jugClearinghouse => 'Jug Clearinghouse',
+        _ContentPage.safeWater => 'Safe Drinking Water',
         _ContentPage.permitLabels => 'Permit Checklist Labels',
       };
 
@@ -56,6 +57,7 @@ extension on _ContentPage {
         _ContentPage.forStationOwners => 'for_station_owners',
         _ContentPage.howAccreditationWorks => 'how_accreditation_works',
         _ContentPage.jugClearinghouse => 'jug_clearinghouse',
+        _ContentPage.safeWater => 'safe_water',
         _ContentPage.faq || _ContentPage.permitLabels => null,
       };
 }
@@ -105,10 +107,17 @@ class _WebsiteContentScreenState extends State<WebsiteContentScreen> {
           _SectionsEditor(pageKey: 'jug_clearinghouse', sections: [(key: 'intro', label: 'Intro paragraph')]),
           _ItemsEditor(pageKey: 'jug_clearinghouse', itemKey: 'steps', label: 'Process steps', showTitleField: true),
         ]),
+      // Icon keys: science, cleaning_services, kitchen, verified, water_drop
+      // (safe_water_screen.dart's safeWaterIcons).
+      _ContentPage.safeWater =>
+        const _ItemsEditor(pageKey: 'safe_water', itemKey: 'articles', label: 'Articles', showTitleField: true, showIconField: true),
       _ContentPage.permitLabels => const _PermitLabelsEditor(),
     };
 
-    final needsOwnScroll = page == _ContentPage.about || page == _ContentPage.contact || page == _ContentPage.howAccreditationWorks;
+    final needsOwnScroll = page == _ContentPage.about ||
+        page == _ContentPage.contact ||
+        page == _ContentPage.howAccreditationWorks ||
+        page == _ContentPage.safeWater;
     if (!needsOwnScroll) return content;
     return SingleChildScrollView(padding: const EdgeInsets.all(16), child: content);
   }

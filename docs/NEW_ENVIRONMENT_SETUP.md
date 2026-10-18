@@ -71,7 +71,7 @@ of how the schema was reached rather than a way to rebuild it.
 > to `reset_and_rebuild.sql` as well as writing the migration. The script is
 > only useful while it stays current.
 
-Confirm it worked — this should return **40**:
+Confirm it worked — this should return **41**:
 
 ```sql
 select count(*) from information_schema.tables where table_schema = 'public';
@@ -87,7 +87,7 @@ select jobname, schedule from cron.job where jobname = 'gentri-daily-compliance'
 
 ### 1.3 Confirm the storage buckets
 
-**Storage.** Six buckets should already exist:
+**Storage.** Seven buckets should already exist:
 
 | Bucket | Public |
 |---|---|
@@ -96,10 +96,12 @@ select jobname, schedule from cron.job where jobname = 'gentri-daily-compliance'
 | `permit-documents` | **no** |
 | `resources` | yes |
 | `station-photos` | yes |
+| `station-reports` | **no** |
 | `worker-credentials` | **no** |
 
-`permit-documents` and `worker-credentials` must be private. They hold
-business permits and worker identification. If either shows as public,
+`permit-documents`, `worker-credentials` and `station-reports` must be
+private. They hold business permits, worker identification and customers'
+photos of problems. If either shows as public,
 fix it before going further.
 
 ### 1.4 Seed accounts and content

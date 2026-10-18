@@ -40,6 +40,7 @@ enum WebPage {
   jugClearinghouse,
   resources,
   events,
+  safeWater,
 }
 
 /// The public website's top nav: the shared [BrandTopBar] carrying the site's
