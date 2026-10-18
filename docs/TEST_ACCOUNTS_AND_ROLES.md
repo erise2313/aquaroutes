@@ -6,7 +6,13 @@ people.
 
 - Public website: https://gentri-wasa.web.app
 - Admin portal: https://gentri-wasa-admin.web.app
-- App: `GenTriWASA-arm64-v8a.apk` (Desktop\GenTriWASA-APK)
+- App: `GenTriWASA-arm64-v8a.apk` (Desktop\GenTriWASA-APK) — the app has not
+  been rebuilt with the 18 October changes yet; until it is, test the new
+  features on the websites.
+
+Every screen works in light and dark mode, uses the Atkinson Hyperlegible
+typeface, and has a **Text size** setting (Normal, Large, Extra large) under
+account settings. The interface is in English; Tagalog comes later.
 
 ## Test accounts
 
@@ -14,146 +20,183 @@ All emails end in `@gentriwasa.test`.
 
 | Email | Password | Role | Name | State |
 |---|---|---|---|---|
+| superadmin1@ | Admin123! | WASA super admin | — | Active |
+| superadmin2@ | Admin123! | WASA super admin | — | Active |
 | admin@ | Admin123! | WASA officer | WASA Admin | Active |
 | admin2@ | Admin123! | WASA officer | Rosa Mendoza | Active |
-| owner1@ | Owner123! | Station owner | Juan Dela Cruz | Buenavista Water Refilling Station — accredited, invite code `BUENAV1` |
-| owner2@ | Owner123! | Station owner | Maria Santos | Navarro Springs Water Station — accredited, invite code `NAVSPR1` |
-| owner3@ | Owner123! | Station owner | Elena Ramos | Tejero Aqua Station — **not accredited**, all 8 permits waiting for upload, invite code `TEJERO1` |
+| owner1@ | Owner123! | Station owner | Juan Dela Cruz | Buenavista Water Refilling Station — accredited, good standing |
+| owner2@ | Owner123! | Station owner | Maria Santos | Navarro Springs Water Station — accredited, good standing |
+| owner3@ | Owner123! | Station owner | Elena Ramos | Tejero Aqua Station — **not accredited**, permits waiting for upload |
+| staff1@ | Staff123! | Station staff | — | Buenavista counter staff |
 | driver1@ | Driver123! | Driver | Pedro Reyes | Buenavista — **flagged** (confirmed incident) |
 | driver2@ | Driver123! | Driver | Ana Cruz | Navarro Springs — **flagged** (confirmed incident) |
-| driver3@ | Driver123! | Driver | Carlo Bautista | Buenavista — cleared, credentials approved |
-| driver4@ | Driver123! | Driver | Joy Villanueva | Navarro Springs — cleared, credentials approved |
-| customer1@ | Customer123! | Customer | Liza Fernandez | Active, has demo orders |
+| driver3@ | Driver123! | Driver | Carlo Bautista | Buenavista — cleared |
+| driver4@ | Driver123! | Driver | Joy Villanueva | Navarro Springs — cleared |
+| customer1@ | Customer123! | Customer | Liza Fernandez | Active, has delivered orders from Navarro Springs |
 | customer2@ | Customer123! | Customer | Ramon Garcia | Active, no orders yet |
 | suspended@ | Customer123! | Customer | Susana Lim | **Suspended** |
 
-Which account for which test:
+Invite codes now expire (7 days by default). If a code in an old note
+doesn't work, the owner issues a new one from Home (driver code) or Team
+(staff code).
 
-- **Assigning a driver** — sign in as owner1 or owner2 and assign driver3 or
-  driver4. driver1 and driver2 are flagged, so assigning them is refused
-  (that is the "flagged driver not assignable" case).
-- **Lifting a flag / appeals** — driver1 or driver2. Either the driver
-  appeals (app → Driver Profile → the incident → Appeal this), or an
-  officer lifts it (Admin → Workers → All workers → the driver → Lift flag).
-- **Accreditation from the start** — owner3 uploads permits in Permit
-  vault; an officer reviews them in Admin → Permits.
-- **One customer can't see another's orders** — place an order as
-  customer2, then sign in as customer1: it is not in customer1's Orders.
-- **Suspended account** — sign in as suspended@: the app shows "account
-  suspended" instead of the home screen, and ordering is refused. An officer
-  can reactivate it in Admin → Users.
-- **Two officers** — admin@ sees admin2@ in Users and can suspend them, but
-  has no Suspend button on their own row.
-
-The seed scripts are in `supabase/`: `seed_test_accounts.sql` (the first
-six accounts), `seed_role_accounts.sql` (the other six, additive and safe to
-re-run) and `seed_demo_gaps.sql` (demo orders, jug balances, a flagged
-driver).
+The seed scripts are in `supabase/`: `seed_test_accounts.sql`,
+`seed_role_accounts.sql` (additive, safe to re-run) and `seed_demo_gaps.sql`.
 
 ## What each role can access
 
 ### Signed-out visitor
 
-**Website:** every public page — Home, About, How accreditation works, For
-station owners, News, Stations directory and each station's page, Verify
-accreditation, Jug clearinghouse explainer, Resources, Events, FAQ, Contact,
-Privacy policy, Account deletion. Signing in is at `/portal`.
+**Website:** Home, About, How accreditation works, For station owners, News,
+Stations directory and each station's page, Verify accreditation, Jug
+clearinghouse explainer, **Safe drinking water** *(new)*, Resources, Events,
+FAQ, Contact, Privacy policy, Account deletion. Signing in is at `/portal`.
 
-**App:** Home (bulletin and stations), Board, Map, the About WASA hub (About,
-Events, FAQ, Contact, For station owners, How accreditation works, Jug
-clearinghouse). The Order and Orders tabs ask them to sign in or create an
-account — ordering needs an account.
+- **Station pages** *(new)* show the station's standing in words with a
+  colour and icon, its last passed water test, how long its sanitary permit
+  runs, when it joined, and a **New member** label for 90 days after
+  accreditation.
+- **Directory** *(new)* shows accredited stations only by default (switch off
+  "Accredited only" to see all), accredited first, in an order that changes
+  daily so no station is always on top.
+- **Verify** *(new wording)* — a station that isn't listed reads "This station
+  is not listed with GenTri WASA", in neutral colours; a listed but
+  unaccredited station says so plainly.
+
+**App:** Home, Board, Map, the About WASA hub (now with **Safe Drinking
+Water**). Ordering needs an account.
 
 ### Customer — app only
 
-On the website, a customer who signs in is told the account type is
-app-only.
-
-- **Home** — association notices and nearby accredited stations.
-- **Board** — the bulletin: read, react, comment, report a post.
-- **Order** — order from an accredited station: product, quantity, delivery
-  pin or saved address, optional schedule, jug exchange.
-- **Map** — stations on the map, favourites.
-- **Orders** — their own orders: status, cancel before it goes out, follow
-  the driver on a map while it is out, order again, review the station after
-  delivery (rating and comment).
-- **My account** — name and phone, delivery addresses, light/dark, change
-  password, delete account.
-- **Notifications** — order updates (driver on the way, delivered, failed
-  delivery with the reason, cancelled).
-- **About WASA hub** — from the ⓘ button.
+- **Home** — **My station** *(new)*: the station they order from most, with
+  **Order again**; association notices; accredited stations.
+- **Map** — "Accredited only" on by default *(new)*; a station's sheet shows
+  its association record and **Report a problem to WASA** *(new)*.
+- **Order**, **Board** — as before.
+- **Orders** — each order shows its steps *(new)*: Placed → Assigned → Out
+  for delivery → Delivered, with times; cancel before it goes out; follow
+  the driver; order again; rate the station; **Report a problem to WASA**
+  *(new)* with an optional photo.
+- **Account** — notification switches *(new)*, text size, Help and the
+  welcome tour *(new)*, password, delete account.
 
 ### Driver — app only
 
-On the website, a driver who signs in is told the account type is app-only.
+As before (deliveries, failed delivery with a reason, clearance, appeals).
+New: licence upload asks for the expiry date, with a reminder before it
+lapses; notification switches; Help and welcome tour.
 
-- **Dashboard** — the assigned delivery: navigate, call the station, start
-  delivery, complete delivery (empties returned, payment collected, jug
-  exchange), **Couldn't deliver** with a reason (the order goes back to the
-  station and the customer is told). Route planning for several stops.
-- **Driver Profile** — photo, ID and licence uploads for WASA review,
-  clearance status, incidents filed against them and **Appeal this** (once
-  per incident), switch station by invite code, leave station, account
-  settings, and (ⓘ) the About WASA hub.
-- **Bulletin board** and **notifications**.
+### Station staff *(new role)* — website portal and app
+
+Counter and dispatch staff. Sign up in the app with "I work at a station"
+and the owner's staff code.
+
+- **Home** — live orders.
+- **Orders** — assign, unassign, cancel, and **New order** for phone and
+  walk-in customers.
+- **Track** — drivers on the map.
+- **Drivers** — read-only.
+- **Board**.
+
+Staff can't change prices, products, permits, drivers, settlements or the
+station.
 
 ### Station owner — website portal and app
 
-Website: sign in at gentri-wasa.web.app/portal — every section is in the
-left sidebar. App: Home, Orders, Products, Track, Board and Profile are tabs;
-the rest open from tiles on Home.
-
-- **Home** — invite code (with **issue a new code**), live orders, sales,
-  shortcuts to everything below.
-- **Orders** — assign to a driver, unassign, cancel; failed deliveries show
-  the driver's reason.
-- **Products** — what the station sells, prices (not below WASA's floor
-  price), availability, delivery fee.
-- **Track** — drivers and active deliveries on the map.
-- **Drivers** — the roster, vehicle, capacity, idle drivers.
-- **Permit vault** — upload permits, see each one's review status and days
-  to expiry.
-- **Worker registry** — file an incident against a driver, remove a driver;
-  sees only the incident reports it filed itself.
-- **Hire check** — a driver's clearance and station history before hiring.
-- **Clearinghouse** — jug balances with other stations; **propose a
-  settlement** (only the station holding the jugs), confirm or reject one
-  proposed to it.
-- **Board** — post to the bulletin, comment, react.
-- **Reviews** *(new)* — the station's ratings and every comment, without the
-  reviewers' names.
-- **Profile** — owner and station details, location, opening hours, WASA
-  resources, About WASA hub, account settings.
+- **Home** — standing callout when a permit needs renewing or has lapsed;
+  **Mentoring** card with the mentor (or mentee) station and a call button
+  *(new)*; invite code with its expiry.
+- **Orders** — **New order** *(new)*: phone orders (pickup or a delivery
+  pin) and walk-in sales (recorded as delivered and paid).
+- **Products**, **Track**, **Drivers**, **Worker registry**, **Hire check** —
+  as before.
+- **Costs** *(new)* — private cost calculator: monthly costs and refills
+  give the cost per refill and the margin at current prices. Only the owner
+  can see it — not WASA.
+- **Team** *(new)* — staff list, remove staff, staff code with expiry.
+- **Permit vault** — "5 of 8 done" progress bar and what each permit is
+  *(new)*; reminders 30 and 7 days before expiry.
+- **WASA notices** *(new)* — official notices to read and acknowledge;
+  compliance cases with a written response.
+- **Clearinghouse** — **Dispute with WASA** on a settlement *(new)*.
+- **Reviews** — now with a **Reports to WASA** tab *(new)*: what customers
+  reported about the station, never who; answer in writing.
+- **Board** — posting rules shown and ticked before posting *(new)*.
+- **Profile** — **station QR code and link** *(new)*: copy, show large, save
+  as an image on the website.
 
 ### WASA officer — admin portal (website) and app
 
-Website: gentri-wasa-admin.web.app. App: Overview, Stations and Workers are
-tabs; the rest are under More.
+- **Overview**, **Stations** (now with standing), **Permits**, **Workers** —
+  as before. Opening a station also offers **Pair with a mentor** *(new)*.
+- **Notices** *(new)* — send to all stations or one; see who read and
+  acknowledged.
+- **Cases** *(new)* — a written record per issue: what happened, evidence,
+  decision, status; the station is notified and can respond.
+- **Reports** *(new)* — customer reports with who filed them, the photo, the
+  station's response; set status with a note to the customer; open a case
+  from a report. Badge counts new reports.
+- **Orders** — customer name and phone are **hidden unless a report about
+  that order is on file** *(changed)*.
+- **Clearinghouse** — disputed settlements first, with **Decide the
+  dispute** *(new)*.
+- **Events** — shows how many are going, and who *(new)*.
+- **Website** — now includes the Safe Drinking Water articles *(new)*.
+- **Bulletin**, **Reviews**, **Resources**, **Users**, **Activity** — as
+  before. Officers can't suspend another officer.
+- An officer who owns, staffs or drives for a station can't review that
+  station's permits, accreditation or incidents.
 
-- **Overview** — queues needing attention (each tile opens the right tab),
-  accreditation and permit analytics, items awaiting review.
-- **Stations** — every station, list or map, open/close a station, export.
-- **Permits** — the review queue; open a station to approve or reject each
-  permit, set expiry, mark a permit required, certify a station manually.
-- **Workers** — All workers (open anyone's record: **lift a flag**, confirm
-  or dismiss an incident, view/approve/reject credentials), Incidents,
-  Credentials (approve in bulk), Appeals (accept or reject).
-- **Orders** *(new)* — every order in the association: search by customer,
-  phone, station or order number; filter by status and date; open one for
-  full details; cancel it while it has not gone out; export.
-- **Clearinghouse** *(new)* — every jug balance between stations and every
-  settlement; **reject** a disputed settlement (confirming stays with the
-  station owed).
-- **Bulletin** — posts (pin, edit, delete, hide), reported posts, floor
-  prices, containers (jug sizes).
-- **Reviews** *(new)* — every review with station and reviewer; filter by
-  rating; **remove** an abusive or false review.
-- **Events** — create, edit, delete; shown on the website and in the app's
-  About WASA hub.
-- **Resources** — upload and delete documents for stations.
-- **Website** — edit every page section, FAQ and permit name, with history
-  and restore.
-- **Users** — every account: customers, drivers, owners and officers
-  *(customers and officers are new)*; search by name, phone or station;
-  suspend or reactivate (not yourself); account deletion requests; export.
-- **Activity** — the audit log of who changed what; export.
+### WASA super admin *(new role)* — admin portal
+
+Everything an officer has, plus:
+
+- **Officers** — promote an account to officer or super admin by email,
+  demote, suspend. The last super admin can't be removed.
+- **Settings** — grace period before a station lapses (30 days) and invite
+  code validity (7 days).
+- **Transfer ownership** of a station (on the station's page) — orders,
+  permits and jug balances stay with the station.
+
+## Test cases for the new features
+
+| # | Sign in as | Steps | Expected |
+|---|---|---|---|
+| N1 | owner1 | Orders → New order → Walk-in, 3 × a product → Record sale | Order appears under Done as "Walk-in", paid, no delivery fee |
+| N2 | owner1 | Orders → New order → Phone order, no phone number → Add order | Refused: "Enter the caller's phone number" |
+| N3 | owner1 | New order → Phone order → Deliver to the customer → pin → Add order | Order in New orders with the delivery fee; assign driver3 |
+| N4 | staff1 | Orders → New order → Phone order with a number | Order added at Buenavista |
+| N5 | staff1 | Look for Products, Permit vault or Costs | Not offered |
+| N6 | customer1 | Orders → a delivered order → Report a problem to WASA → Cloudy + photo → Send | "Report sent"; officers get a notification |
+| N7 | admin | Reports | The report from N6 with Liza Fernandez's name, the photo, "Needs attention" |
+| N8 | admin | Orders → find the order from N6 | Customer name shown; every other order shows "Hidden -- no complaint on file" |
+| N9 | owner2 | Reviews → Reports to WASA | The report, without the customer's name; Respond in writing works |
+| N10 | admin | Reports → open N6 → Resolved with a note, tick "open a compliance case" | customer1 notified with the note; a case appears in Cases |
+| N11 | visitor | Website → Stations | Only accredited stations; switching off "Accredited only" shows Tejero |
+| N12 | visitor | Website → a station's page | Association record: standing, last water test, sanitary permit, member since, New member |
+| N13 | visitor | Verify → type "Tejero" | "Listed with WASA, not accredited" with its standing |
+| N14 | visitor | Verify → type "Nonexistent" | "This station is not listed with GenTri WASA", neutral colours |
+| N15 | visitor | Footer → Safe drinking water | Four articles |
+| N16 | admin | Website → Safe Drinking Water → edit an article | Change shows on the website page |
+| N17 | admin | Stations → Tejero → Pair with a mentor → Buenavista | Both owners notified; owner1 and owner3 see the Mentoring card |
+| N18 | owner3 | Try to change mentor (no control offered) | Only officers can pair |
+| N19 | owner1 | Costs → enter rent, power, refills → Save | Cost per refill and margin per product; saved |
+| N20 | admin | Look for any station's costs | Not available anywhere |
+| N21 | owner1 | Clearinghouse → a settlement → Dispute with WASA | "Disputed -- with WASA"; officers notified |
+| N22 | admin | Clearinghouse → the dispute → Decide | Both owners notified with the decision |
+| N23 | owner1 | Board → New post | Posting rules shown; Post refused until ticked |
+| N24 | owner1 | Website → Events → I'll attend | Count goes up; admin → Events → see who lists Juan Dela Cruz |
+| N25 | owner1 | Profile → station QR code → Save as image (website) | PNG downloads; scanning it opens the station's page |
+| N26 | customer1 | Home | "My station: Navarro Springs" with Order again |
+| N27 | customer1 | Orders | Each order shows its steps and times |
+| N28 | customer1 | Account → switch off Order updates; owner2 assigns/delivers an order | No order notification arrives; switch back on and they do |
+| N29 | any role | First sign-in on a device | Three-page welcome tour; Account → Help → "Show the welcome tour again" replays it |
+| N30 | owner3 | Permit vault | "0 of N done" progress bar and a description under each permit |
+| N31 | superadmin1 | Officers → promote customer2 to officer | customer2 can sign in to the admin portal |
+| N32 | admin | Users → try to suspend admin2 | No Suspend button; only a super admin can |
+| N33 | superadmin1 | Settings → grace period 30 → 15 | Saved; plain officers have no Settings |
+| N34 | staff1 | App sign-up with an expired staff code | Refused; owner1 renews the code in Team |
+
+Reset the data you changed afterwards if another tester needs the same
+starting point (re-running the seed scripts restores the accounts but not
+orders or reports).
