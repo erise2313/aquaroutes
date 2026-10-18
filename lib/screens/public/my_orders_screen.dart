@@ -6,6 +6,7 @@ import '../../models/order.dart';
 import '../../models/order_status_look.dart';
 import '../../services/order_service.dart';
 import '../../services/review_service.dart';
+import '../../widgets/order_step_tracker.dart';
 import '../../widgets/report_problem_dialog.dart';
 import '../../services/supabase_service.dart';
 import '../../utils/formatters.dart';
@@ -69,7 +70,9 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
           // `water_stations(...)` became ambiguous and PostgREST refused it
           // outright ("more than one relationship was found"), breaking this
           // screen entirely. The constraint name survives a column rename.
-          .select('id, station_id, status, jugs_ordered, water_type, jug_type, product_kind, product_id, unit_price, total_amount, created_at, water_stations!orders_station_id_fkey(station_name)')
+          .select('id, station_id, status, jugs_ordered, water_type, jug_type, product_kind, product_id, unit_price, total_amount, created_at, '
+              'assigned_at, out_for_delivery_at, delivered_at, cancelled_at, failure_reason, failed_at, '
+              'water_stations!orders_station_id_fkey(station_name)')
           .eq('customer_profile_id', userId)
           .order('created_at', ascending: false);
       if (mounted) {
@@ -196,6 +199,8 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
             'Placed ${DateFormat('MMM d, yyyy h:mm a').format(createdAt)}',
             style: theme.textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
           ),
+          const SizedBox(height: 8),
+          OrderStepTracker(order: order),
           if (OrderStatusLook.isTrackable(status)) ...[
             const SizedBox(height: 8),
             Row(

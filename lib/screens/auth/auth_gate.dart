@@ -18,6 +18,7 @@ import 'account_suspended_screen.dart';
 import 'login_screen.dart';
 import 'no_membership_screen.dart';
 import '../../constants/portal_build.dart';
+import '../help/first_run_tour.dart';
 import '../staff/staff_navigation.dart';
 
 /// Root routing widget. Restores an existing session on relaunch (the old
@@ -76,24 +77,26 @@ class AuthGate extends ConsumerWidget {
             if (kIsWeb && !kIsAdminPortalBuild && membership.role.isOfficer) {
               return const _UseAdminPortalScreen();
             }
+            // Each role's home shows its welcome tour once (help/first_run_tour.dart).
+            Widget withTour(Widget home) => FirstRunTourGate(role: membership.role, child: home);
             switch (membership.role) {
               case AppRole.wasaAdmin:
               case AppRole.wasaSuperadmin:
-                return const AdminNavigation();
+                return withTour(const AdminNavigation());
               case AppRole.stationStaff:
                 // Website and app alike: dispatch is done at a counter as
                 // often as on a phone.
-                return const StaffNavigation();
+                return withTour(const StaffNavigation());
               case AppRole.stationOwner:
-                return const MerchantNavigation();
+                return withTour(const MerchantNavigation());
               case AppRole.driver:
-                return kIsWeb ? const MobileOnlyScreen() : const DriverDashboardScreen();
+                return kIsWeb ? const MobileOnlyScreen() : withTour(const DriverDashboardScreen());
               case AppRole.publicConsumer:
                 // A registered customer account -- on mobile, Public Home is
                 // auth-aware (shows Account instead of Login/Register) once
                 // it detects a session, see public_home_screen.dart. On web,
                 // ordering isn't offered at all -- mobile-app-only.
-                return kIsWeb ? const MobileOnlyScreen() : const PublicHomeScreen();
+                return kIsWeb ? const MobileOnlyScreen() : withTour(const PublicHomeScreen());
             }
           },
         );

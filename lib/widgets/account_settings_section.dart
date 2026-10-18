@@ -11,6 +11,29 @@ import '../services/supabase_service.dart';
 import 'change_password_dialog.dart';
 import '../utils/error_text.dart';
 import '../providers/text_size_provider.dart';
+import '../models/membership.dart';
+import '../screens/help/help_screen.dart';
+
+/// The notification kinds a role receives that it may switch off
+/// (notification_preferences, patch_help_settings.sql). Account and
+/// accreditation notices -- official and security -- are never mutable, so
+/// they aren't offered. Pure, so it is unit-tested.
+Map<String, String> mutableNotificationCategoriesFor(AppRole? role) => switch (role) {
+      AppRole.publicConsumer => const {'order': 'Order updates', 'bulletin': 'Association news'},
+      AppRole.stationOwner || AppRole.stationStaff => const {
+          'order': 'New and changed orders',
+          'permit': 'Permit reviews',
+          'worker': 'Driver clearance',
+          'bulletin': 'Board posts',
+        },
+      AppRole.driver => const {'order': 'Delivery assignments', 'worker': 'Clearance updates', 'bulletin': 'Board posts'},
+      AppRole.wasaAdmin || AppRole.wasaSuperadmin => const {
+          'permit': 'Permits submitted',
+          'worker': 'Worker queue',
+          'bulletin': 'Board posts',
+        },
+      null => const {},
+    };
 
 /// "Account" block shared by every signed-in surface: change password, and
 /// either delete the account (customers) or request its deletion (station
@@ -32,11 +55,39 @@ class _AccountSettingsSectionState extends ConsumerState<AccountSettingsSection>
   final _service = AccountService(SupabaseService.instance);
   AccountDeletionRequest? _pending;
   bool _busy = false;
+  Set<String> _muted = {};
 
   @override
   void initState() {
     super.initState();
     _loadPending();
+    _loadMuted();
+  }
+
+  Future<void> _loadMuted() async {
+    final userId = Supabase.instance.client.auth.currentUser?.id;
+    if (userId == null) return;
+    try {
+      final rows = await Supabase.instance.client.from('notification_preferences').select('category, muted').eq('profile_id', userId);
+      if (mounted) setState(() => _muted = {for (final r in rows) if (r['muted'] == true) r['category'] as String});
+    } catch (_) {
+      // The switches show everything on; changing one still saves.
+    }
+  }
+
+  Future<void> _setMuted(String category, bool muted) async {
+    setState(() => muted ? _muted.add(category) : _muted.remove(category));
+    try {
+      await Supabase.instance.client.from('notification_preferences').upsert({
+        'profile_id': Supabase.instance.client.auth.currentUser!.id,
+        'category': category,
+        'muted': muted,
+        'updated_at': DateTime.now().toUtc().toIso8601String(),
+      });
+    } catch (e) {
+      if (mounted) setState(() => muted ? _muted.remove(category) : _muted.add(category));
+      _snack('Could not save. ${describeError(e)}');
+    }
   }
 
   Future<void> _loadPending() async {
@@ -183,6 +234,32 @@ class _AccountSettingsSectionState extends ConsumerState<AccountSettingsSection>
             ],
           ),
         ),
+        if (mutableNotificationCategoriesFor(role).isNotEmpty) ...[
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+            child: Text('NOTIFICATIONS', style: heading),
+          ),
+          for (final entry in mutableNotificationCategoriesFor(role).entries)
+            SwitchListTile(
+              value: !_muted.contains(entry.key),
+              onChanged: (on) => _setMuted(entry.key, !on),
+              title: Text(entry.value, style: TextStyle(color: text)),
+            ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            child: Text('Official WASA notices and account messages always come through.', style: TextStyle(color: muted, fontSize: 16)),
+          ),
+        ],
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+          child: Text('HELP', style: heading),
+        ),
+        if (role != null)
+          ListTile(
+            leading: Icon(Icons.help_outline, color: text),
+            title: Text('Help and the welcome tour', style: TextStyle(color: text)),
+            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => HelpScreen(role: role))),
+          ),
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
           child: Text('ACCOUNT', style: heading),
