@@ -4482,3 +4482,357 @@ end;
 $$ language plpgsql security definer set search_path = public;
 
 grant execute on function restore_web_content_revision(bigint) to authenticated;
+
+-- ---------------------------------------------------------------------
+-- supabase/patch_advisor_hardening.sql
+-- ---------------------------------------------------------------------
+-- =====================================================================
+-- Hardening from Supabase's security advisor, 17 October 2026.
+--
+-- Idempotent -- safe to run more than once. Run after every earlier patch.
+--
+-- 1. Jug balances were readable by anyone holding the publishable key.
+--
+--    jug_balances is a view over jug_ledger_entries. Views run with their
+--    creator's rights by default, which skips the ledger's RLS -- so
+--    `select * from jug_balances` with the key that ships in every APK and
+--    web build returned every station's balances with every other station,
+--    signed in or not. The ledger's own policies already say who should see
+--    what (an owner: rows their station is part of; officers: everything),
+--    so the view now runs with the caller's rights and those policies apply.
+--    The clearinghouse screen already filters to the owner's station, so it
+--    sees exactly what it did before. Drivers never read this view.
+--
+--    bulletin_reaction_counts gets the same switch. Reactions are publicly
+--    readable anyway, so nothing changes for anyone; it just stops being an
+--    exception to RLS.
+--
+--    public_stations deliberately stays as it is: it is the public
+--    directory -- a fixed set of columns from accredited, active stations --
+--    and water_stations' RLS rightly hides those rows from visitors.
+--
+-- 2. Seven functions did not pin search_path.
+--
+--    Without it a function resolves table and function names through the
+--    caller's search_path, which a caller can change. Pinned to public,
+--    matching every security definer function in this project.
+--
+-- 3. sync_station_from_products() could be called by anyone.
+--
+--    It recomputes a station's prices and water types from its products,
+--    and is meant to run only from the two triggers that call it (both
+--    security definer, so they keep the right to). Called directly it
+--    did no harm beyond needless work, but it has no reason to be public.
+-- =====================================================================
+
+-- 1.
+alter view jug_balances set (security_invoker = true);
+alter view bulletin_reaction_counts set (security_invoker = true);
+
+-- 2.
+alter function get_pending_orders(uuid) set search_path = public;
+alter function get_active_orders(uuid) set search_path = public;
+alter function generate_worker_code() set search_path = public;
+alter function peso_text(numeric) set search_path = public;
+alter function stamp_accredited_at() set search_path = public;
+alter function stamp_accredited_at_insert() set search_path = public;
+alter function station_products_touch_updated_at() set search_path = public;
+
+-- 3.
+revoke execute on function sync_station_from_products(uuid) from public, anon, authenticated;
+
+-- ---------------------------------------------------------------------
+-- supabase/patch_failed_delivery_fix.sql
+-- ---------------------------------------------------------------------
+-- =====================================================================
+-- Fix: a driver's "Couldn't deliver" always failed.
+--
+-- driver_report_failed_delivery() (patch_overhaul_gaps.sql) puts the order
+-- back in the station's queue by clearing driver_worker_id. The older
+-- protect_order_financial_fields trigger (patch_audit_remediation.sql)
+-- refuses any change to driver_worker_id unless the signed-in user is an
+-- owner or an officer -- and it looks at who is signed in, not at which
+-- function is doing the update, so it refused the driver's own report:
+--
+--   "Drivers may not modify order financial, product, station, or
+--    assignment details."
+--
+-- Found by running the test case GTW-APP-314 against the live database on
+-- 17 October 2026. Starting and completing a delivery were unaffected:
+-- neither touches driver_worker_id.
+--
+-- The trigger still guards every direct write. It now also lets through an
+-- update that driver_report_failed_delivery() has vouched for, by setting
+-- a transaction-local flag around its one update. Clients can't set that
+-- flag: they reach the database only through PostgREST, which exposes the
+-- public schema's tables and functions, not set_config().
+--
+-- Idempotent -- safe to run more than once.
+-- =====================================================================
+
+create or replace function protect_order_financial_fields() returns trigger as $$
+begin
+  -- An update a trusted function has already checked (see above).
+  if current_setting('gentri.trusted_order_change', true) = 'on' then
+    return new;
+  end if;
+
+  if not (auth_has_role('station_owner') or auth_has_role('wasa_admin')) then
+    if new.subtotal is distinct from old.subtotal
+       or new.delivery_fee is distinct from old.delivery_fee
+       or new.total_amount is distinct from old.total_amount
+       or new.jugs_ordered is distinct from old.jugs_ordered
+       or new.station_id is distinct from old.station_id
+       or new.driver_worker_id is distinct from old.driver_worker_id
+       or new.unit_price is distinct from old.unit_price
+       or new.product_id is distinct from old.product_id
+       or new.product_kind is distinct from old.product_kind
+       or new.water_type is distinct from old.water_type
+       or new.jug_type is distinct from old.jug_type then
+      raise exception 'Drivers may not modify order financial, product, station, or assignment details.';
+    end if;
+  end if;
+  return new;
+end;
+$$ language plpgsql security definer set search_path = public;
+
+create or replace function driver_report_failed_delivery(p_order_id uuid, p_reason text) returns void as $$
+declare
+  o orders%rowtype;
+  v_worker_id uuid;
+begin
+  if p_reason is null or length(trim(p_reason)) = 0 then
+    raise exception 'Say why the delivery could not be completed.';
+  end if;
+
+  select id into v_worker_id from workers where profile_id = auth.uid();
+  select * into o from orders where id = p_order_id for update;
+  if not found then
+    raise exception 'Order not found.';
+  end if;
+  if v_worker_id is null or o.driver_worker_id is distinct from v_worker_id then
+    raise exception 'Only the assigned driver can report this delivery.';
+  end if;
+  if o.status not in ('assigned', 'active') then
+    raise exception 'This order is not out for delivery.';
+  end if;
+
+  -- Checked above, so vouch for this one update to
+  -- protect_order_financial_fields, then withdraw it.
+  perform set_config('gentri.trusted_order_change', 'on', true);
+  update orders
+     set status = 'pending',
+         driver_worker_id = null,
+         failure_reason = trim(p_reason),
+         failed_at = now()
+   where id = p_order_id;
+  perform set_config('gentri.trusted_order_change', 'off', true);
+end;
+$$ language plpgsql security definer set search_path = public;
+
+grant execute on function driver_report_failed_delivery(uuid, text) to authenticated;
+
+-- ---------------------------------------------------------------------
+-- supabase/patch_signed_in_ordering.sql
+-- ---------------------------------------------------------------------
+-- =====================================================================
+-- Ordering requires a signed-in customer account -- on the server too.
+--
+-- The app stopped offering guest checkout some time ago: the order form
+-- shows a sign-in gate to visitors (quick_order_screen.dart), so every order
+-- is tied to a real account. The server never followed. insert_quick_order
+-- still accepted calls from signed-out visitors, holding nothing but the
+-- publishable key that ships in every APK and web build, and stored them as
+-- guest orders -- so anyone could skip the app and send stations orders that
+-- no account stood behind.
+--
+-- This patch:
+--
+--   1. insert_quick_order refuses anyone who isn't a signed-in, active
+--      customer, and records the order against that account. p_guest_name
+--      and p_guest_phone keep their places in the signature so the app
+--      doesn't break mid-update; p_guest_phone now only carries the contact
+--      number for the delivery (orders.customer_phone), as it already did
+--      for signed-in orders.
+--
+--   2. The guest-tracking path goes. A guest could look an order up, follow
+--      its driver on the map and cancel it with the order ID and checkout
+--      phone number. With no new guest orders that path only served three
+--      old, closed orders (the last placed 11 September 2026), so:
+--        - get_active_delivery_driver answers only the customer who placed
+--          the order;
+--        - lookup_guest_order is no longer callable from the app;
+--        - signed-out visitors can no longer call set_order_status, whose
+--          guest-cancel branch they were the only route into.
+--
+-- The old guest orders stay in the database, unchanged, for the record.
+--
+-- Idempotent -- safe to run more than once.
+-- =====================================================================
+
+-- 1.
+create or replace function insert_quick_order(
+  p_station_id uuid,
+  p_lat double precision,
+  p_lng double precision,
+  p_jugs_ordered integer,
+  p_water_type text,
+  p_subtotal numeric,
+  p_delivery_fee numeric,
+  p_total_amount numeric,
+  p_guest_name text default null,
+  p_guest_phone text default null,
+  p_client_request_id text default null,
+  p_scheduled_for timestamptz default null,
+  p_jug_type text default null,
+  p_jug_exchange_origin_station_id uuid default null,
+  p_product_id uuid default null
+) returns uuid as $$
+declare
+  new_order_id uuid;
+  s water_stations%rowtype;
+  p station_products%rowtype;
+  c container_types%rowtype;
+  v_origin uuid;
+  v_subtotal numeric(10,2);
+  v_matches integer;
+  v_max_qty constant integer := 50;
+begin
+  if auth.uid() is null then
+    raise exception 'Sign in to place an order.';
+  end if;
+  if not auth_has_role('public_consumer') then
+    raise exception 'Only customer accounts can place orders.';
+  end if;
+
+  if p_client_request_id is not null then
+    -- A retried submit returns the order it already created -- but only
+    -- the caller's own, so a request id can't fish out someone else's.
+    select id into new_order_id from orders
+     where client_request_id = p_client_request_id and customer_profile_id = auth.uid();
+    if new_order_id is not null then
+      return new_order_id;
+    end if;
+  end if;
+
+  select * into s from water_stations where id = p_station_id;
+  if not found or not s.is_active or not s.is_colorum_verified then
+    raise exception 'This station is not available for ordering.';
+  end if;
+  if not coalesce(s.accepts_new_orders, true) then
+    raise exception 'This station is not currently accepting orders.';
+  end if;
+  if p_jugs_ordered is null or p_jugs_ordered < 1 or p_jugs_ordered > v_max_qty then
+    raise exception 'Please order a quantity between 1 and %.', v_max_qty;
+  end if;
+  if not exists (select 1 from station_products where station_id = p_station_id and is_available) then
+    raise exception 'This station has not listed any products yet.';
+  end if;
+
+  if p_product_id is not null then
+    select * into p from station_products where id = p_product_id and station_id = p_station_id;
+    if not found then
+      raise exception 'That product is not sold by this station.';
+    end if;
+  else
+    if p_jug_type is not null then
+      select * into p from station_products
+        where station_id = p_station_id and water_type = p_water_type
+          and container_code = p_jug_type and kind = 'refill';
+    else
+      select count(*) into v_matches from station_products
+        where station_id = p_station_id and water_type = p_water_type
+          and kind = 'refill' and is_available;
+      if v_matches > 1 then
+        raise exception 'Please choose a container.';
+      elsif v_matches = 1 then
+        select * into p from station_products
+          where station_id = p_station_id and water_type = p_water_type
+            and kind = 'refill' and is_available;
+      end if;
+    end if;
+    if p.id is null then
+      raise exception 'This station does not offer % water in that container.', coalesce(p_water_type, 'that');
+    end if;
+  end if;
+
+  if not p.is_available then
+    raise exception 'That product is currently unavailable.';
+  end if;
+  select * into c from container_types where code = p.container_code;
+  if not found or not c.is_active then
+    raise exception 'That container is no longer offered.';
+  end if;
+
+  v_subtotal := p_jugs_ordered * p.price;
+
+  v_origin := case
+    when p_jug_exchange_origin_station_id is not null
+      and p_jug_exchange_origin_station_id <> p_station_id
+      and coalesce(s.offers_jug_exchange, false)
+      and p.kind = 'refill' and c.is_returnable
+    then p_jug_exchange_origin_station_id
+    else null
+  end;
+
+  insert into orders (
+    station_id, customer_profile_id, guest_name, guest_phone,
+    delivery_location, jugs_ordered, water_type, jug_type,
+    subtotal, delivery_fee, total_amount, customer_phone, client_request_id, scheduled_for,
+    jug_exchange_origin_station_id, product_id, unit_price, product_kind
+  ) values (
+    p_station_id, auth.uid(), null, null,
+    st_setsrid(st_makepoint(p_lng, p_lat), 4326)::geography,
+    p_jugs_ordered, p.water_type, p.container_code,
+    v_subtotal, s.delivery_fee, v_subtotal + s.delivery_fee,
+    p_guest_phone, p_client_request_id, p_scheduled_for,
+    v_origin, p.id, p.price, p.kind
+  ) returning id into new_order_id;
+
+  return new_order_id;
+end;
+$$ language plpgsql security definer set search_path = public;
+
+-- 2.
+create or replace function get_active_delivery_driver(p_order_id uuid, p_guest_phone text default null)
+returns table(driver_name text, driver_phone text, lat double precision, lng double precision, last_updated timestamptz)
+as $$
+declare
+  v_order orders%rowtype;
+begin
+  -- p_guest_phone is ignored; it stays in the signature for older builds.
+  select * into v_order from orders where id = p_order_id;
+
+  if v_order.id is null then
+    raise exception 'Order not found.';
+  end if;
+
+  if auth.uid() is null or v_order.customer_profile_id is distinct from auth.uid() then
+    raise exception 'Not authorized to view this order.';
+  end if;
+
+  if v_order.status not in ('assigned', 'active') then
+    return;
+  end if;
+
+  return query
+    select w.full_name, w.phone_number,
+           st_y(ds.current_location::geometry) as lat,
+           st_x(ds.current_location::geometry) as lng,
+           ds.last_updated
+    from workers w
+    left join driver_states ds on ds.worker_id = w.id
+    where w.id = v_order.driver_worker_id;
+end;
+$$ language plpgsql security definer set search_path = public;
+
+revoke execute on function insert_quick_order(uuid, double precision, double precision, integer, text, numeric, numeric, numeric, text, text, text, timestamptz, text, uuid, uuid) from public, anon;
+grant execute on function insert_quick_order(uuid, double precision, double precision, integer, text, numeric, numeric, numeric, text, text, text, timestamptz, text, uuid, uuid) to authenticated;
+
+revoke execute on function get_active_delivery_driver(uuid, text) from public, anon;
+grant execute on function get_active_delivery_driver(uuid, text) to authenticated;
+
+revoke execute on function set_order_status(uuid, order_status, uuid, text, integer, boolean, uuid, boolean) from public, anon;
+grant execute on function set_order_status(uuid, order_status, uuid, text, integer, boolean, uuid, boolean) to authenticated;
+
+revoke execute on function lookup_guest_order(uuid, text) from public, anon, authenticated;

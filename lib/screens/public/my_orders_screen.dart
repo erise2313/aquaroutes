@@ -20,9 +20,9 @@ import '../../utils/error_text.dart';
 /// Authenticated customer's persistent order history -- the real fix for
 /// "order tracking is device-local only": orders.customer_profile_id +
 /// orders_customer_read RLS (0009_rls.sql) already scope this correctly,
-/// this screen just reads it. Unlike TrackOrderScreen (phone-verified guest
-/// lookup, one order at a time), this is a full list, always available
-/// across devices since it's tied to the account, not local storage.
+/// this screen just reads it. It is the one place a customer follows their
+/// orders -- always available across devices since it's tied to the
+/// account, not local storage.
 class MyOrdersScreen extends StatefulWidget {
   const MyOrdersScreen({super.key, this.showAppBar = true});
 

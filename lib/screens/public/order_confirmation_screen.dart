@@ -1,51 +1,31 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../utils/formatters.dart';
 import '../auth/auth_gate.dart';
 import '../app_route.dart';
 import 'package:aquaroute/constants/brand_tokens.dart';
 
-/// Post-submit confirmation for a guest quick-order. Persists the order id
-/// + phone locally (SharedPreferences) so TrackOrderScreen can offer "use my
-/// last order" without requiring the guest to remember/retype anything --
-/// there's still no account/session, so this is only a same-device
-/// convenience, not a durable order history.
-class OrderConfirmationScreen extends StatefulWidget {
+/// Shown once a customer's order is placed.
+///
+/// It used to ask the customer to save the full order ID and stored it on
+/// the device, because a guest order could only be followed by typing that
+/// ID back in. Orders now always belong to an account, so the order is in
+/// the customer's Orders tab on any device and there is nothing to save.
+class OrderConfirmationScreen extends StatelessWidget {
   const OrderConfirmationScreen({
     super.key,
     required this.orderId,
     required this.stationName,
     required this.totalAmount,
-    required this.guestPhone,
   });
 
   final String orderId;
   final String stationName;
   final double totalAmount;
-  final String guestPhone;
-
-  @override
-  State<OrderConfirmationScreen> createState() => _OrderConfirmationScreenState();
-}
-
-class _OrderConfirmationScreenState extends State<OrderConfirmationScreen> {
-  @override
-  void initState() {
-    super.initState();
-    _persistLastOrder();
-  }
-
-  Future<void> _persistLastOrder() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('last_guest_order_id', widget.orderId);
-    await prefs.setString('last_guest_order_phone', widget.guestPhone);
-  }
 
   @override
   Widget build(BuildContext context) {
-    final shortId = widget.orderId.substring(0, 6).toUpperCase();
+    final shortId = orderId.substring(0, 6).toUpperCase();
 
     return Scaffold(
       appBar: AppBar(title: const Text('Order Confirmed')),
@@ -59,29 +39,14 @@ class _OrderConfirmationScreenState extends State<OrderConfirmationScreen> {
               const SizedBox(height: 16),
               Text('Order #$shortId placed!', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),
-              Text('${widget.stationName} has received your order.', textAlign: TextAlign.center),
+              Text('$stationName has received your order.', textAlign: TextAlign.center),
               const SizedBox(height: 8),
-              Text('Total due on delivery: ${formatPeso(widget.totalAmount)}', style: const TextStyle(fontWeight: FontWeight.bold)),
+              Text('Total due on delivery: ${formatPeso(totalAmount)}', style: const TextStyle(fontWeight: FontWeight.bold)),
               const SizedBox(height: 20),
-              // The short code above is just a friendly label -- Track My
-              // Order needs this full ID. Without it displayed somewhere,
-              // a guest who loses this screen (different device, cleared
-              // app data) has no way to ever look their order up again.
-              Text('Save this Order ID to track your order later:', style: TextStyle(fontSize: 14, color: Theme.of(context).colorScheme.onSurfaceVariant)),
-              const SizedBox(height: 4),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Flexible(child: SelectableText(widget.orderId, style: const TextStyle(fontSize: 13, fontFamily: 'monospace'))),
-                  IconButton(
-                    icon: const Icon(Icons.copy, size: 18),
-                    tooltip: 'Copy Order ID',
-                    onPressed: () {
-                      Clipboard.setData(ClipboardData(text: widget.orderId));
-                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Order ID copied to clipboard.')));
-                    },
-                  ),
-                ],
+              Text(
+                'Follow it any time in the Orders tab -- you\'ll also get a notification when a driver is on the way.',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 14, color: Theme.of(context).colorScheme.onSurfaceVariant),
               ),
               const SizedBox(height: 24),
               ElevatedButton(

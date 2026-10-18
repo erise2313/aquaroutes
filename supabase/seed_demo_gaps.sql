@@ -28,6 +28,7 @@ declare
   v_station1  uuid;
   v_station2  uuid;
   v_owner1    uuid;
+  v_owner2    uuid;
   v_customer  uuid;
   v_admin     uuid;
   v_worker    uuid;
@@ -37,7 +38,7 @@ begin
   -- really have placed.
   select id, owner_profile_id into v_station1, v_owner1
     from water_stations order by is_accredited desc, created_at limit 1;
-  select id into v_station2
+  select id, owner_profile_id into v_station2, v_owner2
     from water_stations where id <> v_station1 order by is_accredited desc, created_at limit 1;
   select profile_id into v_customer from memberships
     where role = 'public_consumer' and status = 'active' order by created_at limit 1;
@@ -73,10 +74,19 @@ begin
       (v_station2, v_station1, 'slim_5gal', 9, v_owner1, now() - interval '9 days');
   end if;
 
+  -- Proposed by the station holding the jugs, as the app requires
+  -- (jug_settlements_propose), so it waits for the owed station to confirm.
+  -- An earlier version of this script named the owed station's owner as
+  -- the proposer, which the app could never produce.
   if not exists (select 1 from jug_settlements where status = 'proposed') then
     insert into jug_settlements (holder_station_id, owner_station_id, jug_type, quantity, status, proposed_by, created_at)
-    values (v_station2, v_station1, 'slim_5gal', 5, 'proposed', v_owner1, now() - interval '1 day');
+    values (v_station2, v_station1, 'slim_5gal', 5, 'proposed', coalesce(v_owner2, v_owner1), now() - interval '1 day');
   end if;
+  update jug_settlements s
+     set proposed_by = w.owner_profile_id
+    from water_stations w
+   where s.status = 'proposed' and w.id = s.holder_station_id
+     and w.owner_profile_id is not null and s.proposed_by is distinct from w.owner_profile_id;
 
   -- A flagged driver: file an incident and confirm it. The confirm sets the
   -- worker's clearance to flagged through apply_incident_resolution.

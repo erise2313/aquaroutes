@@ -34,7 +34,7 @@ class PrivacyPolicyScreen extends StatelessWidget {
 
   /// Last substantive revision. Play expects a policy that is evidently
   /// maintained, and reviewers do look at whether this moves.
-  static const lastUpdated = '19 September 2026';
+  static const lastUpdated = '18 October 2026';
 
   void _openContact(BuildContext context) {
     if (GoRouter.maybeOf(context) != null) {
@@ -98,7 +98,7 @@ class PrivacyPolicyScreen extends StatelessWidget {
                       const _Bullets([
                         'Delivery addresses you save: a label you choose, its map coordinates, and any delivery notes you add.',
                         'Each order: what you ordered, the quantity and price, the payment method, the delivery location, and a contact number for that delivery.',
-                        'If you order as a guest without an account, we still store the name and phone number you give so the station can complete the delivery.',
+                        'Ordering needs an account. Orders placed as a guest before that keep the name and phone number given at the time, as part of the delivery record.',
                       ]),
                       const _Sub('Location'),
                       const _Bullets([

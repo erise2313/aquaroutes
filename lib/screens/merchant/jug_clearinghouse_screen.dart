@@ -210,8 +210,8 @@ class _JugClearinghouseScreenState extends State<JugClearinghouseScreen> {
     );
   }
 
+  /// Offered only to the holding station (see _buildBalanceCard).
   Future<void> _proposeSettlement(JugBalance balance) async {
-    final isHolder = balance.holderStationId == _stationId;
     try {
       await _jugService.proposeSettlement(
         holderStationId: balance.holderStationId,
@@ -222,7 +222,7 @@ class _JugClearinghouseScreenState extends State<JugClearinghouseScreen> {
       );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(isHolder ? 'Settlement proposed to the owning station.' : 'Settlement proposed.')),
+          const SnackBar(content: Text('Settlement proposed to the owning station.')),
         );
       }
       _load();
@@ -374,13 +374,17 @@ class _JugClearinghouseScreenState extends State<JugClearinghouseScreen> {
                   : '$otherStationName is holding these jugs, owed to you',
               style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
             ),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: TextButton(
-                onPressed: () => _proposeSettlement(balance),
-                child: const Text('Propose settlement'),
+            // Only the station holding the jugs proposes -- it is the one
+            // returning them, and jug_settlements_propose refuses anyone
+            // else. The owed station confirms the proposal when it arrives.
+            if (isHolder)
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton(
+                  onPressed: () => _proposeSettlement(balance),
+                  child: const Text('Propose settlement'),
+                ),
               ),
-            ),
           ],
         ),
         children: entries.isEmpty

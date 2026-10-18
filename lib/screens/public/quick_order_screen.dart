@@ -29,7 +29,6 @@ import '../auth/login_screen.dart';
 import '../auth/registration_screen.dart';
 import 'addresses_screen.dart';
 import 'order_confirmation_screen.dart';
-import 'track_order_screen.dart';
 import '../app_route.dart';
 import '../../widgets/app_map_tiles.dart';
 import '../../utils/error_text.dart';
@@ -528,7 +527,7 @@ class _QuickOrderScreenState extends ConsumerState<QuickOrderScreen> {
         subtotal: preview.subtotal,
         deliveryFee: station.deliveryFee,
         totalAmount: preview.total,
-        guestPhone: _phoneController.text.trim(),
+        contactPhone: _phoneController.text.trim(),
         clientRequestId: _clientRequestId,
         scheduledFor: _scheduledFor,
         jugType: product.containerCode,
@@ -554,7 +553,6 @@ class _QuickOrderScreenState extends ConsumerState<QuickOrderScreen> {
               orderId: orderId,
               stationName: station.stationName,
               totalAmount: total,
-              guestPhone: _phoneController.text.trim(),
             ),
           ),
         );
@@ -1023,31 +1021,22 @@ class _OrderLoginGate extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Quick water order')),
-      body: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          PortalEmptyState(
-            icon: Icons.local_shipping_outlined,
-            title: 'Sign in to place an order',
-            message: 'Browsing the bulletin board and the station map never needs an account -- only ordering does.',
-            action: PortalActionRow(
-              children: [
-                FilledButton(
-                  onPressed: () => Navigator.push(context, appRoute(const LoginScreen())),
-                  child: const Text('Sign in'),
-                ),
-                OutlinedButton(
-                  onPressed: () => Navigator.push(context, appRoute(const RegistrationScreen())),
-                  child: const Text('Create account'),
-                ),
-              ],
+      body: PortalEmptyState(
+        icon: Icons.local_shipping_outlined,
+        title: 'Sign in to place an order',
+        message: 'Browsing the bulletin board and the station map never needs an account -- only ordering does.',
+        action: PortalActionRow(
+          children: [
+            FilledButton(
+              onPressed: () => Navigator.push(context, appRoute(const LoginScreen())),
+              child: const Text('Sign in'),
             ),
-          ),
-          TextButton(
-            onPressed: () => Navigator.push(context, appRoute(const TrackOrderScreen())),
-            child: const Text('Track a past guest order'),
-          ),
-        ],
+            OutlinedButton(
+              onPressed: () => Navigator.push(context, appRoute(const RegistrationScreen())),
+              child: const Text('Create account'),
+            ),
+          ],
+        ),
       ),
     );
   }

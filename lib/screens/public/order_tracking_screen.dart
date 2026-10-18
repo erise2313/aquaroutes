@@ -15,29 +15,25 @@ import '../../widgets/error_state.dart';
 import '../../widgets/portal/portal.dart';
 import '../../utils/error_text.dart';
 
-/// Per-order detail screen with a live driver map, shared by logged-in
-/// customers (my_orders_screen.dart, guestPhone omitted) and guests
-/// (track_order_screen.dart, guestPhone required) -- both authorize
-/// identically via get_active_delivery_driver()'s own checks, not RLS
-/// (see supabase/patch_tier1_tier2_features.sql).
+/// Per-order detail screen with a live driver map, opened from the
+/// customer's order history (my_orders_screen.dart). Authorized by
+/// get_active_delivery_driver()'s own check -- only the customer who placed
+/// the order -- not RLS (see supabase/patch_signed_in_ordering.sql).
 ///
 /// Polls rather than subscribing to a Realtime channel: driver_states
 /// already updates on a 10m distance filter (location_service.dart), so an
-/// 8s poll is simple and works the same way for guest and authenticated
-/// callers instead of branching auth logic per flow.
+/// 8s poll is simple and enough.
 class OrderTrackingScreen extends StatefulWidget {
   const OrderTrackingScreen({
     super.key,
     required this.orderId,
     required this.stationName,
     required this.status,
-    this.guestPhone,
   });
 
   final String orderId;
   final String stationName;
   final OrderStatus status;
-  final String? guestPhone;
 
   @override
   State<OrderTrackingScreen> createState() => _OrderTrackingScreenState();
@@ -72,7 +68,7 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
 
   Future<void> _fetchDriver() async {
     try {
-      final driver = await _driverTrackingService.fetchActiveDriver(orderId: widget.orderId, guestPhone: widget.guestPhone);
+      final driver = await _driverTrackingService.fetchActiveDriver(orderId: widget.orderId);
       if (mounted) {
         setState(() {
           _driver = driver;

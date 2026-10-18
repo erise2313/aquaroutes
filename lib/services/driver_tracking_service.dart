@@ -28,9 +28,9 @@ class ActiveDeliveryDriver {
   }
 }
 
-/// Wraps get_active_delivery_driver(), a security-definer RPC (not RLS) so
-/// it authorizes both authenticated customers (auth.uid() match) and guests
-/// (phone match) identically -- see supabase/patch_tier1_tier2_features.sql.
+/// Wraps get_active_delivery_driver(), a security-definer RPC (not RLS) that
+/// answers only the customer who placed the order -- see
+/// supabase/patch_signed_in_ordering.sql.
 class DriverTrackingService {
   DriverTrackingService(this._supabase);
 
@@ -38,10 +38,9 @@ class DriverTrackingService {
 
   /// Returns null once the order is no longer assigned/active (RPC returns
   /// no rows), or before any driver_states fix has arrived (lat/lng null).
-  Future<ActiveDeliveryDriver?> fetchActiveDriver({required String orderId, String? guestPhone}) async {
+  Future<ActiveDeliveryDriver?> fetchActiveDriver({required String orderId}) async {
     final rows = await _supabase.client.rpc('get_active_delivery_driver', params: {
       'p_order_id': orderId,
-      'p_guest_phone': guestPhone,
     });
     final list = List<Map<String, dynamic>>.from(rows as List);
     if (list.isEmpty) return null;

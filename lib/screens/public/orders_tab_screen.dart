@@ -5,14 +5,17 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../providers/app_state.dart';
 import '../../widgets/portal/portal.dart';
 import '../auth/login_screen.dart';
+import '../auth/registration_screen.dart';
 import 'my_orders_screen.dart';
-import 'track_order_screen.dart';
 import '../app_route.dart';
 
-/// Front door for order tracking from the main bottom nav -- previously
-/// both MyOrdersScreen (logged-in) and TrackOrderScreen (guest) existed but
-/// were only reachable by digging into the Account menu, so this tab makes
-/// tracking a delivery a one-tap action regardless of login state.
+/// Front door for order tracking from the main bottom nav: the signed-in
+/// customer's order history, or a prompt to sign in.
+///
+/// Signed-out visitors used to get a "Track a guest order" lookup by order
+/// ID and phone number. Ordering has needed an account for some time, so
+/// that lookup only ever served old guest orders, and it was removed along
+/// with the server's guest paths (supabase/patch_signed_in_ordering.sql).
 class OrdersTabScreen extends ConsumerWidget {
   const OrdersTabScreen({super.key});
 
@@ -30,18 +33,17 @@ class OrdersTabScreen extends ConsumerWidget {
     return Scaffold(
       body: PortalEmptyState(
         icon: Icons.receipt_long_outlined,
-        title: 'Track a delivery',
-        message: 'Look up a guest order with its ID and phone number, or sign in to see your full order history.',
+        title: 'Your orders',
+        message: 'Sign in to order water and follow your deliveries.',
         action: PortalActionRow(
           children: [
-            FilledButton.icon(
-              onPressed: () => Navigator.push(context, appRoute(const TrackOrderScreen())),
-              icon: const Icon(Icons.search),
-              label: const Text('Track a guest order'),
-            ),
-            OutlinedButton(
+            FilledButton(
               onPressed: () => Navigator.push(context, appRoute(const LoginScreen())),
               child: const Text('Sign in'),
+            ),
+            OutlinedButton(
+              onPressed: () => Navigator.push(context, appRoute(const RegistrationScreen())),
+              child: const Text('Create account'),
             ),
           ],
         ),
