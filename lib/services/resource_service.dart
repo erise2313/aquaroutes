@@ -38,8 +38,10 @@ class ResourceService {
     });
   }
 
+  /// Moves it to the Trash (patch_trash.sql). The file stays in storage
+  /// until the Trash entry is removed for good, so a restore brings it back
+  /// whole; the admin Trash then clears the file.
   Future<void> deleteResource(Resource resource) async {
-    await _supabase.client.storage.from('resources').remove([resource.storagePath]);
     await _supabase.client.from('resources').delete().eq('id', resource.id);
   }
 }

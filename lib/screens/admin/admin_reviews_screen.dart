@@ -11,6 +11,7 @@ import '../../widgets/confirm_dialog.dart';
 import '../../widgets/error_state.dart';
 import '../../widgets/portal/portal.dart';
 import '../../widgets/skeleton_loader.dart';
+import '../../widgets/trash_note.dart';
 import '../../widgets/star_rating.dart';
 
 /// Narrows loaded reviews by free text (station, reviewer, comment) and
@@ -107,8 +108,8 @@ class _AdminReviewsScreenState extends State<AdminReviewsScreen> {
     final ok = await showConfirmDialog(
       context,
       title: 'Remove this review?',
-      message: 'The ${review['rating']}-star review of $station is deleted permanently and the station\'s '
-          'average rating is recalculated. Use this for abusive, false or off-topic reviews.',
+      message: 'The ${review['rating']}-star review of $station is removed and the station\'s '
+          'average rating is recalculated. Use this for abusive, false or off-topic reviews. $trashNote',
       confirmLabel: 'Remove review',
     );
     if (!ok) return;

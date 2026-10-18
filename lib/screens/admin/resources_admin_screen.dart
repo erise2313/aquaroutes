@@ -12,6 +12,7 @@ import '../../widgets/error_state.dart';
 import '../../widgets/portal/portal.dart';
 import '../../widgets/skeleton_loader.dart';
 import '../../utils/error_text.dart';
+import '../../widgets/trash_note.dart';
 import '../../constants/admin_palette.dart';
 
 /// WASA admin upload/manage screen for the public resources library
@@ -105,7 +106,7 @@ class _ResourcesAdminScreenState extends State<ResourcesAdminScreen> {
   }
 
   Future<void> _delete(Resource resource) async {
-    final confirmed = await showConfirmDialog(context, title: 'Delete Resource', message: 'Delete "${resource.title}"? This cannot be undone.');
+    final confirmed = await showConfirmDialog(context, title: 'Delete Resource', message: 'Delete "${resource.title}"? $trashNote');
     if (confirmed != true) return;
     try {
       await _resourceService.deleteResource(resource);

@@ -19,6 +19,7 @@ import '../../widgets/portal/portal.dart';
 import '../../widgets/skeleton_loader.dart';
 import '../public/bulletin_feed.dart';
 import '../../utils/error_text.dart';
+import '../../widgets/trash_note.dart';
 import '../../constants/admin_palette.dart';
 
 /// Validates a container code typed by the admin: lower-case letters,
@@ -129,7 +130,7 @@ class _BulletinEditorScreenState extends State<BulletinEditorScreen> {
     final confirmed = await showConfirmDialog(
       context,
       title: 'Remove Floor Price?',
-      message: 'Stations will be able to set any price for ${_floorTitle(fp).toLowerCase()}s again.',
+      message: 'Stations will be able to set any price for ${_floorTitle(fp).toLowerCase()}s again. $trashNote',
       confirmLabel: 'Remove',
     );
     if (!confirmed) return;

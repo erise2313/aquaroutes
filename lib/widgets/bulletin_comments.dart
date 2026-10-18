@@ -9,6 +9,7 @@ import '../providers/app_state.dart';
 import '../services/comment_service.dart';
 import '../services/supabase_service.dart';
 import 'confirm_dialog.dart';
+import 'trash_note.dart';
 import '../utils/error_text.dart';
 
 /// Whether the viewer may delete a comment: its author, or a WASA admin.
@@ -102,7 +103,7 @@ class _BulletinCommentsState extends ConsumerState<BulletinComments> {
     final confirmed = await showConfirmDialog(
       context,
       title: 'Delete comment?',
-      message: 'This removes it for everyone.',
+      message: 'This removes it for everyone. $trashNote',
       confirmLabel: 'Delete',
       isDestructive: true,
     );

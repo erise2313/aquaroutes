@@ -14,6 +14,7 @@ import '../../widgets/portal/portal.dart';
 import '../../widgets/skeleton_loader.dart';
 import '../../utils/error_text.dart';
 import '../../widgets/event_rsvp.dart';
+import '../../widgets/trash_note.dart';
 import '../../constants/admin_palette.dart';
 
 class EventsAdminScreen extends StatefulWidget {
@@ -151,7 +152,7 @@ class _EventsAdminScreenState extends State<EventsAdminScreen> {
   }
 
   Future<void> _delete(AssociationEvent event) async {
-    final confirmed = await showConfirmDialog(context, title: 'Delete Event', message: 'Delete "${event.title}"?');
+    final confirmed = await showConfirmDialog(context, title: 'Delete Event', message: 'Delete "${event.title}"? $trashNote');
     if (confirmed != true) return;
     try {
       await _eventService.deleteEvent(event.id);

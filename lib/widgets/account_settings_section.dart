@@ -13,6 +13,8 @@ import '../utils/error_text.dart';
 import '../providers/text_size_provider.dart';
 import '../models/membership.dart';
 import '../screens/help/help_screen.dart';
+import '../screens/trash/trash_screen.dart';
+import 'trash_note.dart';
 
 /// The notification kinds a role receives that it may switch off
 /// (notification_preferences, patch_help_settings.sql). Account and
@@ -264,6 +266,17 @@ class _AccountSettingsSectionState extends ConsumerState<AccountSettingsSection>
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
           child: Text('ACCOUNT', style: heading),
         ),
+        // Officers have Trash in the admin sidebar, showing everyone's.
+        if (role != null)
+          ListTile(
+            leading: Icon(Icons.delete_outline, color: text),
+            title: Text('Trash', style: TextStyle(color: text)),
+            subtitle: Text('Things you deleted in the last $trashRetentionDays days', style: TextStyle(color: muted)),
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => TrashScreen(isOfficer: role.isOfficer)),
+            ),
+          ),
         ListTile(
           enabled: !_busy,
           leading: Icon(Icons.lock_reset, color: text),

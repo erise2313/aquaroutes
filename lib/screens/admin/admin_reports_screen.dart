@@ -13,6 +13,7 @@ import '../../widgets/admin_page_header.dart';
 import '../../widgets/error_state.dart';
 import '../../widgets/portal/portal.dart';
 import '../../widgets/report_problem_dialog.dart';
+import 'admin_orders_screen.dart' show showReportedOrder;
 
 const adminReportsSelect = 'id, station_id, order_id, category, details, photo_path, status, officer_note, '
     'station_response, responded_at, created_at, resolved_at, '
@@ -48,7 +49,7 @@ List<Map<String, dynamic>> filterAdminReports(List<Map<String, dynamic>> rows, {
 /// who filed each one -- the station never does -- and can update its status
 /// with a note the customer is notified of, or open a compliance case from
 /// it. A report about an order also unlocks that order's customer details
-/// in Orders.
+/// via "View the order".
 class AdminReportsScreen extends ConsumerStatefulWidget {
   const AdminReportsScreen({super.key});
 
@@ -210,15 +211,25 @@ class _AdminReportsScreenState extends ConsumerState<AdminReportsScreen> {
             const SizedBox(height: 6),
             Text('WASA note: ${r['officer_note']}', style: TextStyle(color: palette.ink)),
           ],
-          if (r['photo_path'] != null)
-            Align(
-              alignment: Alignment.centerLeft,
-              child: TextButton.icon(
-                onPressed: () => _openPhoto(r['photo_path'] as String),
-                icon: const Icon(Icons.photo_outlined),
-                label: const Text('View photo'),
-              ),
-            ),
+          Wrap(
+            spacing: 8,
+            children: [
+              if (r['photo_path'] != null)
+                TextButton.icon(
+                  onPressed: () => _openPhoto(r['photo_path'] as String),
+                  icon: const Icon(Icons.photo_outlined),
+                  label: const Text('View photo'),
+                ),
+              // The only way an officer sees an order: through a report
+              // about it.
+              if (r['order_id'] != null)
+                TextButton.icon(
+                  onPressed: () => showReportedOrder(context, r['order_id'] as String),
+                  icon: const Icon(Icons.receipt_long_outlined),
+                  label: const Text('View the order'),
+                ),
+            ],
+          ),
         ],
       ),
     );

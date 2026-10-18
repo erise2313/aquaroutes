@@ -10,6 +10,7 @@ import '../../widgets/confirm_dialog.dart';
 import '../../widgets/custom_map_marker.dart';
 import '../../widgets/error_state.dart';
 import '../app_route.dart';
+import '../../widgets/trash_note.dart';
 import '../../utils/error_text.dart';
 
 /// A customer's saved delivery addresses. Ordering used to mean dropping a
@@ -69,7 +70,7 @@ class _AddressesScreenState extends State<AddressesScreen> {
     final confirmed = await showConfirmDialog(
       context,
       title: 'Remove ${address.label}?',
-      message: 'Orders already placed keep the address they were delivered to.',
+      message: 'Orders already placed keep the address they were delivered to. $trashNote',
       confirmLabel: 'Remove',
     );
     if (!confirmed) return;

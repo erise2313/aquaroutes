@@ -11,6 +11,7 @@ import '../../utils/formatters.dart';
 import '../../widgets/confirm_dialog.dart';
 import '../../widgets/error_state.dart';
 import '../../widgets/portal/portal.dart';
+import '../../widgets/trash_note.dart';
 import '../../utils/error_text.dart';
 
 /// Checks a price an owner typed. Returns what's wrong, or null when valid.
@@ -174,7 +175,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
       context,
       title: 'Remove this product?',
       message: 'Customers will no longer be able to order ${waterTypeLabel(product.waterType)} $title. '
-          'Past orders keep what was bought and the price paid.',
+          'Past orders keep what was bought and the price paid. $trashNote',
       confirmLabel: 'Remove',
       isDestructive: true,
     );

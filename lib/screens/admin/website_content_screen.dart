@@ -15,6 +15,7 @@ import '../../widgets/error_state.dart';
 import '../../widgets/portal/portal.dart';
 import '../../widgets/skeleton_loader.dart';
 import '../../utils/error_text.dart';
+import '../../widgets/trash_note.dart';
 import '../../constants/admin_palette.dart';
 
 /// wasa_admin editor for the website's static-page content (About, FAQ,
@@ -452,7 +453,7 @@ class _ItemsEditorState extends State<_ItemsEditor> {
     final confirmed = await showConfirmDialog(
       context,
       title: 'Delete Entry?',
-      message: 'This removes it from the live page immediately.',
+      message: 'This removes it from the live page immediately. $trashNote',
       confirmLabel: 'Delete',
       isDestructive: true,
     );
@@ -612,7 +613,7 @@ class _FaqEditorState extends State<_FaqEditor> {
     final confirmed = await showConfirmDialog(
       context,
       title: 'Delete this FAQ?',
-      message: 'This removes it from the live FAQ page immediately.',
+      message: 'This removes it from the live FAQ page immediately. $trashNote',
       confirmLabel: 'Delete',
       isDestructive: true,
     );

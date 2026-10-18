@@ -25,6 +25,7 @@ import '../auth/login_screen.dart';
 import '../auth/registration_screen.dart';
 import '../app_route.dart';
 import '../../utils/error_text.dart';
+import '../../widgets/trash_note.dart';
 import 'package:aquaroute/constants/brand_tokens.dart';
 
 /// Reusable feed body (not a full Scaffold) shared by the guest home
@@ -627,14 +628,14 @@ class _BulletinFeedState extends ConsumerState<BulletinFeed> {
     final confirmed = await showConfirmDialog(
       context,
       title: 'Delete Post?',
-      message: 'This will permanently remove "${bulletin.title}" from the bulletin board.',
+      message: 'This removes "${bulletin.title}" from the bulletin board. $trashNote',
       confirmLabel: 'Delete',
     );
     if (!confirmed) return;
 
     try {
       await _bulletinService.deleteBulletin(bulletin.id);
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Post deleted.')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Post moved to Trash.')));
       _load();
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(describeError(e))));

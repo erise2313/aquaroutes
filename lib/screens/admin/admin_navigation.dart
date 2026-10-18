@@ -2,13 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'activity_screen.dart';
+import '../trash/trash_screen.dart';
 import 'admin_clearinghouse_screen.dart';
 import 'admin_cases_screen.dart';
 import 'admin_dashboard.dart';
 import 'admin_notices_screen.dart';
 import 'admin_officers_screen.dart';
 import 'admin_settings_screen.dart';
-import 'admin_orders_screen.dart';
 import 'admin_reports_screen.dart';
 import 'admin_reviews_screen.dart';
 import 'bulletin_editor_screen.dart';
@@ -33,10 +33,9 @@ import '../../widgets/responsive_nav_shell.dart';
 /// and the permit review queue used to be reachable only from tiles on the
 /// Overview, which is where the evaluation's tester got lost.
 ///
-/// Orders, the jug clearinghouse and station reviews were readable by
-/// officers in the database but had no page at all, so the association
-/// could not look into a complaint, a jug dispute or an abusive review. They
-/// sit under Network and Content.
+/// The jug clearinghouse and station reviews sit under Network and Content.
+/// There is no Orders page: officers see an order only through a customer's
+/// report about it (Reports), not a list of every station's orders.
 ///
 /// In the app, Overview, Stations and Workers are tabs and the rest are on
 /// "More" -- seven tabs did not fit a phone. The section names are the ones
@@ -111,13 +110,6 @@ class AdminNavigation extends ConsumerWidget {
               phoneTab: false,
             ),
             const NavShellDestination(
-              icon: Icons.receipt_long_outlined,
-              selectedIcon: Icons.receipt_long,
-              label: 'Orders',
-              group: 'Network',
-              phoneTab: false,
-            ),
-            const NavShellDestination(
               icon: Icons.swap_horiz,
               label: 'Clearinghouse',
               group: 'Network',
@@ -172,6 +164,13 @@ class AdminNavigation extends ConsumerWidget {
               group: 'People',
               phoneTab: false,
             ),
+            const NavShellDestination(
+              icon: Icons.delete_outline,
+              selectedIcon: Icons.delete,
+              label: 'Trash',
+              group: 'People',
+              phoneTab: false,
+            ),
             if (isSuperadmin) ...const [
               NavShellDestination(
                 icon: Icons.admin_panel_settings_outlined,
@@ -197,7 +196,6 @@ class AdminNavigation extends ConsumerWidget {
             const AdminNoticesScreen(),
             const AdminCasesScreen(),
             const AdminReportsScreen(),
-            const AdminOrdersScreen(),
             const AdminClearinghouseScreen(),
             const BulletinEditorScreen(),
             const AdminReviewsScreen(),
@@ -206,6 +204,7 @@ class AdminNavigation extends ConsumerWidget {
             const WebsiteContentScreen(),
             const UserManagementScreen(),
             const ActivityScreen(),
+            const TrashScreen(embedded: true, isOfficer: true),
             if (isSuperadmin) ...const [AdminOfficersScreen(), AdminSettingsScreen()],
           ],
         ),

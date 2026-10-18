@@ -7,8 +7,9 @@ people.
 - Public website: https://gentri-wasa.web.app
 - Admin portal: https://gentri-wasa-admin.web.app
 - App: `GenTriWASA-arm64-v8a.apk` (Desktop\GenTriWASA-APK), built 18 October
-  2026 with everything below. Uninstall an older copy first if Android
-  refuses the update.
+  2026 with everything below except the Trash (T1-T8), which is on the
+  websites now and comes to the app with its next build. Uninstall an older
+  copy first if Android refuses the update.
 
 Every screen works in light and dark mode, uses the Atkinson Hyperlegible
 typeface, and has a **Text size** setting (Normal, Large, Extra large) under
@@ -78,7 +79,8 @@ Water**). Ordering needs an account.
   the driver; order again; rate the station; **Report a problem to WASA**
   *(new)* with an optional photo.
 - **Account** — notification switches *(new)*, text size, Help and the
-  welcome tour *(new)*, password, delete account.
+  welcome tour *(new)*, **Trash** *(new)*: their deleted comments and
+  addresses for 5 days, with Restore; password, delete account.
 
 ### Driver — app only
 
@@ -136,14 +138,19 @@ station.
 - **Reports** *(new)* — customer reports with who filed them, the photo, the
   station's response; set status with a note to the customer; open a case
   from a report. Badge counts new reports.
-- **Orders** — customer name and phone are **hidden unless a report about
-  that order is on file** *(changed)*.
+- **No Orders page** *(changed)* — officers don't see stations' orders.
+  An order opens only from a customer's report about it (Reports → **View
+  the order**), with the customer's name and phone.
 - **Clearinghouse** — disputed settlements first, with **Decide the
   dispute** *(new)*.
 - **Events** — shows how many are going, and who *(new)*.
 - **Website** — now includes the Safe Drinking Water articles *(new)*.
 - **Bulletin**, **Reviews**, **Resources**, **Users**, **Activity** — as
-  before. Officers can't suspend another officer.
+  before.
+- **Trash** *(new)* — everything anyone deleted in the last 5 days (posts,
+  comments, products, events, resources, website items, reviews, addresses,
+  floor prices), who deleted it, **Restore** or **Delete for good**. After
+  5 days it is removed automatically. Officers can't suspend another officer.
 - An officer who owns, staffs or drives for a station can't review that
   station's permits, accreditation or incidents.
 
@@ -169,7 +176,7 @@ Everything an officer has, plus:
 | N5 | staff1 | Look for Products, Permit vault or Costs | Not offered |
 | N6 | customer1 | Orders → a delivered order → Report a problem to WASA → Cloudy + photo → Send | "Report sent"; officers get a notification |
 | N7 | admin | Reports | The report from N6 with Liza Fernandez's name, the photo, "Needs attention" |
-| N8 | admin | Orders → find the order from N6 | Customer name shown; every other order shows "Hidden -- no complaint on file" |
+| N8 | admin | Reports → the report from N6 → View the order | The order with Liza Fernandez's name and phone; there is no Orders page in the sidebar |
 | N9 | owner2 | Reviews → Reports to WASA | The report, without the customer's name; Respond in writing works |
 | N10 | admin | Reports → open N6 → Resolved with a note, tick "open a compliance case" | customer1 notified with the note; a case appears in Cases |
 | N11 | visitor | Website → Stations | Only accredited stations; switching off "Accredited only" shows Tejero |
@@ -196,6 +203,14 @@ Everything an officer has, plus:
 | N32 | admin | Users → try to suspend admin2 | No Suspend button; only a super admin can |
 | N33 | superadmin1 | Settings → grace period 30 → 15 | Saved; plain officers have no Settings |
 | N34 | staff1 | App sign-up with an expired staff code | Refused; owner1 renews the code in Team |
+| T1 | owner1 | Products → remove a product | Confirmation says it stays in Trash for 5 days; Account → Trash lists it with "Removed for good in 5 days" |
+| T2 | owner1 | Trash → Restore | Product is back in Products with its price |
+| T3 | customer1 | Board → comment, then delete it → Account → Trash → Restore | Comment is back under the post |
+| T4 | admin | Board → delete a post with comments and reactions → Trash → Restore | Post comes back with its comments and reactions |
+| T5 | admin | Trash | Shows everyone's deleted items and who deleted each; customer1 sees only their own |
+| T6 | owner2 | Account → Trash | Doesn't see owner1's deleted product |
+| T7 | admin | Resources → delete a PDF → Trash → Delete for good | Gone from Trash; the file is removed from storage |
+| T8 | customer2 | Delete account | Their comments and addresses are removed at once, not kept in Trash |
 
 Reset the data you changed afterwards if another tester needs the same
 starting point (re-running the seed scripts restores the accounts but not
