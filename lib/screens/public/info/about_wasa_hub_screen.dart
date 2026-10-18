@@ -5,14 +5,15 @@ import '../../../widgets/portal/portal.dart';
 import '../../app_route.dart';
 import 'about_info_screen.dart';
 import 'contact_info_screen.dart';
+import 'events_info_screen.dart';
 import 'faq_info_screen.dart';
 import 'for_station_owners_info_screen.dart';
 import 'how_accreditation_works_info_screen.dart';
 import 'jug_clearinghouse_info_screen.dart';
 
-/// Menu into the six info pages that used to be website-only (About, FAQ,
+/// Menu into the info pages that used to be website-only (About, FAQ,
 /// Contact, For Station Owners, How Accreditation Works, Jug
-/// Clearinghouse) -- all now shared, admin-editable content also readable
+/// Clearinghouse, and Events) -- all shared, admin-editable content also readable
 /// in the app (supabase/patch_website_content_cms.sql). One shared hub so
 /// both entry points (public_home_screen.dart's app bar, station owners'
 /// profile screen) only need to link to one place.
@@ -23,6 +24,7 @@ class AboutWasaHubScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final entries = <(IconData, String, String, WidgetBuilder)>[
       (Icons.info_outline, 'About WASA', 'What the association does, and the barangays it covers', (_) => const AboutInfoScreen()),
+      (Icons.event_outlined, 'Events', 'Association meetings, seminars and drives', (_) => const EventsInfoScreen()),
       (Icons.help_outline, 'FAQ', 'Common questions about ordering, pricing, and accreditation', (_) => const FaqInfoScreen()),
       (Icons.contact_mail_outlined, 'Contact', 'Association office details', (_) => const ContactInfoScreen()),
       (Icons.storefront_outlined, 'For Station Owners', 'Why join, and what you\'ll need', (_) => const ForStationOwnersInfoScreen()),

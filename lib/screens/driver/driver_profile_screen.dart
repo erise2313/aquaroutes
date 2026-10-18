@@ -12,6 +12,8 @@ import '../../services/supabase_service.dart';
 import '../../services/worker_credential_service.dart';
 import '../../services/worker_service.dart';
 import '../../widgets/account_settings_section.dart';
+import '../app_route.dart';
+import '../public/info/about_wasa_hub_screen.dart';
 import '../../utils/error_text.dart';
 import '../../utils/log.dart';
 import 'package:aquaroute/constants/brand_tokens.dart';
@@ -289,6 +291,15 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
       appBar: AppBar(
         title: Text('Driver Profile', style: TextStyle(fontWeight: FontWeight.bold, color: driverPalette.text)),
         backgroundColor: driverPalette.surface,
+        actions: [
+          // The same About WASA hub customers and station owners reach --
+          // events, FAQ, contact. Drivers had no way into it.
+          IconButton(
+            icon: const Icon(Icons.info_outline),
+            tooltip: 'About WASA, events and FAQ',
+            onPressed: () => Navigator.push(context, appRoute(const AboutWasaHubScreen())),
+          ),
+        ],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())

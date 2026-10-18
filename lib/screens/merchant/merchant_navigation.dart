@@ -13,6 +13,7 @@ import 'worker_registry_screen.dart';
 import 'tracking_screen.dart';
 import 'merchant_profile_screens.dart';
 import 'products_screen.dart';
+import 'station_reviews_screen.dart';
 import '../../constants/app_colors.dart';
 import '../../providers/app_theme_provider.dart';
 import '../../web_router.dart';
@@ -102,6 +103,13 @@ class MerchantNavigation extends StatelessWidget {
                   onPhone: false,
                 ),
                 NavShellDestination(icon: Icons.campaign_outlined, selectedIcon: Icons.campaign, label: 'Board', group: 'Network'),
+                NavShellDestination(
+                  icon: Icons.star_outline,
+                  selectedIcon: Icons.star,
+                  label: 'Reviews',
+                  group: 'Network',
+                  onPhone: false,
+                ),
                 NavShellDestination(icon: Icons.person_outline, selectedIcon: Icons.person, label: 'Profile', group: 'Account'),
               ],
               pages: const [
@@ -117,6 +125,7 @@ class MerchantNavigation extends StatelessWidget {
                 // The shell supplies the header here, so the wrapper's own
                 // AppBar would be a second bar above the feed.
                 BulletinBoardScreen(showAppBar: false),
+                StationReviewsScreen(),
                 MerchantProfileScreen(),
               ],
             ),

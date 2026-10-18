@@ -7,6 +7,7 @@ import '../../constants/app_colors.dart';
 import '../../services/supabase_service.dart';
 import '../../services/worker_credential_service.dart';
 import '../../widgets/admin_page_header.dart';
+import 'admin_route.dart';
 import 'admin_worker_registry_tab.dart';
 import '../../widgets/admin_status_pill.dart';
 import '../../widgets/confirm_dialog.dart';
@@ -27,18 +28,44 @@ import '../../constants/admin_palette.dart';
 /// (screens/merchant/worker_registry_screen.dart, driver_profile_screen.dart
 /// for upload); only an admin can resolve either.
 class WorkerClearanceScreen extends StatefulWidget {
-  const WorkerClearanceScreen({super.key, this.initialTabIndex = 0});
+  const WorkerClearanceScreen({super.key, this.initialTabIndex = 0, this.initialClearance});
 
-  /// 0 = Incidents, 1 = Credentials -- lets a caller (e.g. the admin
-  /// dashboard's review queue) land directly on the tab matching what was
-  /// actually tapped, instead of always opening on Incidents.
+  /// 0 = All workers, 1 = Incidents, 2 = Credentials, 3 = Appeals -- lets a
+  /// caller (e.g. the admin dashboard) land directly on the tab matching
+  /// what was tapped.
   final int initialTabIndex;
+
+  /// Pre-selects a clearance filter on the All workers tab ('flagged'...).
+  final String? initialClearance;
+
+  /// Lets the Overview send the Workers *section* to a tab (and filter) when
+  /// it switches to it in the browser sidebar, where the page already exists
+  /// and can't be given constructor arguments. Consumed and cleared by the
+  /// screen.
+  static final requested = ValueNotifier<({int tab, String? clearance})?>(null);
+
+  /// Opens the Workers section on [tab] (and, on All workers, [clearance]):
+  /// by switching the browser sidebar where there is one, otherwise by
+  /// pushing the page. Resolves when a pushed page is closed.
+  static Future<void> open(BuildContext context, {int tab = 0, String? clearance}) async {
+    if (PortalShellScope.select(context, 'Workers')) {
+      requested.value = (tab: tab, clearance: clearance);
+      return;
+    }
+    await Navigator.push(context, adminRoute(WorkerClearanceScreen(initialTabIndex: tab, initialClearance: clearance)));
+  }
 
   @override
   State<WorkerClearanceScreen> createState() => _WorkerClearanceScreenState();
 }
 
-class _WorkerClearanceScreenState extends State<WorkerClearanceScreen> {
+class _WorkerClearanceScreenState extends State<WorkerClearanceScreen> with SingleTickerProviderStateMixin {
+  late final TabController _tabs;
+
+  /// The All workers tab's filter, kept here because a reload rebuilds that
+  /// tab from scratch; bumping [_registryGeneration] applies a new one.
+  String? _clearance;
+  int _registryGeneration = 0;
   final _supabase = Supabase.instance.client;
   final _credentialService = WorkerCredentialService(SupabaseService.instance);
 
@@ -57,6 +84,33 @@ class _WorkerClearanceScreenState extends State<WorkerClearanceScreen> {
   @override
   void initState() {
     super.initState();
+    final request = WorkerClearanceScreen.requested.value;
+    WorkerClearanceScreen.requested.value = null;
+    _clearance = request?.clearance ?? widget.initialClearance;
+    _tabs = TabController(length: 4, vsync: this, initialIndex: (request?.tab ?? widget.initialTabIndex).clamp(0, 3));
+    WorkerClearanceScreen.requested.addListener(_onRequested);
+    _fetchAll();
+  }
+
+  @override
+  void dispose() {
+    WorkerClearanceScreen.requested.removeListener(_onRequested);
+    _tabs.dispose();
+    super.dispose();
+  }
+
+  /// The Overview switched to this section and asked for a tab and filter.
+  /// The queues may have changed since this page was first built, so reload
+  /// too.
+  void _onRequested() {
+    final request = WorkerClearanceScreen.requested.value;
+    if (request == null) return;
+    WorkerClearanceScreen.requested.value = null;
+    setState(() {
+      _clearance = request.clearance;
+      _registryGeneration++;
+    });
+    _tabs.animateTo(request.tab.clamp(0, 3));
     _fetchAll();
   }
 
@@ -234,10 +288,7 @@ class _WorkerClearanceScreenState extends State<WorkerClearanceScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return DefaultTabController(
-      length: 4,
-      initialIndex: widget.initialTabIndex,
-      child: Column(
+    return Column(
         children: [
           AdminPageHeader(
             eyebrow: 'Association',
@@ -246,6 +297,7 @@ class _WorkerClearanceScreenState extends State<WorkerClearanceScreen> {
             // Colours from the theme: these used to be white for the old navy
             // header band and would be invisible on the light one.
             bottom: TabBar(
+              controller: _tabs,
               isScrollable: true,
               tabAlignment: TabAlignment.start,
               tabs: [
@@ -262,8 +314,9 @@ class _WorkerClearanceScreenState extends State<WorkerClearanceScreen> {
                 : _error != null
                 ? ErrorState(message: _error!, onRetry: _fetchAll)
                 : TabBarView(
+                    controller: _tabs,
                     children: [
-                      const AdminWorkerRegistryTab(),
+                      AdminWorkerRegistryTab(key: ValueKey(_registryGeneration), initialClearance: _clearance),
                       _incidents.isEmpty
                           ? const PortalEmptyState(
                               icon: Icons.verified_user_outlined,
@@ -317,7 +370,6 @@ class _WorkerClearanceScreenState extends State<WorkerClearanceScreen> {
                   ),
           ),
         ],
-      ),
     );
   }
 

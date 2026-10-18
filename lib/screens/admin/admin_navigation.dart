@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'activity_screen.dart';
+import 'admin_clearinghouse_screen.dart';
 import 'admin_dashboard.dart';
+import 'admin_orders_screen.dart';
+import 'admin_reviews_screen.dart';
 import 'bulletin_editor_screen.dart';
 import 'events_admin_screen.dart';
 import 'permit_queue_screen.dart';
@@ -23,6 +26,11 @@ import '../../widgets/responsive_nav_shell.dart';
 /// Every page is in the sidebar, grouped by what it's for. Events, Resources
 /// and the permit review queue used to be reachable only from tiles on the
 /// Overview, which is where the evaluation's tester got lost.
+///
+/// Orders, the jug clearinghouse and station reviews were readable by
+/// officers in the database but had no page at all, so the association
+/// could not look into a complaint, a jug dispute or an abusive review. They
+/// sit under Network and Content.
 ///
 /// In the app, Overview, Stations and Workers are tabs and the rest are on
 /// "More" -- seven tabs did not fit a phone. The section names are the ones
@@ -72,9 +80,29 @@ class AdminNavigation extends ConsumerWidget {
               group: 'Compliance',
             ),
             const NavShellDestination(
+              icon: Icons.receipt_long_outlined,
+              selectedIcon: Icons.receipt_long,
+              label: 'Orders',
+              group: 'Network',
+              phoneTab: false,
+            ),
+            const NavShellDestination(
+              icon: Icons.swap_horiz,
+              label: 'Clearinghouse',
+              group: 'Network',
+              phoneTab: false,
+            ),
+            const NavShellDestination(
               icon: Icons.campaign_outlined,
               selectedIcon: Icons.campaign,
               label: 'Bulletin',
+              group: 'Content',
+              phoneTab: false,
+            ),
+            const NavShellDestination(
+              icon: Icons.star_outline,
+              selectedIcon: Icons.star,
+              label: 'Reviews',
               group: 'Content',
               phoneTab: false,
             ),
@@ -119,7 +147,10 @@ class AdminNavigation extends ConsumerWidget {
             StationAccreditationScreen(),
             PermitQueueScreen(),
             WorkerClearanceScreen(),
+            AdminOrdersScreen(),
+            AdminClearinghouseScreen(),
             BulletinEditorScreen(),
+            AdminReviewsScreen(),
             EventsAdminScreen(),
             ResourcesAdminScreen(),
             WebsiteContentScreen(),

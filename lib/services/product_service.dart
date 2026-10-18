@@ -58,11 +58,6 @@ class ProductService {
     return _supabase.client.from('station_products').delete().eq('id', productId);
   }
 
-  Future<double> fetchDeliveryFee(String stationId) async {
-    final row = await _supabase.client.from('water_stations').select('delivery_fee').eq('id', stationId).single();
-    return (row['delivery_fee'] as num).toDouble();
-  }
-
   Future<void> updateDeliveryFee(String stationId, double fee) {
     return _supabase.client.from('water_stations').update({'delivery_fee': fee}).eq('id', stationId);
   }

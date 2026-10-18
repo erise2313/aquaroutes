@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../constants/app_colors.dart';
+import '../../services/supabase_service.dart';
+import '../../services/worker_credential_service.dart';
 import '../../utils/error_text.dart';
+import '../../widgets/confirm_dialog.dart';
 import '../../widgets/error_state.dart';
 import '../../widgets/portal/portal.dart';
 import '../../widgets/skeleton_loader.dart';
@@ -15,7 +19,11 @@ import '../../widgets/skeleton_loader.dart';
 /// could not answer "who is flagged right now?" or look up one driver's
 /// record without waiting for something about them to land in a queue.
 class AdminWorkerRegistryTab extends StatefulWidget {
-  const AdminWorkerRegistryTab({super.key});
+  const AdminWorkerRegistryTab({super.key, this.initialClearance});
+
+  /// Pre-selects the clearance filter ('flagged', 'cleared',
+  /// 'pending_clearance') -- the Overview's "Flagged workers" tile.
+  final String? initialClearance;
 
   @override
   State<AdminWorkerRegistryTab> createState() => _AdminWorkerRegistryTabState();
@@ -46,6 +54,7 @@ class _AdminWorkerRegistryTabState extends State<AdminWorkerRegistryTab> {
   @override
   void initState() {
     super.initState();
+    _clearance = widget.initialClearance;
     _load();
   }
 
@@ -146,7 +155,9 @@ class _AdminWorkerRegistryTabState extends State<AdminWorkerRegistryTab> {
             for (final w in visible)
               PortalCard(
                 margin: const EdgeInsets.only(bottom: 10),
-                onTap: () => showWorkerRecord(context, w),
+                onTap: () async {
+                  if (await showWorkerRecord(context, w)) _load();
+                },
                 child: Row(
                   children: [
                     Expanded(
@@ -177,9 +188,18 @@ class _AdminWorkerRegistryTabState extends State<AdminWorkerRegistryTab> {
 }
 
 /// One worker's full record for an officer: clearance, credentials, every
-/// incident and the stations they have served.
-Future<void> showWorkerRecord(BuildContext context, Map<String, dynamic> worker) {
-  return showDialog(context: context, builder: (_) => _WorkerRecordDialog(worker: worker));
+/// incident and the stations they have served -- and the decisions an
+/// officer can take from it.
+///
+/// It used to be read-only. The review queues only hold items still waiting
+/// for a decision, so once an incident was confirmed nothing in the portal
+/// could lift the flag again (only the driver's own appeal could), and a
+/// credential could not be opened or reviewed from the worker it belongs to.
+///
+/// Resolves to true when something was changed, so the list can refresh.
+Future<bool> showWorkerRecord(BuildContext context, Map<String, dynamic> worker) async {
+  final changed = await showDialog<bool>(context: context, builder: (_) => _WorkerRecordDialog(worker: worker));
+  return changed ?? false;
 }
 
 class _WorkerRecordDialog extends StatefulWidget {
@@ -193,15 +213,110 @@ class _WorkerRecordDialog extends StatefulWidget {
 
 class _WorkerRecordDialogState extends State<_WorkerRecordDialog> {
   final _supabase = Supabase.instance.client;
-  late final Future<List<dynamic>> _future = Future.wait([
-    _supabase.from('worker_credentials').select('credential_type, status').eq('worker_id', widget.worker['id'] as String),
-    _supabase
-        .from('worker_incidents')
-        .select('incident_type, description, status, created_at')
-        .eq('worker_id', widget.worker['id'] as String)
-        .order('created_at', ascending: false),
-    _supabase.rpc('hire_check_station_history', params: {'p_worker_id': widget.worker['id']}),
-  ]);
+  final _credentialService = WorkerCredentialService(SupabaseService.instance);
+  late Future<List<dynamic>> _future = _fetch();
+  bool _changed = false;
+  bool _busy = false;
+
+  String get _workerId => widget.worker['id'] as String;
+
+  Future<List<dynamic>> _fetch() => Future.wait([
+        _supabase.from('workers').select('clearance_status').eq('id', _workerId).single(),
+        _supabase
+            .from('worker_credentials')
+            .select('id, credential_type, status, storage_path, rejection_reason')
+            .eq('worker_id', _workerId),
+        _supabase
+            .from('worker_incidents')
+            .select('id, incident_type, description, status, created_at, appeal_status')
+            .eq('worker_id', _workerId)
+            .order('created_at', ascending: false),
+        _supabase.rpc('hire_check_station_history', params: {'p_worker_id': _workerId}),
+      ]);
+
+  Future<void> _run(Future<void> Function() action, String failure) async {
+    setState(() => _busy = true);
+    try {
+      await action();
+      _changed = true;
+      if (mounted) setState(() => _future = _fetch());
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$failure ${describeError(e)}')));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  /// Sets an incident's outcome. Dismissing a confirmed one lifts the flag:
+  /// the database recomputes the worker's clearance from what remains, and
+  /// the audit log records who did it.
+  Future<void> _setIncident(Map<String, dynamic> incident, String status) async {
+    final (title, message, label) = switch ((incident['status'], status)) {
+      ('confirmed_flag', 'dismissed') => (
+          'Lift this flag?',
+          'The incident is dismissed and the worker is cleared again unless another confirmed incident remains. '
+              'Use this when an incident was confirmed in error or has been resolved.',
+          'Lift flag',
+        ),
+      (_, 'confirmed_flag') => (
+          'Confirm flag?',
+          'This flags the worker across every station until WASA resolves it.',
+          'Confirm flag',
+        ),
+      _ => ('Dismiss incident?', 'The incident is closed with no flag.', 'Dismiss'),
+    };
+    final ok = await showConfirmDialog(context, title: title, message: message, confirmLabel: label);
+    if (!ok) return;
+    await _run(
+      () => _supabase.from('worker_incidents').update({
+        'status': status,
+        'resolved_by': _supabase.auth.currentUser!.id,
+        'resolved_at': DateTime.now().toIso8601String(),
+      }).eq('id', incident['id'] as String),
+      'Could not update the incident.',
+    );
+  }
+
+  Future<void> _reviewCredential(Map<String, dynamic> credential, bool approve) async {
+    String? reason;
+    if (!approve) {
+      final controller = TextEditingController();
+      reason = await showDialog<String>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('Rejection reason'),
+          content: TextField(
+            controller: controller,
+            autofocus: true,
+            decoration: const InputDecoration(hintText: 'Why is this being rejected?'),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')),
+            FilledButton(onPressed: () => Navigator.pop(dialogContext, controller.text.trim()), child: const Text('Reject')),
+          ],
+        ),
+      );
+      if (reason == null) return;
+    }
+    await _run(
+      () => _credentialService.reviewCredential(
+        credentialId: credential['id'] as String,
+        approve: approve,
+        reviewedByProfileId: _supabase.auth.currentUser!.id,
+        rejectionReason: reason,
+      ),
+      'Could not review the credential.',
+    );
+  }
+
+  Future<void> _openDocument(String storagePath) async {
+    try {
+      final url = await _credentialService.getSignedUrl(storagePath);
+      await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not open document. ${describeError(e)}')));
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -212,7 +327,7 @@ class _WorkerRecordDialogState extends State<_WorkerRecordDialog> {
     return AlertDialog(
       title: Text(widget.worker['full_name'] as String? ?? 'Worker'),
       content: SizedBox(
-        width: 560,
+        width: 600,
         child: FutureBuilder<List<dynamic>>(
           future: _future,
           builder: (context, snap) {
@@ -220,52 +335,114 @@ class _WorkerRecordDialogState extends State<_WorkerRecordDialog> {
               return const SizedBox(height: 200, child: Center(child: CircularProgressIndicator()));
             }
             if (snap.hasError) return Text('Could not load the record. ${describeError(snap.error!)}');
-            final credentials = List<Map<String, dynamic>>.from(snap.data![0] as List);
-            final incidents = List<Map<String, dynamic>>.from(snap.data![1] as List);
-            final history = List<Map<String, dynamic>>.from(snap.data![2] as List);
+            final clearance = (snap.data![0] as Map)['clearance_status'] as String?;
+            final credentials = List<Map<String, dynamic>>.from(snap.data![1] as List);
+            final incidents = List<Map<String, dynamic>>.from(snap.data![2] as List);
+            final history = List<Map<String, dynamic>>.from(snap.data![3] as List);
 
             Widget heading(String t) => Padding(
                   padding: const EdgeInsets.only(top: 16, bottom: 6),
                   child: Text(t.toUpperCase(), style: theme.textTheme.labelSmall?.copyWith(letterSpacing: 1.2)),
                 );
 
-            return SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    '${widget.worker['worker_code'] ?? ''} · clearance: ${words(widget.worker['clearance_status'] as String?)}',
-                    style: theme.textTheme.bodyMedium,
+            Widget item({required String text, String? note, List<Widget> actions = const []}) => Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(text),
+                      if (note != null)
+                        Text(note, style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+                      if (actions.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 6),
+                          child: Wrap(spacing: 8, runSpacing: 8, children: actions),
+                        ),
+                    ],
                   ),
-                  heading('Credentials'),
-                  if (credentials.isEmpty) const Text('None on file.'),
-                  for (final c in credentials) Text('${words(c['credential_type'] as String?)}: ${words(c['status'] as String?)}'),
-                  heading('Incidents'),
-                  if (incidents.isEmpty) const Text('No incidents filed.'),
-                  for (final i in incidents)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 6),
-                      child: Text(
-                        '${fmt.format(DateTime.parse(i['created_at'] as String).toLocal())} · ${i['incident_type']} '
-                        '(${words(i['status'] as String?)}): ${i['description']}',
+                );
+
+            return AbsorbPointer(
+              absorbing: _busy,
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Wrap(
+                      spacing: 8,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        Text('${widget.worker['worker_code'] ?? ''} · clearance', style: theme.textTheme.bodyMedium),
+                        StatusPill(
+                          label: _AdminWorkerRegistryTabState._clearanceLabels[clearance] ?? 'Unknown',
+                          color: _AdminWorkerRegistryTabState._colorFor(clearance),
+                        ),
+                      ],
+                    ),
+                    heading('Credentials'),
+                    if (credentials.isEmpty) const Text('None on file.'),
+                    for (final c in credentials)
+                      item(
+                        text: '${words(c['credential_type'] as String?)}: ${words(c['status'] as String?)}',
+                        note: c['status'] == 'rejected' && c['rejection_reason'] != null ? 'Reason: ${c['rejection_reason']}' : null,
+                        actions: [
+                          if (c['storage_path'] != null)
+                            TextButton.icon(
+                              onPressed: () => _openDocument(c['storage_path'] as String),
+                              icon: const Icon(Icons.open_in_new, size: 18),
+                              label: const Text('View document'),
+                            ),
+                          if (c['status'] == 'pending_review') ...[
+                            OutlinedButton(onPressed: () => _reviewCredential(c, false), child: const Text('Reject')),
+                            FilledButton(
+                              style: FilledButton.styleFrom(backgroundColor: AppColors.cleared),
+                              onPressed: () => _reviewCredential(c, true),
+                              child: const Text('Approve'),
+                            ),
+                          ],
+                        ],
                       ),
-                    ),
-                  heading('Station history'),
-                  if (history.isEmpty) const Text('No station history recorded.'),
-                  for (final h in history)
-                    Text(
-                      '${h['station_name']}: ${fmt.format(DateTime.parse(h['joined_at'] as String).toLocal())}'
-                      ' to ${h['left_at'] == null ? 'now' : fmt.format(DateTime.parse(h['left_at'] as String).toLocal())}'
-                      ' (${words(h['status'] as String?)})',
-                    ),
-                ],
+                    heading('Incidents'),
+                    if (incidents.isEmpty) const Text('No incidents filed.'),
+                    for (final i in incidents)
+                      item(
+                        text: '${fmt.format(DateTime.parse(i['created_at'] as String).toLocal())} · ${i['incident_type']} '
+                            '(${words(i['status'] as String?)}): ${i['description']}',
+                        note: i['appeal_status'] == 'pending' ? 'The driver has appealed this -- see the Appeals tab.' : null,
+                        actions: [
+                          if (i['status'] == 'pending_review') ...[
+                            OutlinedButton(onPressed: () => _setIncident(i, 'dismissed'), child: const Text('Dismiss')),
+                            FilledButton(
+                              style: FilledButton.styleFrom(backgroundColor: AppColors.flagged),
+                              onPressed: () => _setIncident(i, 'confirmed_flag'),
+                              child: const Text('Confirm flag'),
+                            ),
+                          ],
+                          if (i['status'] == 'confirmed_flag')
+                            OutlinedButton.icon(
+                              onPressed: () => _setIncident(i, 'dismissed'),
+                              icon: const Icon(Icons.flag_outlined, size: 18),
+                              label: const Text('Lift flag'),
+                            ),
+                        ],
+                      ),
+                    heading('Station history'),
+                    if (history.isEmpty) const Text('No station history recorded.'),
+                    for (final h in history)
+                      Text(
+                        '${h['station_name']}: ${fmt.format(DateTime.parse(h['joined_at'] as String).toLocal())}'
+                        ' to ${h['left_at'] == null ? 'now' : fmt.format(DateTime.parse(h['left_at'] as String).toLocal())}'
+                        ' (${words(h['status'] as String?)})',
+                      ),
+                  ],
+                ),
               ),
             );
           },
         ),
       ),
-      actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Close'))],
+      actions: [TextButton(onPressed: () => Navigator.pop(context, _changed), child: const Text('Close'))],
     );
   }
 }

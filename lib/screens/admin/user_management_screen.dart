@@ -23,8 +23,9 @@ import '../../utils/log.dart';
 /// as calculateOrderCounts in merchant_dashboard.dart) so the matching rules
 /// are unit-testable without pumping a widget.
 ///
-/// [query] matches the person's name OR their station name -- an admin
-/// looking for "who runs Aqua Pura" searches the station, not the person.
+/// [query] matches the person's name, their phone number OR their station
+/// name -- an admin looking for "who runs Aqua Pura" searches the station,
+/// and a customer is often known only by the number they order with.
 List<Map<String, dynamic>> filterMemberships(
   List<Map<String, dynamic>> rows, {
   String query = '',
@@ -38,12 +39,28 @@ List<Map<String, dynamic>> filterMemberships(
     if (q.isEmpty) return true;
     final name = (row['profiles']?['full_name'] as String?)?.toLowerCase() ?? '';
     final station = (row['water_stations']?['station_name'] as String?)?.toLowerCase() ?? '';
-    return name.contains(q) || station.contains(q);
+    final phone = (row['profiles']?['phone_number'] as String?)?.toLowerCase() ?? '';
+    return name.contains(q) || station.contains(q) || (phone.isNotEmpty && phone.contains(q));
   }).toList();
 }
 
-/// Admin-only account suspension for station_owner/driver accounts --
-/// deliberately not a true account deletion (that needs a service-role key,
+/// How each role is named across the Users screen and its export.
+String membershipRoleLabel(String? role) => switch (role) {
+      'station_owner' => 'Station Owner',
+      'driver' => 'Driver / Helper',
+      'public_consumer' => 'Customer',
+      'wasa_admin' => 'WASA Officer',
+      _ => 'No role',
+    };
+
+/// Every account in the association -- customers, drivers, station owners
+/// and officers -- with suspension for each.
+///
+/// It used to list only station owners and drivers, so a customer abusing
+/// the system (fake orders, abusive posts or reviews) could not be found or
+/// stopped from the portal, and officers could not see one another.
+///
+/// Suspension is deliberately not a true account deletion (that needs a service-role key,
 /// which can't safely live in the Flutter client -- would require a
 /// separate Supabase Edge Function, out of scope here). Suspending here
 /// (memberships.status -> 'suspended') already cuts off access end-to-end:
@@ -89,8 +106,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
     try {
       final rows = await _supabase
           .from('memberships')
-          .select('id, role, status, profiles(full_name), water_stations(station_name)')
-          .inFilter('role', ['station_owner', 'driver'])
+          .select('id, profile_id, role, status, profiles(full_name, phone_number), water_stations(station_name)')
           .order('role');
       if (mounted) {
         setState(() {
@@ -116,8 +132,9 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
       context,
       title: isActive ? 'Suspend Account?' : 'Reactivate Account?',
       message: isActive
-          ? '$name will immediately lose access to their portal. This is fully reversible and all their data stays intact.'
-          : '$name will regain normal access to their portal.',
+          ? '$name will immediately lose access${membership['role'] == 'public_consumer' ? ', including ordering' : ' to their portal'}. '
+              'This is fully reversible and all their data stays intact.'
+          : '$name will regain normal access.',
       confirmLabel: isActive ? 'Suspend' : 'Reactivate',
       isDestructive: isActive,
     );
@@ -137,11 +154,12 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
   void _exportCsv() {
     final visible = filterMemberships(_memberships, query: _query, role: _roleFilter, status: _statusFilter);
     final csv = buildCsv(
-      const ['Name', 'Role', 'Station', 'Status'],
+      const ['Name', 'Role', 'Phone', 'Station', 'Status'],
       visible
           .map((membership) => [
                 (membership['profiles']?['full_name'] as String?) ?? 'Unknown',
-                membership['role'] == 'station_owner' ? 'Station Owner' : 'Driver / Helper',
+                membershipRoleLabel(membership['role'] as String?),
+                (membership['profiles']?['phone_number'] as String?) ?? '',
                 (membership['water_stations']?['station_name'] as String?) ?? '',
                 membership['status'] ?? '',
               ])
@@ -189,19 +207,25 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
               ? _emptyState(
                   icon: Icons.people_outline,
                   title: 'No accounts yet',
-                  message: 'Station owner and driver accounts appear here once they register.',
+                  message: 'Accounts appear here once people register.',
                 )
               : Column(
                   children: [
                     AdminFilterBar(
-                      searchHint: 'Search by name or station',
+                      searchHint: 'Search by name, phone or station',
                       searchController: _searchController,
                       onSearchChanged: (v) => setState(() => _query = v),
                       resultSummary: isFiltered ? '${visible.length} of ${_memberships.length} accounts' : null,
                       filters: [
                         AdminFilterGroup(
                           label: 'Role',
-                          options: const {null: 'Any', 'station_owner': 'Station Owners', 'driver': 'Drivers'},
+                          options: const {
+                            null: 'Any',
+                            'public_consumer': 'Customers',
+                            'driver': 'Drivers',
+                            'station_owner': 'Station Owners',
+                            'wasa_admin': 'Officers',
+                          },
                           selected: _roleFilter,
                           onChanged: (v) => setState(() => _roleFilter = v),
                         ),
@@ -259,9 +283,13 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
     final palette = AdminPalette.of(context);
     final isActive = membership['status'] == 'active';
     final name = (membership['profiles']?['full_name'] as String?) ?? 'Unknown';
-    final role = membership['role'] == 'station_owner' ? 'Station Owner' : 'Driver / Helper';
+    final role = membershipRoleLabel(membership['role'] as String?);
     final stationName = membership['water_stations']?['station_name'] as String?;
+    final phone = membership['profiles']?['phone_number'] as String?;
     final tone = isActive ? AppColors.cleared : AppColors.flagged;
+    // An officer suspending their own account would lock themselves out of
+    // the portal with no one left to undo it.
+    final isSelf = membership['profile_id'] == _supabase.auth.currentUser?.id;
 
     return PortalCard(
       lift: false,
@@ -287,7 +315,10 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                   runSpacing: 6,
                   crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
-                    Text('$role${stationName != null ? ' · $stationName' : ''}', style: TextStyle(color: palette.inkMuted)),
+                    Text(
+                      [role, ?stationName, if (phone != null && phone.isNotEmpty) phone].join(' · '),
+                      style: TextStyle(color: palette.inkMuted),
+                    ),
                     AdminStatusPill(label: isActive ? 'ACTIVE' : 'SUSPENDED', color: tone),
                   ],
                 ),
@@ -295,10 +326,16 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
             ),
           ),
           const SizedBox(width: 8),
-          TextButton(
-            onPressed: () => _toggleStatus(membership),
-            child: Text(isActive ? 'Suspend' : 'Reactivate'),
-          ),
+          if (isSelf)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              child: Text('You', style: TextStyle(color: palette.inkMuted, fontWeight: FontWeight.w600)),
+            )
+          else
+            TextButton(
+              onPressed: () => _toggleStatus(membership),
+              child: Text(isActive ? 'Suspend' : 'Reactivate'),
+            ),
         ],
       ),
     );
@@ -445,13 +482,7 @@ class _DeletionRequestsPanelState extends State<_DeletionRequestsPanel> {
 
   Widget _buildRequest(AccountDeletionRequest request) {
     final membership = _membershipByProfile[request.profileId];
-    final role = switch (membership?['role']) {
-      'station_owner' => 'Station Owner',
-      'driver' => 'Driver / Helper',
-      'wasa_admin' => 'WASA Admin',
-      'public_consumer' => 'Customer',
-      _ => 'No role',
-    };
+    final role = membershipRoleLabel(membership?['role'] as String?);
     final station = membership?['water_stations'] as Map<String, dynamic>?;
     final stationId = station?['id'] as String?;
     final stationName = station?['station_name'] as String?;

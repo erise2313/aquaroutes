@@ -10,15 +10,6 @@ class StationService {
 
   final SupabaseService _supabase;
 
-  Future<Station?> fetchOwnedStation(String ownerProfileId) async {
-    final row = await _supabase.client
-        .from('water_stations')
-        .select()
-        .eq('owner_profile_id', ownerProfileId)
-        .maybeSingle();
-    if (row == null) return null;
-    return Station.fromMap(row);
-  }
 
   Future<void> updateStation(String stationId, Map<String, dynamic> fields) async {
     await _supabase.client.from('water_stations').update(fields).eq('id', stationId);

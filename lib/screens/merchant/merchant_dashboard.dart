@@ -5,6 +5,7 @@ import 'package:aquaroute/screens/merchant/driver_management.dart';
 import 'package:aquaroute/screens/merchant/hire_check_screen.dart';
 import 'package:aquaroute/screens/merchant/jug_clearinghouse_screen.dart';
 import 'package:aquaroute/screens/merchant/permit_vault_screen.dart';
+import 'package:aquaroute/screens/merchant/station_reviews_screen.dart';
 import 'package:aquaroute/screens/merchant/worker_registry_screen.dart';
 import 'package:aquaroute/services/permit_service.dart';
 import 'package:aquaroute/services/supabase_service.dart';
@@ -177,15 +178,16 @@ class _MerchantDashboardScreenState extends State<MerchantDashboardScreen> {
     return Scaffold(
       // The app bar is gone in favour of the portal header, which carries an
       // eyebrow and a subtitle the bar had nowhere to put. The toggle and the
-      // bell move into it unchanged.
+      // bell move into it -- in the app only: in a browser the sidebar's
+      // footer already has both.
       body: Column(
         children: [
-          const PortalPageHeader(
+          PortalPageHeader(
             eyebrow: 'Your station',
             title: 'Station Dashboard',
             subtitle: 'Live orders, takings, and the records the association asks for',
             showBack: false,
-            actions: [AppThemeToggle(), NotificationBell()],
+            actions: PortalShellScope.isPresent(context) ? const [] : const [AppThemeToggle(), NotificationBell()],
           ),
           Expanded(
             child: _isLoading
@@ -267,6 +269,19 @@ class _MerchantDashboardScreenState extends State<MerchantDashboardScreen> {
                             title: 'Track & Manage Drivers',
                             subtitle: 'Configure vehicle capacities, plates, and monitor idle drivers',
                             onTap: () => _go('Drivers', const DriverManagementScreen()),
+                            last: true,
+                          ),
+                        ),
+                        SizedBox(height: density.sectionGap),
+
+                        PortalSection(
+                          title: 'Customers',
+                          child: _buildNavCard(
+                            icon: Icons.star_outline,
+                            tone: AppColors.accent,
+                            title: 'Customer Reviews',
+                            subtitle: 'Ratings and comments customers leave after a delivery',
+                            onTap: () => _go('Reviews', const StationReviewsScreen()),
                             last: true,
                           ),
                         ),

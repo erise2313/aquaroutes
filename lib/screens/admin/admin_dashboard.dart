@@ -151,8 +151,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             createdAt: DateTime.parse(i['created_at'] as String),
             icon: Icons.warning_amber_rounded,
             color: AppColors.pendingClearance,
-            onTap: () => Navigator.push(context, adminRoute(const WorkerClearanceScreen(initialTabIndex: 1)))
-                .then((_) => _fetchStats()),
+            onTap: () => WorkerClearanceScreen.open(context, tab: 1).then((_) => _fetchStats()),
           ),
         for (final c in credentials)
           _ReviewItem(
@@ -161,8 +160,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             createdAt: DateTime.parse(c['uploaded_at'] as String? ?? DateTime.now().toIso8601String()),
             icon: Icons.badge_outlined,
             color: AdminTheme.sealGold,
-            onTap: () => Navigator.push(context, adminRoute(const WorkerClearanceScreen(initialTabIndex: 2)))
-                .then((_) => _fetchStats()),
+            onTap: () => WorkerClearanceScreen.open(context, tab: 2).then((_) => _fetchStats()),
           ),
       ]..sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
@@ -238,8 +236,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                               runSpacing: 12,
                               children: [
                                 _kpiTile(icon: Icons.description_outlined, label: 'Permits to review', value: _pendingPermits, color: AdminTheme.harborBlue, onTap: () => _go('Permits', const PermitQueueScreen())),
-                                _kpiTile(icon: Icons.warning_amber_rounded, label: 'Open incidents', value: _openIncidents, color: AppColors.pendingClearance, onTap: () => _go('Workers', const WorkerClearanceScreen(initialTabIndex: 1))),
-                                _kpiTile(icon: Icons.flag_outlined, label: 'Flagged workers', value: _flaggedWorkers, color: AppColors.flagged, onTap: () => _go('Workers', const WorkerClearanceScreen())),
+                                _kpiTile(icon: Icons.warning_amber_rounded, label: 'Open incidents', value: _openIncidents, color: AppColors.pendingClearance, onTap: () => WorkerClearanceScreen.open(context, tab: 1).then((_) => _fetchStats())),
+                                _kpiTile(icon: Icons.flag_outlined, label: 'Flagged workers', value: _flaggedWorkers, color: AppColors.flagged, onTap: () => WorkerClearanceScreen.open(context, clearance: 'flagged').then((_) => _fetchStats())),
                                 // When no approved permit carries an expiry date at
                                 // all, "0 expiring soon" is not an all-clear -- it means
                                 // expiry isn't being tracked. Showing the reassuring
