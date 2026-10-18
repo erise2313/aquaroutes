@@ -109,7 +109,7 @@ class _AboutScreenState extends ConsumerState<AboutScreen> {
                             runSpacing: 8,
                             children: _barangays
                                 .map((b) => Chip(
-                                      label: Text(b, style: TextStyle(fontSize: 14, color: WebTheme.of(context).ink)),
+                                      label: Text(b, style: TextStyle(fontSize: 16, color: WebTheme.of(context).ink)),
                                       backgroundColor: WebTheme.of(context).foam,
                                       side: BorderSide.none,
                                     ))
@@ -137,7 +137,7 @@ class _AboutScreenState extends ConsumerState<AboutScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Padding(padding: EdgeInsets.only(top: 2, right: 12), child: WebSeal(size: 18, outlined: true)),
-          Expanded(child: Text(text, style: TextStyle(fontSize: 15, height: 1.5, color: WebTheme.of(context).ink))),
+          Expanded(child: Text(text, style: TextStyle(fontSize: 16, height: 1.5, color: WebTheme.of(context).ink))),
         ],
       ),
     );

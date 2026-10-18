@@ -35,7 +35,7 @@ void main() {
     // Portrait and landscape, at the text sizes that make the content taller
     // than a sideways phone.
     for (final size in [const Size(390, 844), const Size(844, 390), const Size(640, 360)]) {
-      for (final scale in [1.0, 1.3, 2.0]) {
+      for (final scale in [1.0, 1.3, 2.0, 2.6]) {
         testWidgets('fills ${size.width.toInt()}x${size.height.toInt()} at ${scale}x without overflowing', (tester) async {
           await _pump(tester, _state, size: size, textScale: scale);
           expect(

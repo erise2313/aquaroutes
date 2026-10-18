@@ -181,18 +181,14 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
           // On its own line rather than beside the station name: a pill is a
           // non-flexible child of a Row and is laid out with unbounded width,
           // so a long label like OUT FOR DELIVERY could never wrap there.
-          StatusPill(label: look.label, color: look.color),
+          StatusPill(label: look.label, color: look.color, icon: look.icon),
           const SizedBox(height: 10),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Expanded(child: Text(_orderLineText(order), style: theme.textTheme.bodyMedium)),
-              const SizedBox(width: 12),
-              Text(
-                formatPeso(totalAmount),
-                style: theme.textTheme.titleMedium?.copyWith(color: scheme.primary, fontWeight: FontWeight.w700),
-              ),
-            ],
+          PortalLineAmount(
+            line: Text(_orderLineText(order), style: theme.textTheme.bodyMedium),
+            amount: Text(
+              formatPeso(totalAmount),
+              style: theme.textTheme.titleMedium?.copyWith(color: scheme.primary, fontWeight: FontWeight.w700),
+            ),
           ),
           const SizedBox(height: 4),
           Text(

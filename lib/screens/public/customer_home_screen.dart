@@ -210,7 +210,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                   'WATER STATION ASSOCIATION · GENERAL TRIAS',
                   style: TextStyle(
                     color: Colors.white.withValues(alpha: 0.85),
-                    fontSize: 13,
+                    fontSize: 16,
                     fontWeight: FontWeight.w700,
                     letterSpacing: 1.6,
                   ),
@@ -229,7 +229,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
           Text(
             'Order from a station the association has actually reviewed -- '
             'and see the seal before you order a drop.',
-            style: TextStyle(color: Colors.white.withValues(alpha: 0.85), fontSize: 14, height: 1.5),
+            style: TextStyle(color: Colors.white.withValues(alpha: 0.85), fontSize: 16, height: 1.5),
           ),
           const SizedBox(height: 20),
           // Wrap rather than a Row: at large system text two buttons side by

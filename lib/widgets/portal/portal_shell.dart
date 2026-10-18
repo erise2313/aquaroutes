@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+import '../../constants/brand_fonts.dart';
 
 import '../../constants/brand_tokens.dart';
 import '../../screens/app_route.dart';
@@ -491,7 +491,7 @@ class _Wordmark extends StatelessWidget {
                 Text(
                   'GENTRI WASA',
                   overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.fraunces(fontWeight: FontWeight.w600, fontSize: 18, color: theme.colorScheme.onSurface),
+                  style: BrandFonts.display(fontWeight: FontWeight.w600, fontSize: 18, color: theme.colorScheme.onSurface),
                 ),
                 Text(portalName, overflow: TextOverflow.ellipsis, style: theme.textTheme.labelMedium),
               ],

@@ -172,7 +172,7 @@ class _ResourcesAdminScreenState extends State<ResourcesAdminScreen> {
                 const SizedBox(height: 2),
                 Text(
                   '${resource.category} · ${DateFormat('MMM d, yyyy').format(resource.createdAt)}',
-                  style: TextStyle(fontSize: 14, color: palette.inkMuted),
+                  style: TextStyle(fontSize: 16, color: palette.inkMuted),
                 ),
               ],
             ),

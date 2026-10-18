@@ -27,7 +27,7 @@ class NoMembershipScreen extends StatelessWidget {
                 'To order water, finish setting up a customer account below. '
                 'If you\'re a station owner or driver awaiting setup, contact WASA.',
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 15, color: Theme.of(context).colorScheme.onSurfaceVariant),
+                style: TextStyle(fontSize: 16, color: Theme.of(context).colorScheme.onSurfaceVariant),
               ),
               const SizedBox(height: 24),
               ElevatedButton(

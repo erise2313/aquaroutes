@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../constants/brand_tokens.dart';
 import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -347,7 +348,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Accredited stations', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: palette.inkMuted)),
+                Text('Accredited stations', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: palette.inkMuted)),
                 const SizedBox(height: 4),
                 // The seal's own figure, counting up like the public site's.
                 CountUpText(
@@ -363,12 +364,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Pending', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: palette.inkMuted)),
+              Text('Pending', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: palette.inkMuted)),
               const SizedBox(height: 4),
               CountUpText(
                 value: _pendingCount,
                 start: true,
-                style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w700, color: AppColors.pendingClearance),
+                // The amber *fill* is 1.8:1 as text; the warning ink is 7:1.
+                style: TextStyle(fontSize: 28, fontWeight: FontWeight.w700, color: BrandStatus.warningFor(Theme.of(context).brightness)),
               ),
             ],
           ),
@@ -406,7 +408,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               children: [
                 Text(title, style: TextStyle(fontWeight: FontWeight.w600, color: palette.ink)),
                 const SizedBox(height: 2),
-                Text(subtitle, style: TextStyle(fontSize: 14, color: palette.inkMuted, height: 1.2)),
+                Text(subtitle, style: TextStyle(fontSize: 16, color: palette.inkMuted, height: 1.2)),
               ],
             ),
           ),
@@ -439,7 +441,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 const SizedBox(height: 2),
                 Text(
                   '${item.subtitle} · ${DateFormat('MMM d, yyyy').format(item.createdAt)}',
-                  style: TextStyle(fontSize: 14, color: palette.inkMuted, height: 1.2),
+                  style: TextStyle(fontSize: 16, color: palette.inkMuted, height: 1.2),
                 ),
               ],
             ),
@@ -499,12 +501,12 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                           style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: palette.ink),
                         ),
                   const SizedBox(height: 2),
-                  Text(label, style: TextStyle(fontSize: 14, color: palette.inkMuted, height: 1.2)),
+                  Text(label, style: TextStyle(fontSize: 16, color: palette.inkMuted, height: 1.2)),
                   if (note != null) ...[
                     const SizedBox(height: 4),
                     Text(
                       note,
-                      style: TextStyle(fontSize: 13, height: 1.2, fontStyle: FontStyle.italic, color: AppColors.pendingClearance),
+                      style: TextStyle(fontSize: 16, height: 1.2, fontStyle: FontStyle.italic, color: BrandStatus.warningFor(Theme.of(context).brightness)),
                     ),
                   ],
                 ],

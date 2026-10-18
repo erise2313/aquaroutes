@@ -11,31 +11,39 @@ import 'package:flutter/material.dart';
 /// the one people liked, so these values are the app's, and the three themes
 /// now read from here.
 ///
-/// Contrast targets (WCAG), checked in test/brand_tokens_test.dart:
-///  * body and muted text: 7:1 on every surface in light mode, 4.5:1+ in dark
-///  * status colours used as text: 4.5:1 on paper and card in both modes
+/// Contrast targets (WCAG AAA), checked in test/brand_tokens_test.dart:
+///  * every colour used as text -- body, muted, the brand blue, status inks,
+///    gold labels -- 7:1 on every surface, in light AND dark mode
+///  * text on the brand-blue buttons: 7:1
 ///  * input outlines: 3:1 (non-text UI component)
+/// Raised from AA (4.5:1) in October 2026 for older readers, per the UI plan;
+/// the hues are the same, only darker (light) or lighter (dark).
 class BrandColors {
   BrandColors._();
 
   // -- Brand accents, identical in both modes ----------------------------
   static const inkNavy = Color(0xFF0B2545);
-  static const harborBlue = Color(0xFF1565C0);
+  /// Was #1565C0 (5.1-5.7:1 as text); this is 7.7:1 on every light surface
+  /// and white text on it is 8.6:1.
+  static const harborBlue = Color(0xFF0D47A1);
 
   /// Accreditation only. Never a general accent, or it stops meaning anything.
   static const sealGold = Color(0xFFC99A3B);
 
   /// Gold for *text* on a light surface -- the decorative gold is 2.4:1 on
   /// paper, which no one can read.
-  static const sealGoldInk = Color(0xFF8A6516);
+  static const sealGoldInk = Color(0xFF654A0D);
+
+  /// Gold for text on a dark surface; the decorative gold is 5.8:1 there.
+  static const sealGoldInkDark = Color(0xFFE0BC6A);
 
   static const deepTeal = Color(0xFF0B4F5C);
 
   /// Gold that can be read as text on the current surface.
-  static Color sealGoldTextFor(Brightness b) => b == Brightness.dark ? sealGold : sealGoldInk;
+  static Color sealGoldTextFor(Brightness b) => b == Brightness.dark ? sealGoldInkDark : sealGoldInk;
 
-  /// The brand blue lifted for dark surfaces (7.9:1 on the dark page).
-  static const harborBlueOnDark = Color(0xFF6FB1F0);
+  /// The brand blue lifted for dark surfaces (8:1 on every dark surface).
+  static const harborBlueOnDark = Color(0xFF8CC4F5);
   static const onHarborBlueOnDark = Color(0xFF04243F);
 }
 
@@ -50,13 +58,13 @@ class BrandStatus {
   static const danger = Color(0xFFC62828);
   static const info = BrandColors.harborBlue;
 
-  static const successInk = Color(0xFF2E7D32);
-  static const warningInk = Color(0xFF8A5A00);
-  static const dangerInk = Color(0xFFC62828);
+  static const successInk = Color(0xFF19571C);
+  static const warningInk = Color(0xFF6E4100);
+  static const dangerInk = Color(0xFF9F1C1C);
 
-  static const successInkDark = Color(0xFF66BB6A);
+  static const successInkDark = Color(0xFF81C784);
   static const warningInkDark = Color(0xFFFFCA28);
-  static const dangerInkDark = Color(0xFFFF8A80);
+  static const dangerInkDark = Color(0xFFFFAB91);
 
   static Color successFor(Brightness b) => b == Brightness.dark ? successInkDark : successInk;
   static Color warningFor(Brightness b) => b == Brightness.dark ? warningInkDark : warningInk;
@@ -146,24 +154,31 @@ class BrandSpace {
   static const double xxxl = 48;
 }
 
-/// Type sizes shared by all three surfaces. Body is 16 (it was 14.5 in the
-/// app): the evaluation's users are mostly older readers, and nothing a
-/// person must read goes below 13.
+/// Type sizes shared by all three surfaces.
+///
+/// Body text is 18 and nothing anywhere goes below 16 -- captions, table
+/// cells and helper lines included. Most of the people who must succeed
+/// with the product are older readers (presbyopia, lower contrast
+/// sensitivity), so this follows the senior-focused guidance in the UI
+/// plan rather than the usual 14-16 defaults. It was 16 body / 13 minimum.
 class BrandType {
   BrandType._();
-  static const double headlineLarge = 32;
-  static const double headlineMedium = 27;
-  static const double headlineSmall = 23;
-  static const double titleLarge = 20;
-  static const double titleMedium = 17;
-  static const double titleSmall = 15;
-  static const double bodyLarge = 17;
-  static const double bodyMedium = 16;
-  static const double bodySmall = 14;
-  static const double labelLarge = 15.5;
-  static const double labelMedium = 14;
-  static const double labelSmall = 13;
+  static const double headlineLarge = 34;
+  static const double headlineMedium = 29;
+  static const double headlineSmall = 25;
+  static const double titleLarge = 22;
+  static const double titleMedium = 19;
+  static const double titleSmall = 18;
+  static const double bodyLarge = 20;
+  static const double bodyMedium = 18;
+  static const double bodySmall = 16;
+  static const double labelLarge = 18;
+  static const double labelMedium = 16;
+  static const double labelSmall = 16;
 
   /// Minimum height of anything tappable.
   static const double minTarget = 48;
+
+  /// Minimum height of a screen's main (filled) button.
+  static const double minPrimaryTarget = 56;
 }

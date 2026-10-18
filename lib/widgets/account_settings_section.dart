@@ -10,6 +10,7 @@ import '../services/account_service.dart';
 import '../services/supabase_service.dart';
 import 'change_password_dialog.dart';
 import '../utils/error_text.dart';
+import '../providers/text_size_provider.dart';
 
 /// "Account" block shared by every signed-in surface: change password, and
 /// either delete the account (customers) or request its deletion (station
@@ -126,7 +127,7 @@ class _AccountSettingsSectionState extends ConsumerState<AccountSettingsSection>
     final danger = theme.colorScheme.error;
     final pending = _pending;
 
-    final heading = TextStyle(color: muted, letterSpacing: 1.2, fontSize: 14, fontWeight: FontWeight.w600);
+    final heading = TextStyle(color: muted, letterSpacing: 1.2, fontSize: 16, fontWeight: FontWeight.w600);
     final themeMode = ref.watch(appThemeProvider);
 
     return Column(
@@ -160,6 +161,28 @@ class _AccountSettingsSectionState extends ConsumerState<AccountSettingsSection>
             ),
           ),
         ],
+        // Everywhere, website and portals included: many older users never
+        // find their phone's or browser's text setting, and this multiplies
+        // it rather than replacing it.
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+          child: Text('TEXT SIZE', style: heading),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+          child: Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final option in AppTextSize.values)
+                ChoiceChip(
+                  label: Text(option.label),
+                  selected: ref.watch(textSizeProvider) == option,
+                  onSelected: (_) => ref.read(textSizeProvider.notifier).set(option),
+                ),
+            ],
+          ),
+        ),
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
           child: Text('ACCOUNT', style: heading),

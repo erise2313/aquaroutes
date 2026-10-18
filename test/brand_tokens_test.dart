@@ -25,12 +25,23 @@ void main() {
       }
     });
 
-    test('dark-mode text clears 4.5:1 on every surface', () {
+    test('dark-mode text clears 7:1 on every surface', () {
       const s = BrandSurfaces.dark;
       for (final bg in [s.paper, s.card, s.foam]) {
         expect(_contrast(s.ink, bg), greaterThan(7.0));
-        expect(_contrast(s.inkMuted, bg), greaterThan(4.5), reason: 'muted text on $bg');
+        expect(_contrast(s.inkMuted, bg), greaterThan(7.0), reason: 'muted text on $bg');
       }
+    });
+
+    test('the brand blue reads as text at 7:1, and carries 7:1 text as a button', () {
+      for (final bg in [BrandSurfaces.light.paper, BrandSurfaces.light.card, BrandSurfaces.light.foam]) {
+        expect(_contrast(BrandColors.harborBlue, bg), greaterThan(7.0), reason: 'blue on $bg');
+      }
+      for (final bg in [BrandSurfaces.dark.paper, BrandSurfaces.dark.card, BrandSurfaces.dark.foam]) {
+        expect(_contrast(BrandColors.harborBlueOnDark, bg), greaterThan(7.0), reason: 'light blue on $bg');
+      }
+      expect(_contrast(Colors.white, BrandColors.harborBlue), greaterThan(7.0));
+      expect(_contrast(BrandColors.onHarborBlueOnDark, BrandColors.harborBlueOnDark), greaterThan(7.0));
     });
 
     test('input outlines clear 3:1 so fields can be found', () {
@@ -41,18 +52,20 @@ void main() {
   });
 
   group('BrandStatus', () {
-    test('status ink is readable as text in both modes', () {
+    test('status ink and gold labels read at 7:1 on every surface, both modes', () {
       for (final b in Brightness.values) {
         final s = BrandSurfaces.of(b);
-        for (final ink in [BrandStatus.successFor(b), BrandStatus.warningFor(b), BrandStatus.dangerFor(b)]) {
-          expect(_contrast(ink, s.paper), greaterThan(4.5), reason: '$ink on paper, $b');
-          expect(_contrast(ink, s.card), greaterThan(4.5), reason: '$ink on card, $b');
+        for (final ink in [
+          BrandStatus.successFor(b),
+          BrandStatus.warningFor(b),
+          BrandStatus.dangerFor(b),
+          BrandColors.sealGoldTextFor(b),
+        ]) {
+          for (final bg in [s.paper, s.card, s.foam]) {
+            expect(_contrast(ink, bg), greaterThan(7.0), reason: '$ink on $bg, $b');
+          }
         }
       }
-    });
-
-    test('gold text on light surfaces uses the darker ink', () {
-      expect(_contrast(BrandColors.sealGoldInk, BrandSurfaces.light.card), greaterThan(4.5));
     });
   });
 

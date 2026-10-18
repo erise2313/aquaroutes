@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+
+import '../../constants/brand_tokens.dart';
 import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -378,7 +380,7 @@ class _PermitReviewScreenState extends State<PermitReviewScreen> {
                   OutlinedButton(
                     onPressed: () => _review(permit, false),
                     style: OutlinedButton.styleFrom(
-                      foregroundColor: AppColors.flagged,
+                      foregroundColor: BrandStatus.dangerFor(Theme.of(context).brightness),
                       side: const BorderSide(color: AppColors.flagged),
                     ),
                     child: const Text('Reject'),

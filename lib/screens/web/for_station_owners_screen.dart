@@ -160,7 +160,7 @@ class _ForStationOwnersScreenState extends ConsumerState<ForStationOwnersScreen>
                             // did not. Accreditation is a sibling page, so it
                             // navigates like one.
                             onPressed: () => _goToAccreditation(context),
-                            style: TextButton.styleFrom(foregroundColor: WebTheme.harborBlue),
+                            style: TextButton.styleFrom(foregroundColor: Theme.of(context).colorScheme.primary),
                             child: const Text('See the full accreditation process'),
                           ),
                           // Registering is for visitors: someone already
@@ -238,7 +238,7 @@ class _BenefitCardState extends State<_BenefitCard> {
                   const SizedBox(height: 14),
                   Text(widget.title, style: TextStyle(fontWeight: FontWeight.bold, color: WebTheme.of(context).ink)),
                   const SizedBox(height: 6),
-                  Text(widget.body, style: TextStyle(color: WebTheme.of(context).inkMuted, fontSize: 13, height: 1.4)),
+                  Text(widget.body, style: TextStyle(color: WebTheme.of(context).inkMuted, fontSize: 16, height: 1.4)),
                 ],
               ),
             ),

@@ -61,7 +61,7 @@ void main() {
 
     testWidgets('lays out without overflow across widths and text sizes', (tester) async {
       for (final width in [360.0, 768.0, 1280.0]) {
-        for (final scale in [1.0, 1.3, 2.0]) {
+        for (final scale in [1.0, 1.3, 2.0, 2.6]) {
           await _pump(
             tester,
             AppTheme.light,
@@ -249,7 +249,7 @@ void main() {
     testWidgets('lays out without overflow across widths, text sizes and modes', (tester) async {
       for (final theme in [AppTheme.light, AppTheme.dark]) {
         for (final width in [360.0, 768.0, 1280.0]) {
-          for (final scale in [1.0, 1.3, 2.0]) {
+          for (final scale in [1.0, 1.3, 2.0, 2.6]) {
             await _pump(tester, theme, body(), size: Size(width, 900), textScale: scale);
             expect(
               tester.takeException(),
@@ -305,13 +305,9 @@ void main() {
 
     Widget amountRow(BuildContext context) {
       final theme = Theme.of(context);
-      return Row(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          Expanded(child: Text('3 x Alkaline (Round 5-gal)', style: theme.textTheme.bodyMedium)),
-          const SizedBox(width: 12),
-          Text('₱1,240.00', style: theme.textTheme.titleMedium),
-        ],
+      return PortalLineAmount(
+        line: Text('3 x Alkaline (Round 5-gal)', style: theme.textTheme.bodyMedium),
+        amount: Text('₱1,240.00', style: theme.textTheme.titleMedium),
       );
     }
 
@@ -334,7 +330,7 @@ void main() {
       for (final row in rows.entries) {
         for (final theme in [AppTheme.light, AppTheme.dark]) {
           for (final width in [360.0, 768.0, 1280.0]) {
-            for (final scale in [1.0, 1.3, 2.0]) {
+            for (final scale in [1.0, 1.3, 2.0, 2.6]) {
               await _pump(
                 tester,
                 theme,
@@ -402,7 +398,7 @@ void main() {
       for (final entry in {'hero': hero, 'hours': hours}.entries) {
         for (final theme in [AppTheme.light, AppTheme.dark]) {
           for (final width in [360.0, 768.0, 1280.0]) {
-            for (final scale in [1.0, 1.3, 2.0]) {
+            for (final scale in [1.0, 1.3, 2.0, 2.6]) {
               await _pump(tester, theme, entry.value(), size: Size(width, 900), textScale: scale);
               expect(
                 tester.takeException(),

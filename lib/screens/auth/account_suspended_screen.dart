@@ -28,7 +28,7 @@ class AccountSuspendedScreen extends StatelessWidget {
                 'Your account access has been suspended by WASA admin.\n\n'
                 'If you believe this is a mistake, please contact WASA to resolve it.',
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 15, color: Theme.of(context).colorScheme.onSurfaceVariant),
+                style: TextStyle(fontSize: 16, color: Theme.of(context).colorScheme.onSurfaceVariant),
               ),
               const SizedBox(height: 24),
               ElevatedButton(

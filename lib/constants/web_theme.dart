@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'brand_fonts.dart';
 
 import 'brand_theme.dart';
 import 'brand_tokens.dart';
@@ -55,18 +55,18 @@ class WebTheme {
     Color? color,
     double? height,
   }) {
-    return GoogleFonts.fraunces(fontSize: fontSize, fontWeight: fontWeight, color: color, height: height);
+    return BrandFonts.display(fontSize: fontSize, fontWeight: fontWeight, color: color, height: height);
   }
 
   static TextStyle heroDisplay({Color color = Colors.white}) {
-    return GoogleFonts.fraunces(fontSize: 48, fontWeight: FontWeight.w600, color: color, height: 1.1);
+    return BrandFonts.display(fontSize: 48, fontWeight: FontWeight.w600, color: color, height: 1.1);
   }
 
   /// Gold small caps for a fixed navy background (the hero, the footer).
   /// On a page that follows the mode use [eyebrowFor]: this gold is only
   /// 2.4:1 on the light paper.
   static const TextStyle eyebrow = TextStyle(
-    fontSize: 13,
+    fontSize: 16,
     fontWeight: FontWeight.w700,
     letterSpacing: 2.2,
     color: sealGold,

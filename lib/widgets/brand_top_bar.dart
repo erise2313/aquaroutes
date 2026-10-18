@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+import '../constants/brand_fonts.dart';
 
 import 'wasa_shield_logo.dart';
 
@@ -122,7 +122,7 @@ class BrandTopBar extends StatelessWidget implements PreferredSizeWidget {
   /// other. Measured at the bold weight so the row doesn't resize when the
   /// active page changes.
   static double measureLinks(List<BrandNavLink> links) {
-    const style = TextStyle(fontSize: 14, fontWeight: FontWeight.w700);
+    const style = TextStyle(fontSize: 16, fontWeight: FontWeight.w700);
     var total = 0.0;
     for (final link in links) {
       total += measureText(link.label, style) + 24; // button padding + margin
@@ -151,7 +151,7 @@ class BrandTopBar extends StatelessWidget implements PreferredSizeWidget {
                   // rather than a guess.
                   final brandWidth = 32 +
                       10 +
-                      measureText('GENTRI WASA', GoogleFonts.fraunces(fontSize: 19, fontWeight: FontWeight.w600)) +
+                      measureText('GENTRI WASA', BrandFonts.display(fontSize: 19, fontWeight: FontWeight.w600)) +
                       12;
 
                   final isWide = constraints.maxWidth >= brandWidth + 20 + measureLinks(links) + actionsWidth + 16;
@@ -195,7 +195,7 @@ class BrandTopBar extends StatelessWidget implements PreferredSizeWidget {
                                     child: Text(
                                       'GENTRI WASA',
                                       overflow: TextOverflow.ellipsis,
-                                      style: GoogleFonts.fraunces(
+                                      style: BrandFonts.display(
                                         fontWeight: FontWeight.w600,
                                         fontSize: 19,
                                         color: foreground,
@@ -306,7 +306,7 @@ class _BrandNavLinkViewState extends State<_BrandNavLinkView> {
                 style: TextStyle(
                   color: color,
                   fontWeight: widget.link.isActive ? FontWeight.w700 : FontWeight.w500,
-                  fontSize: 14,
+                  fontSize: 16,
                 ),
                 child: Text(widget.link.label),
               ),

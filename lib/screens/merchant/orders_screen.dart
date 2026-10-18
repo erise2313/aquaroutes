@@ -419,7 +419,7 @@ class _MerchantOrdersScreenState extends State<MerchantOrdersScreen> {
               ),
               if (density.isWide) ...[
                 const SizedBox(width: 8),
-                StatusPill(label: look.label, color: look.color),
+                StatusPill(label: look.label, color: look.color, icon: look.icon),
               ],
             ],
           ),
@@ -430,34 +430,28 @@ class _MerchantOrdersScreenState extends State<MerchantOrdersScreen> {
           // of this Column its width is bounded, so it wraps instead.
           if (!density.isWide) ...[
             const SizedBox(height: 10),
-            StatusPill(label: look.label, color: look.color),
+            StatusPill(label: look.label, color: look.color, icon: look.icon),
           ],
           const SizedBox(height: 12),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Expanded(
-                child: Text(
-                  describeOrderLine(
-                    quantity: (order['jugs_ordered'] as num).toInt(),
-                    waterType: order['water_type'] as String? ?? '',
-                    containerCode: order['jug_type'] as String?,
-                    productKind: order['product_kind'] as String?,
-                  ),
-                  style: theme.textTheme.bodyMedium,
-                ),
+          PortalLineAmount(
+            line: Text(
+              describeOrderLine(
+                quantity: (order['jugs_ordered'] as num).toInt(),
+                waterType: order['water_type'] as String? ?? '',
+                containerCode: order['jug_type'] as String?,
+                productKind: order['product_kind'] as String?,
               ),
-              const SizedBox(width: 12),
-              // The amount is what an owner scans for, so it gets the display
-              // face rather than being run together with the order line.
-              Text(
-                formatPeso((order['total_amount'] as num?)?.toDouble() ?? 0),
-                style: theme.textTheme.titleMedium?.copyWith(
-                  color: scheme.primary,
-                  fontWeight: FontWeight.w700,
-                ),
+              style: theme.textTheme.bodyMedium,
+            ),
+            // The amount is what an owner scans for, so it gets the display
+            // face rather than being run together with the order line.
+            amount: Text(
+              formatPeso((order['total_amount'] as num?)?.toDouble() ?? 0),
+              style: theme.textTheme.titleMedium?.copyWith(
+                color: scheme.primary,
+                fontWeight: FontWeight.w700,
               ),
-            ],
+            ),
           ),
           if (listType == 'active') ...[
             const SizedBox(height: 4),

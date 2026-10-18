@@ -52,16 +52,11 @@ Widget _orderCard() => Builder(
               const SizedBox(height: 8),
               StatusPill(label: look.label, color: look.color),
               const SizedBox(height: 10),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Expanded(
-                    child: Text('3 × Slim 5-gal refill · Purified', style: theme.textTheme.bodyMedium),
-                  ),
-                  const SizedBox(width: 12),
-                  // A peso amount has no space to wrap at.
-                  Text('₱1,240.00', style: theme.textTheme.titleMedium),
-                ],
+              // A peso amount has no space to wrap at, so it takes its own
+              // line when the two don't fit (PortalLineAmount).
+              PortalLineAmount(
+                line: Text('3 × Slim 5-gal refill · Purified', style: theme.textTheme.bodyMedium),
+                amount: Text('₱1,240.00', style: theme.textTheme.titleMedium),
               ),
               const SizedBox(height: 4),
               Text('Placed Sep 12, 2026 10:45 AM', style: theme.textTheme.bodySmall),
@@ -130,7 +125,7 @@ void main() {
       for (final piece in pieces.entries) {
         for (final theme in _themes.entries) {
           for (final width in [360.0, 768.0, 1280.0]) {
-            for (final scale in [1.0, 1.3, 2.0]) {
+            for (final scale in [1.0, 1.3, 2.0, 2.6]) {
               await _pump(
                 tester,
                 theme.value,

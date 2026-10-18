@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../constants/brand_tokens.dart';
 import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -304,13 +305,13 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
                 if (failed)
                   Padding(
                     padding: const EdgeInsets.only(top: 4),
-                    child: Text('Delivery failed: ${order['failure_reason']}', style: const TextStyle(color: AppColors.flagged)),
+                    child: Text('Delivery failed: ${order['failure_reason']}', style: TextStyle(color: BrandStatus.dangerFor(Theme.of(context).brightness))),
                   ),
               ],
             ),
           ),
           const SizedBox(width: 8),
-          AdminStatusPill(label: look.label, color: look.color),
+          AdminStatusPill(label: look.label, color: look.color, icon: look.icon),
         ],
       ),
     );
@@ -381,7 +382,7 @@ class _AdminOrderDialogState extends State<_AdminOrderDialog> {
       title: Row(
         children: [
           Expanded(child: Text('Order ${adminOrderNumber(o)}')),
-          AdminStatusPill(label: look.label, color: look.color),
+          AdminStatusPill(label: look.label, color: look.color, icon: look.icon),
         ],
       ),
       content: SizedBox(
@@ -413,7 +414,7 @@ class _AdminOrderDialogState extends State<_AdminOrderDialog> {
         if (OrderStatusLook.isCancellable(status))
           TextButton(
             onPressed: _busy ? null : _cancel,
-            style: TextButton.styleFrom(foregroundColor: AppColors.flagged),
+            style: TextButton.styleFrom(foregroundColor: BrandStatus.dangerFor(Theme.of(context).brightness)),
             child: const Text('Cancel order'),
           ),
         TextButton(onPressed: _busy ? null : () => Navigator.pop(context, false), child: const Text('Close')),

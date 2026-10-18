@@ -107,7 +107,7 @@ class StatusCallout extends StatelessWidget {
                 Text(title, style: TextStyle(fontWeight: FontWeight.bold, color: scheme.onSurface)),
                 if (message != null) ...[
                   const SizedBox(height: 2),
-                  Text(message!, style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 13)),
+                  Text(message!, style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 16)),
                 ],
               ],
             ),

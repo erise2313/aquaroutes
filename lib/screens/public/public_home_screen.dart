@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../constants/app_colors.dart';
 import '../../models/membership.dart';
 import '../../providers/app_state.dart';
 import '../../widgets/app_theme_toggle.dart';
@@ -138,7 +137,7 @@ class _PublicHomeScreenState extends ConsumerState<PublicHomeScreen> {
         currentIndex: _currentIndex,
         onTap: _openTab,
         type: BottomNavigationBarType.fixed,
-        selectedItemColor: AppColors.primary,
+        selectedItemColor: Theme.of(context).colorScheme.primary,
         unselectedItemColor: Theme.of(context).colorScheme.onSurfaceVariant,
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home_outlined), activeIcon: Icon(Icons.home), label: 'Home'),

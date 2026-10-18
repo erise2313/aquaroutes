@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:aquaroute/screens/web/account_deletion_screen.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
+import '../constants/brand_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../constants/web_theme.dart';
@@ -57,13 +57,13 @@ class WebFooter extends ConsumerWidget {
                           children: [
                             const WebSeal(size: 28),
                             const SizedBox(width: 10),
-                            Text('GENTRI WASA', style: GoogleFonts.fraunces(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 18)),
+                            Text('GENTRI WASA', style: BrandFonts.display(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 18)),
                           ],
                         ),
                         const SizedBox(height: 10),
                         const Text(
                           'Water Station Association of General Trias, Cavite.',
-                          style: TextStyle(color: Colors.white70, fontSize: 13),
+                          style: TextStyle(color: Colors.white70, fontSize: 16),
                         ),
                       ],
                     ),
@@ -73,7 +73,7 @@ class WebFooter extends ConsumerWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(t('footer_quick_links'), style: WebTheme.eyebrow.copyWith(fontSize: 13)),
+                        Text(t('footer_quick_links'), style: WebTheme.eyebrow.copyWith(fontSize: 16)),
                         const SizedBox(height: 12),
                         _FooterLink(label: t('nav_about'), onTap: () => _push(context, const AboutScreen(), WebRoutes.about)),
                         _FooterLink(label: t('nav_stations'), onTap: () => _push(context, const StationsDirectoryScreen(), WebRoutes.stations)),
@@ -87,7 +87,7 @@ class WebFooter extends ConsumerWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(t('footer_resources'), style: WebTheme.eyebrow.copyWith(fontSize: 13)),
+                        Text(t('footer_resources'), style: WebTheme.eyebrow.copyWith(fontSize: 16)),
                         const SizedBox(height: 12),
                         _FooterLink(label: t('faq_title'), onTap: () => _push(context, const FaqScreen(), WebRoutes.faq)),
                         _FooterLink(label: t('verify_title'), onTap: () => _push(context, const VerifyAccreditationScreen(), WebRoutes.verify)),
@@ -110,11 +110,11 @@ class WebFooter extends ConsumerWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(t('footer_office'), style: WebTheme.eyebrow.copyWith(fontSize: 13)),
+                        Text(t('footer_office'), style: WebTheme.eyebrow.copyWith(fontSize: 16)),
                         const SizedBox(height: 12),
-                        const Text('[Placeholder] Association Office Address, General Trias, Cavite', style: TextStyle(color: Colors.white70, fontSize: 13)),
+                        const Text('[Placeholder] Association Office Address, General Trias, Cavite', style: TextStyle(color: Colors.white70, fontSize: 16)),
                         const SizedBox(height: 4),
-                        const Text('[Placeholder] Office Hours: Mon-Fri, 8AM-5PM', style: TextStyle(color: Colors.white70, fontSize: 13)),
+                        const Text('[Placeholder] Office Hours: Mon-Fri, 8AM-5PM', style: TextStyle(color: Colors.white70, fontSize: 16)),
                         const SizedBox(height: 4),
                         _FooterLink(
                           label: 'contact@gentriwasa.example',
@@ -128,7 +128,7 @@ class WebFooter extends ConsumerWidget {
               const SizedBox(height: 24),
               const Divider(color: Colors.white24),
               const SizedBox(height: 12),
-              Text('© ${DateTime.now().year} GENTRI WASA. ${t('footer_rights')}', style: const TextStyle(color: Colors.white70, fontSize: 14)),
+              Text('© ${DateTime.now().year} GENTRI WASA. ${t('footer_rights')}', style: const TextStyle(color: Colors.white70, fontSize: 16)),
             ],
           ),
         ),
@@ -174,7 +174,7 @@ class _FooterLinkState extends State<_FooterLink> {
           onTap: widget.onTap,
           child: AnimatedDefaultTextStyle(
             duration: const Duration(milliseconds: 150),
-            style: TextStyle(color: _hovering ? Colors.white : Colors.white70, fontSize: 13),
+            style: TextStyle(color: _hovering ? Colors.white : Colors.white70, fontSize: 16),
             child: Text(widget.label),
           ),
         ),

@@ -209,7 +209,7 @@ class _Updated extends StatelessWidget {
       decoration: BoxDecoration(color: palette.foam, borderRadius: BorderRadius.circular(8)),
       child: Text(
         'Last updated $lastUpdated',
-        style: TextStyle(color: palette.inkMuted, fontSize: 13, fontWeight: FontWeight.w600),
+        style: TextStyle(color: palette.inkMuted, fontSize: 16, fontWeight: FontWeight.w600),
       ),
     );
   }
@@ -241,7 +241,7 @@ class _Sub extends StatelessWidget {
       padding: const EdgeInsets.only(top: 18, bottom: 6),
       child: Text(
         text,
-        style: TextStyle(color: palette.ink, fontSize: 15, fontWeight: FontWeight.w700),
+        style: TextStyle(color: palette.ink, fontSize: 16, fontWeight: FontWeight.w700),
       ),
     );
   }
@@ -255,7 +255,7 @@ class _Body extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final palette = WebTheme.of(context);
-    return Text(text, style: TextStyle(color: palette.ink, fontSize: 15, height: 1.6));
+    return Text(text, style: TextStyle(color: palette.ink, fontSize: 16, height: 1.6));
   }
 }
 
@@ -285,7 +285,7 @@ class _Bullets extends StatelessWidget {
                   ),
                 ),
                 Expanded(
-                  child: Text(item, style: TextStyle(color: palette.ink, fontSize: 15, height: 1.55)),
+                  child: Text(item, style: TextStyle(color: palette.ink, fontSize: 16, height: 1.55)),
                 ),
               ],
             ),
@@ -312,7 +312,7 @@ class _Callout extends StatelessWidget {
       ),
       child: Text(
         text,
-        style: TextStyle(color: palette.ink, fontSize: 15, height: 1.5, fontWeight: FontWeight.w600),
+        style: TextStyle(color: palette.ink, fontSize: 16, height: 1.5, fontWeight: FontWeight.w600),
       ),
     );
   }
@@ -329,7 +329,7 @@ class _LinkRow extends StatelessWidget {
     return TextButton.icon(
       onPressed: onTap,
       style: TextButton.styleFrom(
-        foregroundColor: WebTheme.harborBlue,
+        foregroundColor: Theme.of(context).colorScheme.primary,
         padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
       ),
       icon: const Icon(Icons.arrow_forward, size: 16),

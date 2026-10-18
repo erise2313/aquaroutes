@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../status_callout.dart';
+import '../../constants/brand_tokens.dart';
 
 /// A small coloured state label -- accredited, pending, flagged, delivered.
 ///
@@ -16,12 +17,27 @@ class StatusPill extends StatelessWidget {
   /// The semantic colour: green cleared, amber pending, red flagged.
   final Color color;
 
+  /// Shown before the label. When null, one is chosen from [color] --
+  /// a check for the success green, a clock for the pending amber, a stop
+  /// sign for the danger red -- so a status never relies on colour alone
+  /// (about 1 in 12 men has some colour-vision deficiency, and ageing eyes
+  /// blur red and green further).
   final IconData? icon;
+
+  /// The icon implied by a status colour, or null for a colour that carries
+  /// no status meaning (a neutral grey, the brand blue).
+  static IconData? iconFor(Color color) {
+    if (color == BrandStatus.success || color == BrandStatus.successInk) return Icons.check_circle_outline;
+    if (color == BrandStatus.warning || color == BrandStatus.warningInk) return Icons.schedule;
+    if (color == BrandStatus.danger || color == BrandStatus.dangerInk) return Icons.block;
+    return null;
+  }
 
   @override
   Widget build(BuildContext context) {
+    final icon = this.icon ?? iconFor(color);
     final foreground = StatusTint.onTint(context, color);
-    final style = TextStyle(color: foreground, fontSize: 13, fontWeight: FontWeight.bold, letterSpacing: 0.2);
+    final style = TextStyle(color: foreground, fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 0.2);
 
     return Container(
       padding: EdgeInsets.symmetric(horizontal: icon == null ? 12 : 10, vertical: 5),

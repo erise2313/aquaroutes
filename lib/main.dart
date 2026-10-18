@@ -14,6 +14,7 @@ import 'providers/web_theme_provider.dart';
 import 'screens/auth/auth_gate.dart';
 import 'web_router.dart';
 import 'utils/url_strategy.dart';
+import 'providers/text_size_provider.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -96,6 +97,7 @@ class _MyAppState extends ConsumerState<MyApp> {
         darkTheme: WebTheme.dark,
         themeMode: webMode.material,
         routerConfig: _router,
+        builder: (context, child) => AppTextScale(child: child ?? const SizedBox.shrink()),
       );
     }
 
@@ -110,6 +112,7 @@ class _MyAppState extends ConsumerState<MyApp> {
       theme: AppTheme.light,
       darkTheme: AppTheme.dark,
       themeMode: appMode.material,
+      builder: (context, child) => AppTextScale(child: child ?? const SizedBox.shrink()),
       home: const AuthGate(),
     );
   }

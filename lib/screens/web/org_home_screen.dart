@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
+import '../../constants/brand_fonts.dart';
 import 'package:intl/intl.dart';
 
 import '../../constants/web_theme.dart';
@@ -183,7 +183,7 @@ class _OrgHomeScreenState extends ConsumerState<OrgHomeScreen> {
                 children: [
                   const WebSeal(size: 22),
                   const SizedBox(width: 8),
-                  Text('WATER STATION ASSOCIATION · GENERAL TRIAS', style: WebTheme.eyebrow.copyWith(fontSize: 13)),
+                  Text('WATER STATION ASSOCIATION · GENERAL TRIAS', style: WebTheme.eyebrow.copyWith(fontSize: 16)),
                 ],
               ),
               const SizedBox(height: 20),
@@ -259,13 +259,13 @@ class _OrgHomeScreenState extends ConsumerState<OrgHomeScreen> {
           Row(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              CountUpText(value: value, start: _statsRevealed, style: GoogleFonts.fraunces(fontSize: 36, fontWeight: FontWeight.w600, color: WebTheme.of(context).ink)),
+              CountUpText(value: value, start: _statsRevealed, style: BrandFonts.display(fontSize: 36, fontWeight: FontWeight.w600, color: WebTheme.of(context).ink)),
               const SizedBox(width: 8),
               Padding(padding: const EdgeInsets.only(bottom: 6), child: WebSeal(size: 18, outlined: true)),
             ],
           ),
           const SizedBox(height: 4),
-          Text(label, style: TextStyle(color: WebTheme.of(context).ink, fontSize: 13)),
+          Text(label, style: TextStyle(color: WebTheme.of(context).ink, fontSize: 16)),
         ],
       ),
     );
@@ -280,7 +280,7 @@ class _OrgHomeScreenState extends ConsumerState<OrgHomeScreen> {
             Expanded(child: Text(t('home_stations_section_title'), style: WebTheme.display(fontSize: 24))),
             TextButton(
               onPressed: () => openWebPage(context, WebRoutes.stations, const StationsDirectoryScreen()),
-              style: TextButton.styleFrom(foregroundColor: WebTheme.harborBlue),
+              style: TextButton.styleFrom(foregroundColor: Theme.of(context).colorScheme.primary),
               child: Text(t('home_view_all')),
             ),
           ],
@@ -313,11 +313,11 @@ class _OrgHomeScreenState extends ConsumerState<OrgHomeScreen> {
               ],
             ),
             const SizedBox(height: 6),
-            Text(station.stationAddress, style: TextStyle(color: WebTheme.of(context).inkMuted, fontSize: 14), maxLines: 2, overflow: TextOverflow.ellipsis),
+            Text(station.stationAddress, style: TextStyle(color: WebTheme.of(context).inkMuted, fontSize: 16), maxLines: 2, overflow: TextOverflow.ellipsis),
             const SizedBox(height: 6),
             StarRatingDisplay(rating: station.avgRating, reviewCount: station.reviewCount, size: 13),
             const SizedBox(height: 10),
-            Text('From ${formatPeso(station.pricePerJug)}',style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: WebTheme.harborBlue)),
+            Text('From ${formatPeso(station.pricePerJug)}',style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16, color: Theme.of(context).colorScheme.primary)),
           ],
         ),
       ),
@@ -333,7 +333,7 @@ class _OrgHomeScreenState extends ConsumerState<OrgHomeScreen> {
             Expanded(child: Text(t('home_news_section_title'), style: WebTheme.display(fontSize: 24))),
             TextButton(
               onPressed: () => openWebPage(context, WebRoutes.news, const NewsScreen()),
-              style: TextButton.styleFrom(foregroundColor: WebTheme.harborBlue),
+              style: TextButton.styleFrom(foregroundColor: Theme.of(context).colorScheme.primary),
               child: Text(t('home_view_all')),
             ),
           ],
@@ -363,7 +363,7 @@ class _OrgHomeScreenState extends ConsumerState<OrgHomeScreen> {
                       ),
                     ),
                     const SizedBox(width: 12),
-                    Text(DateFormat('MMM d').format(b.createdAt), style: TextStyle(color: WebTheme.of(context).inkMuted, fontSize: 14)),
+                    Text(DateFormat('MMM d').format(b.createdAt), style: TextStyle(color: WebTheme.of(context).inkMuted, fontSize: 16)),
                   ],
                 ),
               ),

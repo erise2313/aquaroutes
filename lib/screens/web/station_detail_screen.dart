@@ -236,7 +236,7 @@ class _StationDetailScreenState extends State<StationDetailScreen> {
                           station.barangayName == null
                               ? station.stationAddress
                               : '${station.stationAddress} · ${station.barangayName}',
-                          style: TextStyle(fontSize: 15, color: palette.inkMuted),
+                          style: TextStyle(fontSize: 16, color: palette.inkMuted),
                         ),
                         const SizedBox(height: 12),
                         Wrap(
@@ -291,7 +291,7 @@ class _StationDetailScreenState extends State<StationDetailScreen> {
           const SizedBox(width: 8),
           Text(
             'WASA Accredited',
-            style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: WebTheme.of(context).ink),
+            style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: WebTheme.of(context).ink),
           ),
         ],
       ),
@@ -306,7 +306,7 @@ class _StationDetailScreenState extends State<StationDetailScreen> {
         borderRadius: BorderRadius.circular(999),
         border: Border.all(color: color.withValues(alpha: 0.5)),
       ),
-      child: Text(label, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: color)),
+      child: Text(label, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16, color: color)),
     );
   }
 

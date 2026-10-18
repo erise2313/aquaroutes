@@ -232,7 +232,7 @@ class _EventsAdminScreenState extends State<EventsAdminScreen> {
                 Text(
                   '${DateFormat('MMM d, yyyy h:mm a').format(event.eventDate)}'
                   '${event.location != null ? ' · ${event.location}' : ''}',
-                  style: TextStyle(fontSize: 14, color: palette.inkMuted),
+                  style: TextStyle(fontSize: 16, color: palette.inkMuted),
                 ),
               ],
             ),

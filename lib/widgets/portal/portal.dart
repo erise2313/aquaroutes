@@ -19,6 +19,7 @@ export 'portal_action_row.dart';
 export 'portal_card.dart';
 export 'portal_density.dart';
 export 'portal_empty_state.dart';
+export 'portal_line_amount.dart';
 export 'portal_page_header.dart';
 export 'portal_section.dart';
 export 'portal_shell.dart';

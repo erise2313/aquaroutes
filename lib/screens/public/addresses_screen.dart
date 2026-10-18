@@ -140,7 +140,7 @@ class _AddressesScreenState extends State<AddressesScreen> {
                           if (address.isDefault) ...[
                             const SizedBox(width: 8),
                             const Chip(
-                              label: Text('Default', style: TextStyle(fontSize: 13)),
+                              label: Text('Default', style: TextStyle(fontSize: 16)),
                               visualDensity: VisualDensity.compact,
                               padding: EdgeInsets.zero,
                             ),

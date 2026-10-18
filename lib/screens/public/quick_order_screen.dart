@@ -705,14 +705,14 @@ class _QuickOrderScreenState extends ConsumerState<QuickOrderScreen> {
                                   ),
                                   if (_userLat != null && _userLng != null) ...[
                                     const SizedBox(width: 6),
-                                    Text('· ${_nearbyService.formatDistance(_nearbyService.distanceKm(_userLat!, _userLng!, s))}', style: TextStyle(fontSize: 13, color: Theme.of(context).colorScheme.onSurfaceVariant)),
+                                    Text('· ${_nearbyService.formatDistance(_nearbyService.distanceKm(_userLat!, _userLng!, s))}', style: TextStyle(fontSize: 16, color: Theme.of(context).colorScheme.onSurfaceVariant)),
                                   ],
                                   if (!s.isOrderable) ...[
                                     const SizedBox(width: 6),
-                                    Text('(Closed)', style: TextStyle(fontSize: 13, color: Theme.of(context).colorScheme.error, fontWeight: FontWeight.bold)),
+                                    Text('(Closed)', style: TextStyle(fontSize: 16, color: Theme.of(context).colorScheme.error, fontWeight: FontWeight.bold)),
                                   ] else if (!_hasProducts(s)) ...[
                                     const SizedBox(width: 6),
-                                    Text('(no products yet)', style: TextStyle(fontSize: 13, color: Theme.of(context).colorScheme.onSurfaceVariant)),
+                                    Text('(no products yet)', style: TextStyle(fontSize: 16, color: Theme.of(context).colorScheme.onSurfaceVariant)),
                                   ],
                                 ],
                               ),
@@ -737,13 +737,13 @@ class _QuickOrderScreenState extends ConsumerState<QuickOrderScreen> {
                                 child: Chip(
                                   visualDensity: VisualDensity.compact,
                                   avatar: Icon(Icons.verified, size: 14, color: Colors.white),
-                                  label: Text('WASA Verified', style: TextStyle(color: Colors.white, fontSize: 13)),
+                                  label: Text('WASA Verified', style: TextStyle(color: Colors.white, fontSize: 16)),
                                   backgroundColor: BrandStatus.success,
                                 ),
                               ),
                             ),
                           const SizedBox(height: 12),
-                          const Text('What would you like?', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+                          const Text('What would you like?', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
                           _buildProductPicker(station),
                           if (product != null && _canExchange(product, station)) ...[
                             const SizedBox(height: 4),
@@ -756,10 +756,10 @@ class _QuickOrderScreenState extends ConsumerState<QuickOrderScreen> {
                               controlAffinity: ListTileControlAffinity.leading,
                               contentPadding: EdgeInsets.zero,
                               dense: true,
-                              title: const Text("I'm returning an empty jug for exchange", style: TextStyle(fontSize: 13)),
+                              title: const Text("I'm returning an empty jug for exchange", style: TextStyle(fontSize: 16)),
                             ),
                             if (_isJugExchange) ...[
-                              const Text('Whose station is the empty jug from?', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+                              const Text('Whose station is the empty jug from?', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
                               const SizedBox(height: 4),
                               DropdownButtonFormField<String?>(
                                 initialValue: _jugExchangeOriginStationId,
@@ -848,7 +848,7 @@ class _QuickOrderScreenState extends ConsumerState<QuickOrderScreen> {
                           ),
                         ],
                         const SizedBox(height: 8),
-                        Text('Cash on delivery only.', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 14)),
+                        Text('Cash on delivery only.', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 16)),
                         const SizedBox(height: 16),
                         FilledButton(
                           onPressed: (_isLoading || station?.isOrderable == false || product == null) ? null : _submitOrder,
@@ -876,7 +876,7 @@ class _QuickOrderScreenState extends ConsumerState<QuickOrderScreen> {
       children: [
         Row(
           children: [
-            const Expanded(child: Text('Deliver to', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600))),
+            const Expanded(child: Text('Deliver to', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600))),
             if (_addresses.isNotEmpty)
               TextButton.icon(
                 onPressed: () async {
@@ -944,7 +944,7 @@ class _QuickOrderScreenState extends ConsumerState<QuickOrderScreen> {
         for (final entry in grouped.entries) ...[
           Padding(
             padding: const EdgeInsets.only(top: 8, bottom: 4),
-            child: Text(waterTypeLabel(entry.key), style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+            child: Text(waterTypeLabel(entry.key), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
           ),
           Wrap(
             spacing: 6,

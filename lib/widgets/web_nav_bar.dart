@@ -121,11 +121,11 @@ class WebNavBar extends ConsumerWidget implements PreferredSizeWidget {
     // measurement rather than a guess: guessing here is what silently clips
     // links when it runs low. It branches on which action set is rendered --
     // the signed-in pair is narrower than Login + Register a Station.
-    const bold14 = TextStyle(fontSize: 14, fontWeight: FontWeight.w600);
-    const code13 = TextStyle(fontSize: 13, fontWeight: FontWeight.w700);
+    const bold14 = TextStyle(fontSize: 16, fontWeight: FontWeight.w600);
+    const code13 = TextStyle(fontSize: 16, fontWeight: FontWeight.w700);
     final toggleWidth = 20 +
         BrandTopBar.measureText('EN', code13) +
-        BrandTopBar.measureText('  |  ', const TextStyle(fontSize: 13)) +
+        BrandTopBar.measureText('  |  ', const TextStyle(fontSize: 16)) +
         BrandTopBar.measureText('TL', code13);
     final signedInActionsWidth = 44 + 8 + 40 + BrandTopBar.measureText(t('nav_dashboard'), bold14);
     final signedOutActionsWidth = 32 +
@@ -145,7 +145,7 @@ class WebNavBar extends ConsumerWidget implements PreferredSizeWidget {
       background: palette.paper,
       foreground: palette.ink,
       borderColor: palette.border,
-      activeColor: WebTheme.harborBlue,
+      activeColor: Theme.of(context).colorScheme.primary,
       underlineColor: WebTheme.sealGold,
       actionsWidth: actionsWidth,
       links: [
@@ -218,10 +218,13 @@ class WebNavBar extends ConsumerWidget implements PreferredSizeWidget {
           ],
         ] else ...[
           TextButton(
-            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const LoginScreen())),
+            // By URL: /portal shows the sign-in form to a signed-out visitor,
+            // with the site's nav bar and a working back button. Pushing the
+            // bare LoginScreen left no way back.
+            onPressed: () => openWebPage(context, WebRoutes.portal, const LoginScreen()),
             style: TextButton.styleFrom(
               foregroundColor: palette.ink,
-              textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+              textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
               padding: EdgeInsets.symmetric(horizontal: layout.compact ? 8 : 16),
             ),
             child: Text(t('nav_login')),
@@ -245,7 +248,7 @@ class WebNavBar extends ConsumerWidget implements PreferredSizeWidget {
     elevation: 0,
     padding: const EdgeInsets.symmetric(horizontal: 20),
     minimumSize: const Size(0, 44),
-    textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+    textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
   );
 }
@@ -296,16 +299,19 @@ class _LocaleToggle extends StatelessWidget {
   final WebLocale locale;
   final VoidCallback onTap;
 
-  /// Phone widths: tighten the padding and the separator so the toggle,
-  /// Login, and the brand mark all still fit on one row.
+  /// Phone widths: show only the language you can switch to ("TL" while the
+  /// site is in English), so the toggle, Login and the brand mark still fit
+  /// on one row at 18 px text. The tooltip says what it does.
   final bool compact;
 
   @override
   Widget build(BuildContext context) {
+    // The unselected language in the muted ink rather than faded ink: at
+    // 45% opacity it was below the contrast floor older readers need.
     TextStyle styleFor(WebLocale l) => TextStyle(
-          fontSize: 13,
+          fontSize: 16,
           fontWeight: l == locale ? FontWeight.w700 : FontWeight.w400,
-          color: l == locale ? WebTheme.of(context).ink : WebTheme.of(context).ink.withValues(alpha: 0.45),
+          color: l == locale ? WebTheme.of(context).ink : WebTheme.of(context).inkMuted,
         );
 
     final target = locale == WebLocale.en ? WebLocale.tl : WebLocale.en;
@@ -319,18 +325,21 @@ class _LocaleToggle extends StatelessWidget {
         ),
         child: AnimatedSwitcher(
           duration: const Duration(milliseconds: 150),
-          child: Row(
-            key: ValueKey(locale),
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text('EN', style: styleFor(WebLocale.en)),
-              Text(
-                compact ? ' | ' : '  |  ',
-                style: TextStyle(fontSize: 13, color: WebTheme.of(context).ink.withValues(alpha: 0.3)),
-              ),
-              Text('TL', style: styleFor(WebLocale.tl)),
-            ],
-          ),
+          child: compact
+              ? Text(
+                  target == WebLocale.tl ? 'TL' : 'EN',
+                  key: ValueKey(locale),
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: WebTheme.of(context).ink),
+                )
+              : Row(
+                  key: ValueKey(locale),
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text('EN', style: styleFor(WebLocale.en)),
+                    Text('  |  ', style: TextStyle(fontSize: 16, color: WebTheme.of(context).inkMuted)),
+                    Text('TL', style: styleFor(WebLocale.tl)),
+                  ],
+                ),
         ),
       ),
     );

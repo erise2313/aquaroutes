@@ -14,7 +14,6 @@ import 'tracking_screen.dart';
 import 'merchant_profile_screens.dart';
 import 'products_screen.dart';
 import 'station_reviews_screen.dart';
-import '../../constants/app_colors.dart';
 import '../../providers/app_theme_provider.dart';
 import '../../web_router.dart';
 import '../../widgets/app_theme_toggle.dart';
@@ -46,7 +45,7 @@ class MerchantNavigation extends StatelessWidget {
             // than the root one.
             builder: (context) => PortalShell(
               portalName: 'Station portal',
-              selectedItemColor: AppColors.primary,
+              selectedItemColor: Theme.of(context).colorScheme.primary,
               onBrandTap: () => _leavePortal(context),
               footerActions: [
                 const AppThemeToggle(),

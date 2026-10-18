@@ -250,11 +250,11 @@ class _NewsScreenState extends ConsumerState<NewsScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Row(children: [Icon(Icons.push_pin, size: 16, color: WebTheme.sealGold), SizedBox(width: 6), Text('Pinned', style: TextStyle(color: WebTheme.sealGold, fontWeight: FontWeight.bold, fontSize: 14))]),
+            const Row(children: [Icon(Icons.push_pin, size: 16, color: WebTheme.sealGold), SizedBox(width: 6), Text('Pinned', style: TextStyle(color: WebTheme.sealGold, fontWeight: FontWeight.bold, fontSize: 16))]),
             const SizedBox(height: 10),
             Text(bulletin.title, style: WebTheme.display(fontSize: 22)),
             const SizedBox(height: 10),
-            Text(bulletin.body, style: TextStyle(fontSize: 15, height: 1.5, color: WebTheme.of(context).ink)),
+            Text(bulletin.body, style: TextStyle(fontSize: 16, height: 1.5, color: WebTheme.of(context).ink)),
             if (bulletin.imageUrl != null) ...[
               const SizedBox(height: 14),
               ClipRRect(
@@ -274,7 +274,7 @@ class _NewsScreenState extends ConsumerState<NewsScreen> {
               ),
             ],
             const SizedBox(height: 12),
-            Text('${bulletin.authorBadge} · ${DateFormat('MMM d, yyyy').format(bulletin.createdAt)}', style: TextStyle(color: WebTheme.of(context).inkMuted, fontSize: 14)),
+            Text('${bulletin.authorBadge} · ${DateFormat('MMM d, yyyy').format(bulletin.createdAt)}', style: TextStyle(color: WebTheme.of(context).inkMuted, fontSize: 16)),
             const SizedBox(height: 12),
             _buildInteractionBar(bulletin),
             if (_expandedComments.contains(bulletin.id)) _buildCommentsSection(bulletin.id),
@@ -305,7 +305,7 @@ class _NewsScreenState extends ConsumerState<NewsScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                 decoration: BoxDecoration(color: categoryColor.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(8)),
-                child: Text(categoryLabel, style: TextStyle(color: categoryColor, fontSize: 13, fontWeight: FontWeight.bold)),
+                child: Text(categoryLabel, style: TextStyle(color: categoryColor, fontSize: 16, fontWeight: FontWeight.bold)),
               ),
               const SizedBox(height: 10),
               Text(bulletin.title, style: WebTheme.display(fontSize: 18)),
@@ -330,7 +330,7 @@ class _NewsScreenState extends ConsumerState<NewsScreen> {
                 ),
               ],
               const SizedBox(height: 8),
-              Text('${bulletin.authorBadge} · ${DateFormat('MMM d, yyyy').format(bulletin.createdAt)}', style: TextStyle(color: WebTheme.of(context).inkMuted, fontSize: 14)),
+              Text('${bulletin.authorBadge} · ${DateFormat('MMM d, yyyy').format(bulletin.createdAt)}', style: TextStyle(color: WebTheme.of(context).inkMuted, fontSize: 16)),
               const SizedBox(height: 10),
               _buildInteractionBar(bulletin),
               if (_expandedComments.contains(bulletin.id)) _buildCommentsSection(bulletin.id),
@@ -358,7 +358,7 @@ class _NewsScreenState extends ConsumerState<NewsScreen> {
               children: [
                 Icon(reacted ? Icons.favorite : Icons.favorite_border, size: 18, color: reacted ? BrandStatus.danger : WebTheme.of(context).inkMuted),
                 const SizedBox(width: 6),
-                Text('$count', style: TextStyle(color: reacted ? BrandStatus.danger : WebTheme.of(context).inkMuted, fontSize: 13, fontWeight: FontWeight.w600)),
+                Text('$count', style: TextStyle(color: reacted ? BrandStatus.danger : WebTheme.of(context).inkMuted, fontSize: 16, fontWeight: FontWeight.w600)),
               ],
             ),
           ),
@@ -374,7 +374,7 @@ class _NewsScreenState extends ConsumerState<NewsScreen> {
               children: [
                 Icon(Icons.mode_comment_outlined, size: 17, color: WebTheme.of(context).inkMuted),
                 const SizedBox(width: 6),
-                Text(commentCount != null ? '$commentCount' : 'Comments', style: TextStyle(color: WebTheme.of(context).inkMuted, fontSize: 13, fontWeight: FontWeight.w600)),
+                Text(commentCount != null ? '$commentCount' : 'Comments', style: TextStyle(color: WebTheme.of(context).inkMuted, fontSize: 16, fontWeight: FontWeight.w600)),
               ],
             ),
           ),

@@ -138,7 +138,7 @@ class _ContactScreenState extends ConsumerState<ContactScreen> {
                                 HoverScale(
                                   child: OutlinedButton.icon(
                                     onPressed: () => openWebPage(context, WebRoutes.stations, const StationsDirectoryScreen()),
-                                    style: OutlinedButton.styleFrom(foregroundColor: WebTheme.harborBlue, side: const BorderSide(color: WebTheme.harborBlue)),
+                                    style: OutlinedButton.styleFrom(foregroundColor: Theme.of(context).colorScheme.primary, side: const BorderSide(color: WebTheme.harborBlue)),
                                     icon: const Icon(Icons.map_outlined),
                                     label: const Text('Browse the Stations Directory'),
                                   ),
@@ -169,7 +169,7 @@ class _ContactScreenState extends ConsumerState<ContactScreen> {
         Expanded(
           child: Text(
             text,
-            style: TextStyle(fontSize: 15, decoration: isLink ? TextDecoration.underline : null, color: isLink ? WebTheme.harborBlue : WebTheme.of(context).ink),
+            style: TextStyle(fontSize: 16, decoration: isLink ? TextDecoration.underline : null, color: isLink ? WebTheme.harborBlue : WebTheme.of(context).ink),
           ),
         ),
       ],

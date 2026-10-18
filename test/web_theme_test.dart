@@ -66,7 +66,7 @@ void main() {
     // the admin portal, which never registers WebPalette.
     test('brand accents are mode-independent constants', () {
       expect(WebTheme.sealGold, const Color(0xFFC99A3B));
-      expect(WebTheme.harborBlue, const Color(0xFF1565C0));
+      expect(WebTheme.harborBlue, const Color(0xFF0D47A1)); // AAA blue since Oct 2026
     });
 
     testWidgets('of() falls back to light where no palette is registered', (tester) async {

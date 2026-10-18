@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'brand_fonts.dart';
 
 import 'brand_tokens.dart';
 
@@ -45,12 +45,16 @@ class BrandTheme {
       colorScheme: colorScheme,
       brightness: brightness,
       useMaterial3: true,
+      fontFamily: BrandFonts.family,
       scaffoldBackgroundColor: s.paper,
     );
 
     final controlShape = RoundedRectangleBorder(borderRadius: BorderRadius.circular(BrandRadius.control));
-    const buttonText = TextStyle(fontSize: BrandType.labelLarge, fontWeight: FontWeight.w600);
+    const buttonText = TextStyle(fontFamily: BrandFonts.family, fontSize: BrandType.labelLarge, fontWeight: FontWeight.w700);
     const minButton = Size(64, BrandType.minTarget);
+    // The one main action on a screen is a filled button; it gets the
+    // larger target the UI plan asks for (56), the rest keep 48.
+    const minPrimaryButton = Size(64, BrandType.minPrimaryTarget);
 
     return base.copyWith(
       extensions: extensions,
@@ -73,7 +77,7 @@ class BrandTheme {
           systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
           systemNavigationBarDividerColor: Colors.transparent,
         ),
-        titleTextStyle: GoogleFonts.fraunces(fontSize: BrandType.titleLarge, fontWeight: FontWeight.w600, color: s.ink),
+        titleTextStyle: BrandFonts.display(fontSize: BrandType.titleLarge, fontWeight: FontWeight.w600, color: s.ink),
         iconTheme: IconThemeData(color: s.ink),
         shape: Border(bottom: BorderSide(color: s.border)),
       ),
@@ -98,7 +102,7 @@ class BrandTheme {
           backgroundColor: primary,
           foregroundColor: onPrimary,
           elevation: 0,
-          minimumSize: minButton,
+          minimumSize: minPrimaryButton,
           textStyle: buttonText,
           shape: controlShape,
         ),
@@ -107,7 +111,7 @@ class BrandTheme {
         style: FilledButton.styleFrom(
           backgroundColor: primary,
           foregroundColor: onPrimary,
-          minimumSize: minButton,
+          minimumSize: minPrimaryButton,
           textStyle: buttonText,
           shape: controlShape,
         ),
@@ -226,7 +230,7 @@ class BrandTheme {
       dialogTheme: DialogThemeData(
         backgroundColor: s.card,
         surfaceTintColor: Colors.transparent,
-        titleTextStyle: GoogleFonts.fraunces(fontSize: BrandType.titleLarge, fontWeight: FontWeight.w600, color: s.ink),
+        titleTextStyle: BrandFonts.display(fontSize: BrandType.titleLarge, fontWeight: FontWeight.w600, color: s.ink),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(BrandRadius.card)),
       ),
       bottomSheetTheme: BottomSheetThemeData(backgroundColor: s.card, surfaceTintColor: Colors.transparent),
@@ -243,12 +247,17 @@ class BrandTheme {
   /// factor asserts in debug and silently no-ops in release.
   static TextTheme textTheme(BrandSurfaces s) {
     TextStyle display(double size) =>
-        GoogleFonts.fraunces(fontSize: size, fontWeight: FontWeight.w600, color: s.ink, height: 1.2);
+        BrandFonts.display(fontSize: size, fontWeight: FontWeight.w700, color: s.ink, height: 1.3);
 
-    TextStyle body(double size, {FontWeight weight = FontWeight.w400, Color? color}) =>
-        TextStyle(fontSize: size, fontWeight: weight, color: color ?? s.ink, height: 1.45);
+    // Regular or Bold only: Atkinson has no in-between weights.
+    TextStyle body(double size, {bool bold = false, Color? color}) => TextStyle(
+          fontFamily: BrandFonts.family,
+          fontSize: size,
+          fontWeight: bold ? FontWeight.w700 : FontWeight.w400,
+          color: color ?? s.ink,
+          height: 1.5,
+        );
 
-    // Fraunces for headings only, so the display face stays a signal.
     return TextTheme(
       displayLarge: display(48),
       displayMedium: display(40),
@@ -257,14 +266,14 @@ class BrandTheme {
       headlineMedium: display(BrandType.headlineMedium),
       headlineSmall: display(BrandType.headlineSmall),
       titleLarge: display(BrandType.titleLarge),
-      titleMedium: body(BrandType.titleMedium, weight: FontWeight.w700),
-      titleSmall: body(BrandType.titleSmall, weight: FontWeight.w700),
+      titleMedium: body(BrandType.titleMedium, bold: true),
+      titleSmall: body(BrandType.titleSmall, bold: true),
       bodyLarge: body(BrandType.bodyLarge),
       bodyMedium: body(BrandType.bodyMedium),
       bodySmall: body(BrandType.bodySmall, color: s.inkMuted),
-      labelLarge: body(BrandType.labelLarge, weight: FontWeight.w600),
-      labelMedium: body(BrandType.labelMedium, weight: FontWeight.w600, color: s.inkMuted),
-      labelSmall: body(BrandType.labelSmall, weight: FontWeight.w600, color: s.inkMuted),
+      labelLarge: body(BrandType.labelLarge, bold: true),
+      labelMedium: body(BrandType.labelMedium, bold: true, color: s.inkMuted),
+      labelSmall: body(BrandType.labelSmall, bold: true, color: s.inkMuted),
     );
   }
 }

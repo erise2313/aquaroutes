@@ -105,7 +105,7 @@ class _FaqScreenState extends ConsumerState<FaqScreen> {
       decoration: BoxDecoration(color: WebTheme.of(context).foam, borderRadius: BorderRadius.circular(10)),
       child: ExpansionTile(
         title: Text(question, style: TextStyle(fontWeight: FontWeight.w600, color: WebTheme.of(context).ink)),
-        iconColor: WebTheme.harborBlue,
+        iconColor: Theme.of(context).colorScheme.primary,
         collapsedIconColor: WebTheme.harborBlue,
         childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
         expandedCrossAxisAlignment: CrossAxisAlignment.start,

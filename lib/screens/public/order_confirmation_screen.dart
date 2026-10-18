@@ -46,7 +46,7 @@ class OrderConfirmationScreen extends StatelessWidget {
               Text(
                 'Follow it any time in the Orders tab -- you\'ll also get a notification when a driver is on the way.',
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 14, color: Theme.of(context).colorScheme.onSurfaceVariant),
+                style: TextStyle(fontSize: 16, color: Theme.of(context).colorScheme.onSurfaceVariant),
               ),
               const SizedBox(height: 24),
               ElevatedButton(

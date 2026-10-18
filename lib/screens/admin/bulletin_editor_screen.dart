@@ -259,7 +259,7 @@ class _BulletinEditorScreenState extends State<BulletinEditorScreen> {
                           const SizedBox(height: 2),
                           Text(
                             'Effective ${DateFormat('MMM d, yyyy').format(fp.effectiveDate)}',
-                            style: TextStyle(fontSize: 14, color: AdminPalette.of(context).inkMuted),
+                            style: TextStyle(fontSize: 16, color: AdminPalette.of(context).inkMuted),
                           ),
                         ],
                       ),
@@ -325,7 +325,7 @@ class _BulletinEditorScreenState extends State<BulletinEditorScreen> {
                           const SizedBox(height: 2),
                           Text(
                             c.isActive ? details : 'Retired · $details',
-                            style: TextStyle(fontSize: 14, color: AdminPalette.of(context).inkMuted),
+                            style: TextStyle(fontSize: 16, color: AdminPalette.of(context).inkMuted),
                           ),
                         ],
                       ),

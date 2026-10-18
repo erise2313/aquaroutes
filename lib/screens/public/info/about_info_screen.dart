@@ -81,7 +81,7 @@ class _AboutInfoScreenState extends State<AboutInfoScreen> {
                       child: Wrap(
                         spacing: 8,
                         runSpacing: 8,
-                        children: _barangays.map((b) => Chip(label: Text(b, style: const TextStyle(fontSize: 14)))).toList(),
+                        children: _barangays.map((b) => Chip(label: Text(b, style: const TextStyle(fontSize: 16)))).toList(),
                       ),
                     ),
                   ],

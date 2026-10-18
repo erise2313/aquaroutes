@@ -41,7 +41,6 @@ dependencies:
 
   # Website display typeface (Fraunces) -- web-only, mobile app screens
   # keep using the default Material font.
-  google_fonts: ^6.2.1
 
   # Admin dashboard trend charts -- permit expiry runway, review throughput,
   # accreditation mix. Admin-portal only; no app or public-website screen
@@ -67,5 +66,22 @@ flutter:
   uses-material-design: true
   assets:
     - .env
+
+  # Atkinson Hyperlegible (Braille Institute, SIL OFL -- licence beside the
+  # files): designed for low-vision readers, with distinct shapes for
+  # look-alikes like l / 1 / I and 0 / O, which matters for order numbers,
+  # plates and phone numbers. Bundled rather than fetched so the app reads
+  # the same offline and on first launch.
+  fonts:
+    - family: AtkinsonHyperlegible
+      fonts:
+        - asset: assets/fonts/AtkinsonHyperlegible-Regular.ttf
+        - asset: assets/fonts/AtkinsonHyperlegible-Italic.ttf
+          style: italic
+        - asset: assets/fonts/AtkinsonHyperlegible-Bold.ttf
+          weight: 700
+        - asset: assets/fonts/AtkinsonHyperlegible-BoldItalic.ttf
+          weight: 700
+          style: italic
 
 

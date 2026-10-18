@@ -138,7 +138,7 @@ class _BulletinCommentsState extends ConsumerState<BulletinComments> {
               child: Center(child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))),
             )
           else if (_comments.isEmpty)
-            Text('No comments yet -- be the first.', style: TextStyle(color: muted, fontSize: 13))
+            Text('No comments yet -- be the first.', style: TextStyle(color: muted, fontSize: 16))
           else
             for (final c in _comments)
               Padding(
@@ -154,12 +154,12 @@ class _BulletinCommentsState extends ConsumerState<BulletinComments> {
                             spacing: 8,
                             crossAxisAlignment: WrapCrossAlignment.center,
                             children: [
-                              Text(c.authorName, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: scheme.onSurface)),
-                              Text(DateFormat('MMM d, h:mm a').format(c.createdAt), style: TextStyle(color: muted, fontSize: 13)),
+                              Text(c.authorName, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: scheme.onSurface)),
+                              Text(DateFormat('MMM d, h:mm a').format(c.createdAt), style: TextStyle(color: muted, fontSize: 16)),
                             ],
                           ),
                           const SizedBox(height: 2),
-                          Text(c.body, style: TextStyle(fontSize: 13, height: 1.3, color: scheme.onSurface)),
+                          Text(c.body, style: TextStyle(fontSize: 16, height: 1.3, color: scheme.onSurface)),
                         ],
                       ),
                     ),

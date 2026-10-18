@@ -154,7 +154,7 @@ void main() {
       for (final section in sections.entries) {
         for (final theme in _themes.entries) {
           for (final width in [360.0, 768.0, 1280.0]) {
-            for (final scale in [1.0, 1.3, 2.0]) {
+            for (final scale in [1.0, 1.3, 2.0, 2.6]) {
               await _pump(
                 tester,
                 theme.value,

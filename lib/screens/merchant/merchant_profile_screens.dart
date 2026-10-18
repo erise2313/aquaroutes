@@ -440,7 +440,7 @@ class _MerchantProfileScreenState extends State<MerchantProfileScreen> {
                 const SizedBox(height: 4),
                 Text(
                   '$stationName\n$email',
-                  style: const TextStyle(color: Colors.white70, fontSize: 14, height: 1.4),
+                  style: const TextStyle(color: Colors.white70, fontSize: 16, height: 1.4),
                 ),
               ],
             ),

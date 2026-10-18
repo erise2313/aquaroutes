@@ -357,7 +357,7 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
                 expectsEmpties
                     ? 'Log the returned empty jugs and confirm cash collection before finalizing.'
                     : 'Confirm cash collection before finalizing.',
-                style: TextStyle(fontSize: 13, color: driverPalette.text.withValues(alpha: 0.7)),
+                style: TextStyle(fontSize: 16, color: driverPalette.text.withValues(alpha: 0.7)),
               ),
               if (expectsEmpties) ...[
                 const SizedBox(height: 16),
@@ -377,7 +377,7 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
                 const SizedBox(height: 16),
                 Text(
                   'Customer said this jug is from ${otherStationNames[declaredOrigin] ?? 'another station'}. Confirm or correct:',
-                  style: TextStyle(fontSize: 14, color: driverPalette.text.withValues(alpha: 0.7)),
+                  style: TextStyle(fontSize: 16, color: driverPalette.text.withValues(alpha: 0.7)),
                 ),
                 const SizedBox(height: 6),
                 CheckboxListTile(
@@ -387,14 +387,14 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
                   contentPadding: EdgeInsets.zero,
                   dense: true,
                   activeColor: driverPalette.onDuty,
-                  title: Text('No jug was actually exchanged', style: TextStyle(color: driverPalette.text, fontSize: 13)),
+                  title: Text('No jug was actually exchanged', style: TextStyle(color: driverPalette.text, fontSize: 16)),
                 ),
                 if (!noJugExchange)
                   DropdownButtonFormField<String>(
                     initialValue: jugOrigin,
                     isDense: true,
                     dropdownColor: driverPalette.surface,
-                    style: TextStyle(color: driverPalette.text, fontSize: 14),
+                    style: TextStyle(color: driverPalette.text, fontSize: 16),
                     decoration: const InputDecoration(
                       labelText: "Jug's home station",
                       border: OutlineInputBorder(),
@@ -645,7 +645,7 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
               Expanded(
                 child: Text(
                   'Action needed: submit your Government ID and Driver\'s License to complete WASA clearance.',
-                  style: TextStyle(color: driverPalette.text, fontWeight: FontWeight.bold, fontSize: 13),
+                  style: TextStyle(color: driverPalette.text, fontWeight: FontWeight.bold, fontSize: 16),
                 ),
               ),
               Icon(Icons.arrow_forward_ios, size: 14, color: driverPalette.text),
@@ -667,7 +667,7 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
             const SizedBox(height: 16),
             Text('Not currently linked to a station.', style: TextStyle(fontSize: 18, color: driverPalette.text)),
             const SizedBox(height: 8),
-            Text('Join a station from your profile to start receiving deliveries.', style: TextStyle(fontSize: 14, color: driverPalette.text.withValues(alpha: 0.7))),
+            Text('Join a station from your profile to start receiving deliveries.', style: TextStyle(fontSize: 16, color: driverPalette.text.withValues(alpha: 0.7))),
             const SizedBox(height: 16),
             ElevatedButton(
               onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const DriverProfileScreen())),
@@ -759,7 +759,7 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
           const SizedBox(height: 16),
           Text('No active deliveries right now.', style: TextStyle(fontSize: 18, color: driverPalette.text)),
           const SizedBox(height: 8),
-          Text('Waiting for the station to assign an order...', style: TextStyle(fontSize: 14, color: driverPalette.text.withValues(alpha: 0.7))),
+          Text('Waiting for the station to assign an order...', style: TextStyle(fontSize: 16, color: driverPalette.text.withValues(alpha: 0.7))),
         ],
       ),
     );
@@ -789,7 +789,7 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
                           child: Text(
                             'Deliver to: $_customerName',
                             overflow: TextOverflow.ellipsis,
-                            style: TextStyle(fontSize: 14, color: driverPalette.text.withValues(alpha: 0.7), fontWeight: FontWeight.bold),
+                            style: TextStyle(fontSize: 16, color: driverPalette.text.withValues(alpha: 0.7), fontWeight: FontWeight.bold),
                           ),
                         ),
                         const SizedBox(width: 8),
@@ -822,11 +822,11 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
             children: [
               const Icon(Icons.store, color: Colors.blueGrey, size: 18),
               const SizedBox(width: 8),
-              Expanded(child: Text('Station: $_stationName', style: TextStyle(fontSize: 13, color: driverPalette.text.withValues(alpha: 0.7)))),
+              Expanded(child: Text('Station: $_stationName', style: TextStyle(fontSize: 16, color: driverPalette.text.withValues(alpha: 0.7)))),
               TextButton.icon(
                 onPressed: () => _makePhoneCall(_stationPhone, 'Water Station'),
                 icon: Icon(Icons.phone, size: 18, color: driverPalette.onDuty),
-                label: Text('Call Station', style: TextStyle(fontSize: 13, color: driverPalette.onDuty)),
+                label: Text('Call Station', style: TextStyle(fontSize: 16, color: driverPalette.onDuty)),
               ),
             ],
           ),

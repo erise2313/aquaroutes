@@ -45,7 +45,7 @@ class AdminChartCard extends StatelessWidget {
             Text(title, style: Theme.of(context).textTheme.titleMedium),
             if (subtitle != null) ...[
               const SizedBox(height: 2),
-              Text(subtitle!, style: TextStyle(color: AdminPalette.of(context).ink.withValues(alpha: 0.6), fontSize: 13)),
+              Text(subtitle!, style: TextStyle(color: AdminPalette.of(context).ink.withValues(alpha: 0.6), fontSize: 16)),
             ],
             const SizedBox(height: 16),
             SizedBox(
@@ -67,7 +67,7 @@ class AdminChartCard extends StatelessWidget {
               const SizedBox(height: 8),
               Text(
                 footnote!,
-                style: TextStyle(fontSize: 14, color: AdminPalette.of(context).ink.withValues(alpha: 0.5), fontStyle: FontStyle.italic),
+                style: TextStyle(fontSize: 16, color: AdminPalette.of(context).ink.withValues(alpha: 0.5), fontStyle: FontStyle.italic),
               ),
             ],
           ],
@@ -116,7 +116,7 @@ class AdminMonthBarChart extends StatelessWidget {
               reservedSize: 32,
               getTitlesWidget: (value, _) => Text(
                 value.toInt().toString(),
-                style: TextStyle(color: AdminPalette.of(context).chartAxis, fontSize: 14),
+                style: TextStyle(color: AdminPalette.of(context).chartAxis, fontSize: 16),
               ),
             ),
           ),
@@ -131,7 +131,7 @@ class AdminMonthBarChart extends StatelessWidget {
                   padding: const EdgeInsets.only(top: 6),
                   child: Text(
                     buckets[i].label,
-                    style: TextStyle(color: AdminPalette.of(context).chartAxis, fontSize: 14, fontWeight: FontWeight.w600),
+                    style: TextStyle(color: AdminPalette.of(context).chartAxis, fontSize: 16, fontWeight: FontWeight.w600),
                   ),
                 );
               },
@@ -198,7 +198,7 @@ class AdminDonutChart extends StatelessWidget {
                     color: AdminTheme.chartSeries[i % AdminTheme.chartSeries.length],
                     title: '${entries[i].value}',
                     radius: 46,
-                    titleStyle: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 14),
+                    titleStyle: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 16),
                   ),
               ],
             ),
@@ -228,11 +228,11 @@ class AdminDonutChart extends StatelessWidget {
                       Expanded(
                         child: Text(
                           entries[i].key,
-                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                      Text('${entries[i].value}', style: TextStyle(fontSize: 13, color: AdminPalette.of(context).chartAxis)),
+                      Text('${entries[i].value}', style: TextStyle(fontSize: 16, color: AdminPalette.of(context).chartAxis)),
                     ],
                   ),
                 ),

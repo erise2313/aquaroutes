@@ -428,7 +428,7 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('CURRENT STATION', style: TextStyle(color: driverPalette.text.withValues(alpha: 0.7), letterSpacing: 1.2, fontSize: 14)),
+          Text('CURRENT STATION', style: TextStyle(color: driverPalette.text.withValues(alpha: 0.7), letterSpacing: 1.2, fontSize: 16)),
           const SizedBox(height: 8),
           Text(
             isLinked ? (_stationName ?? 'Unknown Station') : 'Not currently linked to a station',
@@ -447,7 +447,7 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
                 const SizedBox(width: 8),
                 Expanded(
                   child: OutlinedButton(
-                    style: OutlinedButton.styleFrom(foregroundColor: AppColors.flagged),
+                    style: OutlinedButton.styleFrom(foregroundColor: BrandStatus.dangerFor(Theme.of(context).brightness)),
                     onPressed: _leaveStation,
                     child: const Text('Leave Station'),
                   ),
@@ -467,11 +467,11 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('MY CREDENTIALS', style: TextStyle(color: driverPalette.text.withValues(alpha: 0.7), letterSpacing: 1.2, fontSize: 14)),
+          Text('MY CREDENTIALS', style: TextStyle(color: driverPalette.text.withValues(alpha: 0.7), letterSpacing: 1.2, fontSize: 16)),
           const SizedBox(height: 8),
           Text(
             'Submit these for WASA to review and clear your account.',
-            style: TextStyle(color: driverPalette.text.withValues(alpha: 0.7), fontSize: 14),
+            style: TextStyle(color: driverPalette.text.withValues(alpha: 0.7), fontSize: 16),
           ),
           const SizedBox(height: 12),
           ..._credentials.map(_buildCredentialTile),
@@ -491,11 +491,11 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('INCIDENTS ON YOUR RECORD', style: TextStyle(color: driverPalette.text.withValues(alpha: 0.7), letterSpacing: 1.2, fontSize: 14)),
+          Text('INCIDENTS ON YOUR RECORD', style: TextStyle(color: driverPalette.text.withValues(alpha: 0.7), letterSpacing: 1.2, fontSize: 16)),
           const SizedBox(height: 8),
           Text(
             'WASA confirmed these. If you think one is wrong, you can appeal it once.',
-            style: TextStyle(color: driverPalette.text.withValues(alpha: 0.7), fontSize: 14),
+            style: TextStyle(color: driverPalette.text.withValues(alpha: 0.7), fontSize: 16),
           ),
           for (final i in confirmed) ...[
             const SizedBox(height: 12),
@@ -588,7 +588,7 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
         children: [
           Text(label, style: TextStyle(color: color)),
           if (credential.status == PermitStatus.rejected && credential.rejectionReason != null && credential.rejectionReason!.isNotEmpty)
-            Text('Reason: ${credential.rejectionReason}', style: TextStyle(fontSize: 14, color: driverPalette.text.withValues(alpha: 0.7))),
+            Text('Reason: ${credential.rejectionReason}', style: TextStyle(fontSize: 16, color: driverPalette.text.withValues(alpha: 0.7))),
         ],
       ),
       trailing: TextButton(
@@ -614,7 +614,7 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
       ),
       child: Column(
         children: [
-          Text('GENTRI WASA WORKER BADGE', style: TextStyle(color: driverPalette.text.withValues(alpha: 0.7), letterSpacing: 1.5, fontSize: 14)),
+          Text('GENTRI WASA WORKER BADGE', style: TextStyle(color: driverPalette.text.withValues(alpha: 0.7), letterSpacing: 1.5, fontSize: 16)),
           const SizedBox(height: 16),
           Container(
             padding: const EdgeInsets.all(12),

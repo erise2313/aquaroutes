@@ -14,7 +14,6 @@ import 'station_accreditation_screen.dart';
 import 'user_management_screen.dart';
 import 'website_content_screen.dart';
 import 'worker_clearance_screen.dart';
-import '../../constants/admin_theme.dart';
 import '../../providers/admin_theme_provider.dart';
 import '../../providers/admin_queue_provider.dart';
 import '../../widgets/notification_bell.dart';
@@ -51,7 +50,7 @@ class AdminNavigation extends ConsumerWidget {
       child: Builder(
         builder: (context) => PortalShell(
           portalName: 'Admin portal',
-          selectedItemColor: AdminTheme.harborBlue,
+          selectedItemColor: Theme.of(context).colorScheme.primary,
           footerActions: const [_ThemeToggle(), NotificationBell(), PortalAccountMenu()],
           // Admin screens are lists, maps and charts rather than phone-shaped
           // forms, so they get a wider measure than the site's prose column.

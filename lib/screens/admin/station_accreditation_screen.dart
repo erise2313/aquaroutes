@@ -362,7 +362,7 @@ class _StationAccreditationScreenState extends State<StationAccreditationScreen>
                   const SizedBox(height: 4),
                   Text(
                     station['station_address'] as String? ?? '',
-                    style: TextStyle(color: palette.inkMuted, fontSize: 14),
+                    style: TextStyle(color: palette.inkMuted, fontSize: 16),
                   ),
                   const SizedBox(height: 10),
                   // DEACTIVATED joins the other pills here rather than sitting
@@ -398,7 +398,7 @@ class _StationAccreditationScreenState extends State<StationAccreditationScreen>
                 ),
                 Text(
                   isActive ? 'Active' : 'Suspended',
-                  style: TextStyle(fontSize: 13, color: palette.inkMuted, fontWeight: FontWeight.w600),
+                  style: TextStyle(fontSize: 16, color: palette.inkMuted, fontWeight: FontWeight.w600),
                 ),
               ],
             ),

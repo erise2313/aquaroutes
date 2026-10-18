@@ -279,7 +279,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                     Text(
                       "Join GenTri: WASA and manage deliveries instantly.",
                       textAlign: TextAlign.center,
-                      style: TextStyle(fontSize: 15, color: scheme.onSurfaceVariant),
+                      style: TextStyle(fontSize: 16, color: scheme.onSurfaceVariant),
                     ),
                     const SizedBox(height: 32),
 
@@ -514,7 +514,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
               Expanded(
                 child: Text(
                   "Business Permit / KYC upload will be required after successful registration.",
-                  style: TextStyle(fontSize: 14, color: Theme.of(context).colorScheme.onSurface),
+                  style: TextStyle(fontSize: 16, color: Theme.of(context).colorScheme.onSurface),
                 ),
               ),
             ],
@@ -554,7 +554,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                 Expanded(
                   child: Text(
                     "Use this to place water orders and track your order history. Browsing the Bulletin Board and station map never requires an account.",
-                    style: TextStyle(fontSize: 14, color: scheme.onSurface),
+                    style: TextStyle(fontSize: 16, color: scheme.onSurface),
                   ),
                 ),
               ],

@@ -11,11 +11,12 @@ import 'portal/status_pill.dart';
 /// pills pick up the dark-mode-aware tint without touching every call site.
 /// New code should use [StatusPill] directly.
 class AdminStatusPill extends StatelessWidget {
-  const AdminStatusPill({super.key, required this.label, required this.color});
+  const AdminStatusPill({super.key, required this.label, required this.color, this.icon});
 
   final String label;
   final Color color;
+  final IconData? icon;
 
   @override
-  Widget build(BuildContext context) => StatusPill(label: label, color: color);
+  Widget build(BuildContext context) => StatusPill(label: label, color: color, icon: icon);
 }

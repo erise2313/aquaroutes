@@ -645,7 +645,7 @@ class _BulletinFeedState extends ConsumerState<BulletinFeed> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                   decoration: BoxDecoration(color: categoryColor.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(8)),
-                  child: Text(categoryLabel, style: TextStyle(color: categoryColor, fontSize: 13, fontWeight: FontWeight.bold)),
+                  child: Text(categoryLabel, style: TextStyle(color: categoryColor, fontSize: 16, fontWeight: FontWeight.bold)),
                 ),
                 if (membership?.role == AppRole.wasaAdmin) ...[
                   const Spacer(),
@@ -715,14 +715,14 @@ class _BulletinFeedState extends ConsumerState<BulletinFeed> {
                 Expanded(
                   child: Text(
                     bulletin.authorName,
-                    style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                    style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                Text(DateFormat('MMM d, yyyy').format(bulletin.createdAt), style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 14)),
+                Text(DateFormat('MMM d, yyyy').format(bulletin.createdAt), style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 16)),
               ],
             ),
-            Text(bulletin.authorBadge, style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 14)),
+            Text(bulletin.authorBadge, style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 16)),
             const SizedBox(height: 4),
             Row(
               children: [
@@ -740,7 +740,7 @@ class _BulletinFeedState extends ConsumerState<BulletinFeed> {
                           color: _myReactions.contains(bulletin.id) ? BrandStatus.danger : Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
                         const SizedBox(width: 6),
-                        Text('${_reactionCounts[bulletin.id] ?? 0}', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 14)),
+                        Text('${_reactionCounts[bulletin.id] ?? 0}', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 16)),
                       ],
                     ),
                   ),
@@ -761,7 +761,7 @@ class _BulletinFeedState extends ConsumerState<BulletinFeed> {
                         const SizedBox(width: 6),
                         Text(
                           _commentCounts[bulletin.id]?.toString() ?? 'Comments',
-                          style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 14),
+                          style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 16),
                         ),
                       ],
                     ),
