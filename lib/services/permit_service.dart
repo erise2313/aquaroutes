@@ -154,10 +154,14 @@ class PermitService {
     required String label,
     required String conditionNote,
     required String updatedByProfileId,
+    int? validityMonths,
+    String? description,
   }) {
     return _supabase.client.from('permit_type_labels').update({
       'label': label,
       'condition_note': conditionNote,
+      'validity_months': validityMonths,
+      'description': (description == null || description.trim().isEmpty) ? null : description.trim(),
       'updated_by': updatedByProfileId,
       'updated_at': DateTime.now().toIso8601String(),
     }).eq('permit_type', permitTypeToString(permitType));

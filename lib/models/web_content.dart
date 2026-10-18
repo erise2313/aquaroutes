@@ -102,11 +102,20 @@ class PermitTypeLabel {
   final String conditionNote;
   final int sortOrder;
 
+  /// How long an approved permit of this type stays valid; null means it
+  /// doesn't expire on a schedule (supabase/patch_compliance.sql).
+  final int? validityMonths;
+
+  /// A plain explanation of the permit for the owner's checklist.
+  final String? description;
+
   const PermitTypeLabel({
     required this.permitType,
     required this.label,
     required this.conditionNote,
     required this.sortOrder,
+    this.validityMonths,
+    this.description,
   });
 
   factory PermitTypeLabel.fromMap(Map<String, dynamic> map) {
@@ -115,6 +124,8 @@ class PermitTypeLabel {
       label: map['label'] as String,
       conditionNote: map['condition_note'] as String,
       sortOrder: map['sort_order'] as int? ?? 0,
+      validityMonths: (map['validity_months'] as num?)?.toInt(),
+      description: map['description'] as String?,
     );
   }
 }

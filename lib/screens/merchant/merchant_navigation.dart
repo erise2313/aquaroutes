@@ -13,6 +13,7 @@ import 'worker_registry_screen.dart';
 import 'tracking_screen.dart';
 import 'merchant_profile_screens.dart';
 import 'products_screen.dart';
+import 'station_compliance_screen.dart';
 import 'station_reviews_screen.dart';
 import 'team_screen.dart';
 import '../../providers/app_theme_provider.dart';
@@ -38,6 +39,7 @@ class MerchantNavigation extends StatelessWidget {
     return Consumer(
       builder: (context, ref, _) {
         final theme = appThemeDataFor(ref.watch(appThemeProvider), MediaQuery.platformBrightnessOf(context));
+        final unacknowledged = ref.watch(unacknowledgedNoticesProvider).value;
 
         return Theme(
           data: theme,
@@ -63,7 +65,7 @@ class MerchantNavigation extends StatelessWidget {
               //
               // Products sits right after Orders: it's the second thing an
               // owner needs (a station can't take orders until it lists one).
-              destinations: const [
+              destinations: [
                 NavShellDestination(icon: Icons.home_outlined, selectedIcon: Icons.home, label: 'Home'),
                 NavShellDestination(icon: Icons.list_alt, label: 'Orders', group: 'Operations'),
                 NavShellDestination(icon: Icons.sell_outlined, selectedIcon: Icons.sell, label: 'Products', group: 'Operations'),
@@ -87,6 +89,14 @@ class MerchantNavigation extends StatelessWidget {
                   selectedIcon: Icons.folder_shared,
                   label: 'Permit vault',
                   group: 'Compliance',
+                  onPhone: false,
+                ),
+                NavShellDestination(
+                  icon: Icons.mark_email_unread_outlined,
+                  selectedIcon: Icons.mark_email_unread,
+                  label: 'WASA notices',
+                  group: 'Compliance',
+                  badgeCount: unacknowledged,
                   onPhone: false,
                 ),
                 NavShellDestination(
@@ -127,6 +137,7 @@ class MerchantNavigation extends StatelessWidget {
                 DriverManagementScreen(),
                 TeamScreen(),
                 PermitVaultScreen(),
+                StationComplianceScreen(),
                 WorkerRegistryScreen(),
                 HireCheckScreen(),
                 JugClearinghouseScreen(),

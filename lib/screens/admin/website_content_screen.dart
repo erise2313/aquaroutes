@@ -711,11 +711,13 @@ class _PermitLabelsEditorState extends State<_PermitLabelsEditor> {
   void _showEditDialog(PermitTypeLabel label) {
     final labelController = TextEditingController(text: label.label);
     final noteController = TextEditingController(text: label.conditionNote);
+    final monthsController = TextEditingController(text: label.validityMonths?.toString() ?? '');
+    final descriptionController = TextEditingController(text: label.description ?? '');
 
     showDialog(
       context: context,
       builder: (context) => DisposeWith(
-        notifiers: [labelController, noteController],
+        notifiers: [labelController, noteController, monthsController, descriptionController],
         child: AlertDialog(
         title: const Text('Edit Permit Label'),
         content: SingleChildScrollView(
@@ -724,6 +726,22 @@ class _PermitLabelsEditorState extends State<_PermitLabelsEditor> {
             children: [
               TextField(controller: labelController, decoration: const InputDecoration(labelText: 'Display name')),
               TextField(controller: noteController, maxLines: 3, decoration: const InputDecoration(labelText: 'Requirement note')),
+              const SizedBox(height: 8),
+              TextField(
+                controller: monthsController,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'Valid for (months)',
+                  helperText: "Approving one sets its expiry this far ahead. Leave empty if it doesn't expire.",
+                  helperMaxLines: 3,
+                ),
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: descriptionController,
+                maxLines: 3,
+                decoration: const InputDecoration(labelText: 'Explanation for owners (shown in their checklist)'),
+              ),
             ],
           ),
         ),
@@ -734,11 +752,19 @@ class _PermitLabelsEditorState extends State<_PermitLabelsEditor> {
               final newLabel = labelController.text.trim();
               final newNote = noteController.text.trim();
               if (newLabel.isEmpty || newNote.isEmpty) return;
+              final monthsText = monthsController.text.trim();
+              final months = monthsText.isEmpty ? null : int.tryParse(monthsText);
+              if (monthsText.isNotEmpty && (months == null || months <= 0)) {
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Months must be a whole number above 0, or empty.')));
+                return;
+              }
               try {
                 await _service.updatePermitLabel(
                   permitType: label.permitType,
                   label: newLabel,
                   conditionNote: newNote,
+                  validityMonths: months,
+                  description: descriptionController.text,
                   updatedByProfileId: Supabase.instance.client.auth.currentUser!.id,
                 );
                 if (context.mounted) Navigator.pop(context);
@@ -785,6 +811,12 @@ class _PermitLabelsEditorState extends State<_PermitLabelsEditor> {
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(fontSize: 16, color: AdminPalette.of(context).inkMuted),
+                      ),
+                      Text(
+                        label.validityMonths == null
+                            ? 'No scheduled expiry'
+                            : 'Valid for ${label.validityMonths} month${label.validityMonths == 1 ? '' : 's'}',
+                        style: TextStyle(fontSize: 16, color: AdminPalette.of(context).inkMuted, fontWeight: FontWeight.w700),
                       ),
                     ],
                   ),

@@ -6,7 +6,9 @@ import 'package:aquaroute/screens/merchant/driver_management.dart';
 import 'package:aquaroute/screens/merchant/hire_check_screen.dart';
 import 'package:aquaroute/screens/merchant/jug_clearinghouse_screen.dart';
 import 'package:aquaroute/screens/merchant/permit_vault_screen.dart';
+import 'package:aquaroute/screens/merchant/station_compliance_screen.dart';
 import 'package:aquaroute/screens/merchant/station_reviews_screen.dart';
+import 'package:aquaroute/models/station_standing.dart';
 import 'package:aquaroute/screens/merchant/team_screen.dart';
 import 'package:aquaroute/screens/merchant/worker_registry_screen.dart';
 import 'package:aquaroute/services/permit_service.dart';
@@ -106,6 +108,10 @@ class _MerchantDashboardScreenState extends State<MerchantDashboardScreen> {
   /// When the driver invite code stops working (null: codes issued before
   /// expiry existed, which stay valid until renewed).
   DateTime? _inviteExpires;
+
+  /// The station's standing with WASA (patch_compliance.sql); shown at the
+  /// top of the dashboard when it needs the owner's attention.
+  StationStanding? _standing;
   bool _isLoading = true;
 
   @override
@@ -121,7 +127,7 @@ class _MerchantDashboardScreenState extends State<MerchantDashboardScreen> {
       // 1. Get the owner's station id and invite code.
       final stationData = await supabase
           .from('water_stations')
-          .select('id, invite_code, invite_code_expires_at')
+          .select('id, invite_code, invite_code_expires_at, standing')
           .eq('owner_profile_id', userId)
           .maybeSingle();
 
@@ -146,6 +152,7 @@ class _MerchantDashboardScreenState extends State<MerchantDashboardScreen> {
             _renewalDueCount = renewalDueCount;
             _inviteCode = inviteCode;
             _inviteExpires = DateTime.tryParse(stationData['invite_code_expires_at'] as String? ?? '')?.toLocal();
+            _standing = stationStandingFromString(stationData['standing'] as String?);
             _isLoading = false;
           });
         }
@@ -204,6 +211,18 @@ class _MerchantDashboardScreenState extends State<MerchantDashboardScreen> {
                     child: ListView(
                       padding: density.pagePadding,
                       children: [
+                        if (_standing == StationStanding.warning || _standing == StationStanding.lapsed) ...[
+                          StatusCallout(
+                            accent: StandingLook.of(_standing!).color,
+                            icon: StandingLook.of(_standing!).icon,
+                            title: _standing == StationStanding.lapsed
+                                ? 'Your accreditation has lapsed'
+                                : 'A permit needs renewing',
+                            message: '${StandingLook.of(_standing!).explanation} Open the Permit vault to upload it.',
+                            onTap: () => _go('Permit vault', const PermitVaultScreen()),
+                          ),
+                          SizedBox(height: density.gap),
+                        ],
                         _buildInviteCodeCard(_inviteCode),
                         if (_hasNoProducts) ...[
                           SizedBox(height: density.gap),
@@ -240,6 +259,13 @@ class _MerchantDashboardScreenState extends State<MerchantDashboardScreen> {
                                 title: 'Permit Vault',
                                 subtitle: 'Upload business, sanitary, and (if alkaline) technical permits',
                                 onTap: () => _go('Permit vault', const PermitVaultScreen()),
+                              ),
+                              _buildNavCard(
+                                icon: Icons.mark_email_unread_outlined,
+                                tone: AppColors.primary,
+                                title: 'WASA Notices',
+                                subtitle: 'Official notices from the association, and any compliance case',
+                                onTap: () => _go('WASA notices', const StationComplianceScreen()),
                               ),
                               _buildNavCard(
                                 icon: Icons.badge_outlined,

@@ -39,6 +39,7 @@ class WorkerCredentialService {
     required WorkerCredentialType credentialType,
     required Uint8List bytes,
     required String fileExtension,
+    DateTime? expiryDate,
   }) async {
     final path = '$workerId/${workerCredentialTypeToString(credentialType)}.$fileExtension';
 
@@ -52,6 +53,11 @@ class WorkerCredentialService {
       'storage_path': path,
       'status': 'pending_review',
       'uploaded_at': DateTime.now().toIso8601String(),
+      // The licence's own expiry, so the daily compliance job can remind the
+      // driver and the owner 30 and 7 days before (patch_compliance.sql).
+      'expiry_date': expiryDate == null
+          ? null
+          : '${expiryDate.year.toString().padLeft(4, '0')}-${expiryDate.month.toString().padLeft(2, '0')}-${expiryDate.day.toString().padLeft(2, '0')}',
     }).match({'worker_id': workerId, 'credential_type': workerCredentialTypeToString(credentialType)});
   }
 

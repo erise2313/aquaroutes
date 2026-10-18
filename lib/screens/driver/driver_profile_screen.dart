@@ -178,12 +178,28 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
 
     final extension = picked.extension ?? 'pdf';
 
+    // A licence expires; WASA and the station are reminded before it does.
+    DateTime? expiry;
+    if (credential.credentialType == WorkerCredentialType.driversLicense) {
+      if (!mounted) return;
+      final now = DateTime.now();
+      expiry = await showDatePicker(
+        context: context,
+        helpText: 'When does your licence expire?',
+        initialDate: DateTime(now.year + 1, now.month, now.day),
+        firstDate: now,
+        lastDate: DateTime(now.year + 11),
+      );
+      if (expiry == null) return;
+    }
+
     try {
       await _credentialService.uploadCredentialDocument(
         workerId: _worker!.id,
         credentialType: credential.credentialType,
         bytes: picked.bytes!,
         fileExtension: extension,
+        expiryDate: expiry,
       );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

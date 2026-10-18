@@ -71,10 +71,18 @@ of how the schema was reached rather than a way to rebuild it.
 > to `reset_and_rebuild.sql` as well as writing the migration. The script is
 > only useful while it stays current.
 
-Confirm it worked — this should return **36**:
+Confirm it worked — this should return **40**:
 
 ```sql
 select count(*) from information_schema.tables where table_schema = 'public';
+```
+
+The script also switches on Supabase's **pg_cron** extension and schedules
+the daily compliance job (permit and licence reminders, grace period,
+lapsing). Confirm it is there — this should return one row:
+
+```sql
+select jobname, schedule from cron.job where jobname = 'gentri-daily-compliance';
 ```
 
 ### 1.3 Confirm the storage buckets

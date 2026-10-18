@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+
+import '../../models/station_standing.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -109,7 +111,7 @@ class _StationAccreditationScreenState extends State<StationAccreditationScreen>
     try {
       final rows = await _supabase
           .from('water_stations')
-          .select('id, station_name, station_address, is_accredited, is_colorum_verified, is_active, latitude, longitude')
+          .select('id, station_name, station_address, is_accredited, is_colorum_verified, is_active, latitude, longitude, standing')
           .order('station_name');
       if (mounted) {
         setState(() {
@@ -317,6 +319,7 @@ class _StationAccreditationScreenState extends State<StationAccreditationScreen>
   Widget _buildStationCard(Map<String, dynamic> station) {
     final palette = AdminPalette.of(context);
     final isAccredited = station['is_accredited'] as bool? ?? false;
+    final standing = stationStandingFromString(station['standing'] as String?);
     final isVerified = station['is_colorum_verified'] as bool? ?? false;
     final isActive = station['is_active'] as bool? ?? true;
     final statusColor = isAccredited ? AppColors.cleared : AppColors.pendingClearance;
@@ -379,6 +382,14 @@ class _StationAccreditationScreenState extends State<StationAccreditationScreen>
                         color: isVerified ? AdminTheme.harborBlue : palette.inkMuted,
                       ),
                       if (!isActive) const AdminStatusPill(label: 'DEACTIVATED', color: AppColors.flagged),
+                      // Renewal due / lapsed is what an officer must chase;
+                      // the other standings repeat the pills beside it.
+                      if (isActive && (standing == StationStanding.warning || standing == StationStanding.lapsed))
+                        AdminStatusPill(
+                          label: StandingLook.of(standing).label,
+                          color: StandingLook.of(standing).color,
+                          icon: StandingLook.of(standing).icon,
+                        ),
                     ],
                   ),
                 ],

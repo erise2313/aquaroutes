@@ -224,7 +224,7 @@ class _WorkerRecordDialogState extends State<_WorkerRecordDialog> {
         _supabase.from('workers').select('clearance_status').eq('id', _workerId).single(),
         _supabase
             .from('worker_credentials')
-            .select('id, credential_type, status, storage_path, rejection_reason')
+            .select('id, credential_type, status, storage_path, rejection_reason, expiry_date')
             .eq('worker_id', _workerId),
         _supabase
             .from('worker_incidents')
@@ -385,7 +385,10 @@ class _WorkerRecordDialogState extends State<_WorkerRecordDialog> {
                     for (final c in credentials)
                       item(
                         text: '${words(c['credential_type'] as String?)}: ${words(c['status'] as String?)}',
-                        note: c['status'] == 'rejected' && c['rejection_reason'] != null ? 'Reason: ${c['rejection_reason']}' : null,
+                        note: [
+                          if (c['expiry_date'] != null) 'Expires ${fmt.format(DateTime.parse(c['expiry_date'] as String))}',
+                          if (c['status'] == 'rejected' && c['rejection_reason'] != null) 'Reason: ${c['rejection_reason']}',
+                        ].join(' · ').ifEmptyNull,
                         actions: [
                           if (c['storage_path'] != null)
                             TextButton.icon(
@@ -445,4 +448,9 @@ class _WorkerRecordDialogState extends State<_WorkerRecordDialog> {
       actions: [TextButton(onPressed: () => Navigator.pop(context, _changed), child: const Text('Close'))],
     );
   }
+}
+
+extension on String {
+  /// Null for an empty string, so an absent note isn't drawn as a blank line.
+  String? get ifEmptyNull => isEmpty ? null : this;
 }

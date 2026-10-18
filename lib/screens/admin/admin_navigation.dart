@@ -3,7 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'activity_screen.dart';
 import 'admin_clearinghouse_screen.dart';
+import 'admin_cases_screen.dart';
 import 'admin_dashboard.dart';
+import 'admin_notices_screen.dart';
 import 'admin_officers_screen.dart';
 import 'admin_settings_screen.dart';
 import 'admin_orders_screen.dart';
@@ -84,6 +86,20 @@ class AdminNavigation extends ConsumerWidget {
               label: 'Workers',
               badgeCount: counts?.workerQueue,
               group: 'Compliance',
+            ),
+            const NavShellDestination(
+              icon: Icons.campaign_outlined,
+              selectedIcon: Icons.campaign,
+              label: 'Notices',
+              group: 'Compliance',
+              phoneTab: false,
+            ),
+            const NavShellDestination(
+              icon: Icons.gavel_outlined,
+              selectedIcon: Icons.gavel,
+              label: 'Cases',
+              group: 'Compliance',
+              phoneTab: false,
             ),
             const NavShellDestination(
               icon: Icons.receipt_long_outlined,
@@ -169,6 +185,8 @@ class AdminNavigation extends ConsumerWidget {
             const StationAccreditationScreen(),
             const PermitQueueScreen(),
             const WorkerClearanceScreen(),
+            const AdminNoticesScreen(),
+            const AdminCasesScreen(),
             const AdminOrdersScreen(),
             const AdminClearinghouseScreen(),
             const BulletinEditorScreen(),
