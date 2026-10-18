@@ -7,9 +7,8 @@ people.
 - Public website: https://gentri-wasa.web.app
 - Admin portal: https://gentri-wasa-admin.web.app
 - App: `GenTriWASA-arm64-v8a.apk` (Desktop\GenTriWASA-APK), built 18 October
-  2026 with everything below except the Trash (T1-T8), which is on the
-  websites now and comes to the app with its next build. Uninstall an older
-  copy first if Android refuses the update.
+  2026 with everything below, Trash included. Uninstall an older copy
+  first if Android refuses the update.
 
 Every screen works in light and dark mode, uses the Atkinson Hyperlegible
 typeface, and has a **Text size** setting (Normal, Large, Extra large) under
