@@ -23,6 +23,7 @@ import '../../widgets/star_rating.dart';
 import '../../widgets/wave_divider.dart';
 import '../../widgets/web_footer.dart';
 import '../../widgets/web_nav_bar.dart';
+import '../../web_router.dart';
 import '../../widgets/web_page_route.dart';
 import '../../widgets/web_seal.dart';
 import '../auth/registration_screen.dart';
@@ -217,7 +218,7 @@ class _OrgHomeScreenState extends ConsumerState<OrgHomeScreen> {
                   // looking for a station), not a filler button.
                   HoverScale(
                     child: OutlinedButton(
-                      onPressed: () => Navigator.push(context, webPageRoute(const StationsDirectoryScreen())),
+                      onPressed: () => openWebPage(context, WebRoutes.stations, const StationsDirectoryScreen()),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: Colors.white,
                         side: const BorderSide(color: Colors.white54),
@@ -278,7 +279,7 @@ class _OrgHomeScreenState extends ConsumerState<OrgHomeScreen> {
           children: [
             Expanded(child: Text(t('home_stations_section_title'), style: WebTheme.display(fontSize: 24))),
             TextButton(
-              onPressed: () => Navigator.push(context, webPageRoute(const StationsDirectoryScreen())),
+              onPressed: () => openWebPage(context, WebRoutes.stations, const StationsDirectoryScreen()),
               style: TextButton.styleFrom(foregroundColor: WebTheme.harborBlue),
               child: Text(t('home_view_all')),
             ),
@@ -331,7 +332,7 @@ class _OrgHomeScreenState extends ConsumerState<OrgHomeScreen> {
           children: [
             Expanded(child: Text(t('home_news_section_title'), style: WebTheme.display(fontSize: 24))),
             TextButton(
-              onPressed: () => Navigator.push(context, webPageRoute(const NewsScreen())),
+              onPressed: () => openWebPage(context, WebRoutes.news, const NewsScreen()),
               style: TextButton.styleFrom(foregroundColor: WebTheme.harborBlue),
               child: Text(t('home_view_all')),
             ),

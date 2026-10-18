@@ -44,7 +44,7 @@ class WebContentService {
     required String updatedByProfileId,
   }) {
     final data = {
-      if (id != null) 'id': id,
+      'id': ?id,
       'page_key': pageKey,
       'section_key': sectionKey,
       'title': title,
@@ -69,7 +69,7 @@ class WebContentService {
     required String updatedByProfileId,
   }) {
     final data = {
-      if (id != null) 'id': id,
+      'id': ?id,
       'page_key': pageKey,
       'item_key': itemKey,
       'icon': icon,
@@ -97,7 +97,7 @@ class WebContentService {
     required String updatedByProfileId,
   }) {
     final data = {
-      if (id != null) 'id': id,
+      'id': ?id,
       'question': question,
       'answer': answer,
       'sort_order': sortOrder,

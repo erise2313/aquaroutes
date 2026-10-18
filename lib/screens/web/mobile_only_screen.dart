@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../web_router.dart';
 import '../../widgets/web_page_route.dart';
 import 'org_home_screen.dart';
 
@@ -34,7 +36,11 @@ class MobileOnlyScreen extends StatelessWidget {
               ElevatedButton(
                 onPressed: () async {
                   await Supabase.instance.client.auth.signOut();
-                  if (context.mounted) {
+                  if (!context.mounted) return;
+                  // By URL on the website, so the address bar leaves /portal.
+                  if (GoRouter.maybeOf(context) != null) {
+                    context.go(WebRoutes.home);
+                  } else {
                     Navigator.pushAndRemoveUntil(
                       context,
                       webPageRoute(const OrgHomeScreen()),

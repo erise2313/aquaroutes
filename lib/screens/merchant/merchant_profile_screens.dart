@@ -11,7 +11,6 @@ import '../app_route.dart';
 import 'products_screen.dart';
 import '../../constants/app_colors.dart';
 import '../../widgets/account_settings_section.dart';
-import '../../widgets/app_theme_toggle.dart';
 import '../../widgets/portal/portal.dart';
 import '../../utils/error_text.dart';
 import '../../utils/log.dart';
@@ -294,12 +293,15 @@ class _MerchantProfileScreenState extends State<MerchantProfileScreen> {
     return Scaffold(
       body: Column(
         children: [
+          // No light/dark switch here: there is exactly one per portal -- the
+          // sidebar footer in a browser, the Dashboard header in the app --
+          // and the full Light/Dark/Follow-phone choice is in Account
+          // settings further down this page.
           const PortalPageHeader(
             eyebrow: 'Your station',
             title: 'Station Profile',
             subtitle: 'Who you are, what customers see, and where to find you',
             showBack: false,
-            actions: [AppThemeToggle()],
           ),
           Expanded(
             child: _isLoading ? const Center(child: CircularProgressIndicator()) : _buildProfileContent(),

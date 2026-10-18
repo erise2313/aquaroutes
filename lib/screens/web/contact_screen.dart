@@ -15,6 +15,7 @@ import '../../widgets/skeleton_loader.dart';
 import '../../widgets/web_footer.dart';
 import '../../widgets/web_nav_bar.dart';
 import '../../widgets/web_page_header.dart';
+import '../../web_router.dart';
 import '../../widgets/web_page_route.dart';
 import 'stations_directory_screen.dart';
 import '../../utils/error_text.dart';
@@ -136,7 +137,7 @@ class _ContactScreenState extends ConsumerState<ContactScreen> {
                                 const SizedBox(height: 16),
                                 HoverScale(
                                   child: OutlinedButton.icon(
-                                    onPressed: () => Navigator.push(context, webPageRoute(const StationsDirectoryScreen())),
+                                    onPressed: () => openWebPage(context, WebRoutes.stations, const StationsDirectoryScreen()),
                                     style: OutlinedButton.styleFrom(foregroundColor: WebTheme.harborBlue, side: const BorderSide(color: WebTheme.harborBlue)),
                                     icon: const Icon(Icons.map_outlined),
                                     label: const Text('Browse the Stations Directory'),

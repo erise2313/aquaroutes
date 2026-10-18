@@ -163,8 +163,7 @@ class _PortalShellState extends State<PortalShell> {
           children: [
             for (var i = 0; i < widget.pages.length; i++)
               // Each section gets its own navigator so pushes stay inside the
-              // content area. The page is wrapped in the ambient Theme so a
-              // pushed screen keeps the portal's look.
+              // content area.
               _SectionNavigator(
                 navigatorKey: _navigatorKeys[i],
                 maxContentWidth: widget.maxContentWidth,
@@ -240,6 +239,12 @@ class PortalShellScope extends InheritedWidget {
     return scope?.selectLabel(label) ?? false;
   }
 
+  /// Whether [context] is inside the browser sidebar layout, whose footer
+  /// already carries the light/dark switch and the notification bell. Page
+  /// headers use it to avoid showing a second copy of either.
+  static bool isPresent(BuildContext context) =>
+      context.getInheritedWidgetOfExactType<PortalShellScope>() != null;
+
   @override
   bool updateShouldNotify(PortalShellScope oldWidget) => false;
 }
@@ -251,21 +256,22 @@ class _SectionNavigator extends StatelessWidget {
   final Widget child;
   final double maxContentWidth;
 
+  // No Theme wrapper here: the page inherits the portal's Theme through the
+  // Navigator, so it follows the light/dark switch. It used to be wrapped in
+  // a copy of the Theme taken when the section was first opened -- a route
+  // builds its page once, so that copy never changed, and toggling left the
+  // sidebar in one mode and every page already visited in the other.
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return Navigator(
       key: navigatorKey,
       onGenerateRoute: (settings) => PageRouteBuilder(
         settings: settings,
-        pageBuilder: (_, _, _) => Theme(
-          data: theme,
-          child: Align(
-            alignment: Alignment.topCenter,
-            child: ConstrainedBox(
-              constraints: BoxConstraints(maxWidth: maxContentWidth),
-              child: child,
-            ),
+        pageBuilder: (_, _, _) => Align(
+          alignment: Alignment.topCenter,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: maxContentWidth),
+            child: child,
           ),
         ),
       ),

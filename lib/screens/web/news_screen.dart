@@ -19,6 +19,7 @@ import '../../widgets/skeleton_loader.dart';
 import '../../widgets/web_footer.dart';
 import '../../widgets/web_nav_bar.dart';
 import '../../widgets/web_page_header.dart';
+import '../../web_router.dart';
 import '../../widgets/web_page_route.dart';
 import '../auth/login_screen.dart';
 import '../../utils/error_text.dart';
@@ -131,7 +132,8 @@ class _NewsScreenState extends ConsumerState<NewsScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text('Log in to $action.'),
-        action: SnackBarAction(label: 'Log In', onPressed: () => Navigator.push(context, webPageRoute(const LoginScreen()))),
+        // The portal URL shows the sign-in form to a signed-out visitor.
+        action: SnackBarAction(label: 'Log In', onPressed: () => openWebPage(context, WebRoutes.portal, const LoginScreen())),
       ),
     );
   }

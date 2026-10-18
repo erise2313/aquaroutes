@@ -1,4 +1,22 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+
+/// Opens another website page from a button inside a page, the same way the
+/// nav bar and footer do: by URL where the site's router is present, so the
+/// address bar changes and the browser's back button returns here.
+///
+/// Pushing the page instead left it on top with no back button (the site's
+/// page header has none), an unchanged address, and a browser back that left
+/// the site -- from "Log in" on the news page there was no way back at all.
+/// [fallback] is pushed in the builds without a router (the app reuses some
+/// of these screens).
+void openWebPage(BuildContext context, String path, Widget fallback) {
+  if (GoRouter.maybeOf(context) != null) {
+    context.go(path);
+    return;
+  }
+  Navigator.push(context, webPageRoute(fallback));
+}
 
 /// Shared page transition for website navigation (nav bar + footer links,
 /// plus every internal CTA between web screens) -- the incoming page fades,
