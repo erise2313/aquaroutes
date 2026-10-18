@@ -30,6 +30,15 @@ String bulletinCategoryToString(BulletinCategory category) {
   }
 }
 
+/// Shown, and ticked, before anyone posts to the Board (Rollout plan:
+/// posting rules). Kept short enough to actually be read.
+const bulletinPostingRules =
+    '• Be respectful. No insults, threats or posts about a person\'s private life.\n'
+    '• No customer details: names, numbers or addresses stay private.\n'
+    '• Stations don\'t agree prices or split customers with each other here.\n'
+    '• Complaints about a station go to WASA through "Report a problem", not the Board.\n'
+    'Officers remove posts that break these rules.';
+
 String bulletinCategoryLabel(BulletinCategory category) {
   switch (category) {
     case BulletinCategory.announcement:

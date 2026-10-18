@@ -15,9 +15,11 @@ import 'package:aquaroute/services/permit_service.dart';
 import 'package:aquaroute/services/supabase_service.dart';
 import 'package:aquaroute/utils/formatters.dart';
 import '../app_route.dart';
+import 'cost_calculator_screen.dart';
 import 'products_screen.dart';
 import '../../constants/app_colors.dart';
 import '../../widgets/app_theme_toggle.dart';
+import '../../widgets/mentor_pairs_card.dart';
 import '../../widgets/notification_bell.dart';
 import '../../widgets/portal/portal.dart';
 import '../../utils/log.dart';
@@ -223,6 +225,7 @@ class _MerchantDashboardScreenState extends State<MerchantDashboardScreen> {
                           ),
                           SizedBox(height: density.gap),
                         ],
+                        MentorPairsCard(bottomGap: density.gap),
                         _buildInviteCodeCard(_inviteCode),
                         if (_hasNoProducts) ...[
                           SizedBox(height: density.gap),
@@ -311,6 +314,13 @@ class _MerchantDashboardScreenState extends State<MerchantDashboardScreen> {
                                 title: 'Team',
                                 subtitle: 'Counter and dispatch staff, and their staff code',
                                 onTap: () => _go('Team', const TeamScreen()),
+                              ),
+                              _buildNavCard(
+                                icon: Icons.calculate_outlined,
+                                tone: AppColors.primary,
+                                title: 'Cost calculator',
+                                subtitle: 'What a refill costs you -- private to you',
+                                onTap: () => _go('Costs', const CostCalculatorScreen()),
                                 last: true,
                               ),
                             ],
@@ -324,7 +334,7 @@ class _MerchantDashboardScreenState extends State<MerchantDashboardScreen> {
                             icon: Icons.star_outline,
                             tone: AppColors.accent,
                             title: 'Customer Reviews',
-                            subtitle: 'Ratings and comments customers leave after a delivery',
+                            subtitle: 'Ratings customers leave, and problems they reported to WASA',
                             onTap: () => _go('Reviews', const StationReviewsScreen()),
                             last: true,
                           ),

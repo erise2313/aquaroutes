@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../constants/admin_theme.dart';
 import '../../models/event.dart';
@@ -12,6 +13,7 @@ import '../../widgets/error_state.dart';
 import '../../widgets/portal/portal.dart';
 import '../../widgets/skeleton_loader.dart';
 import '../../utils/error_text.dart';
+import '../../widgets/event_rsvp.dart';
 import '../../constants/admin_palette.dart';
 
 class EventsAdminScreen extends StatefulWidget {
@@ -42,6 +44,7 @@ class _EventsAdminScreenState extends State<EventsAdminScreen> {
     });
     try {
       final events = await _eventService.fetchEvents();
+      await EventRsvpStore.instance.load(force: true);
       if (mounted) setState(() { _events = events; _isLoading = false; });
     } catch (e) {
       if (mounted) setState(() { _error = 'Could not load events. ${describeError(e)}'; _isLoading = false; });
@@ -206,6 +209,35 @@ class _EventsAdminScreenState extends State<EventsAdminScreen> {
     );
   }
 
+  Future<void> _showAttendees(AssociationEvent event) async {
+    List<String> names = [];
+    try {
+      final rows = await Supabase.instance.client
+          .from('event_rsvps')
+          .select('created_at, profiles(full_name)')
+          .eq('event_id', event.id)
+          .order('created_at');
+      names = [for (final r in rows) (r['profiles']?['full_name'] as String?) ?? 'Member'];
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(describeError(e))));
+      return;
+    }
+    if (!mounted) return;
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text('Going to ${event.title}'),
+        content: SizedBox(
+          width: 420,
+          child: names.isEmpty
+              ? const Text('Nobody has said they will attend yet.')
+              : ListView(shrinkWrap: true, children: [for (final n in names) ListTile(leading: const Icon(Icons.person_outline), title: Text(n))]),
+        ),
+        actions: [TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Close'))],
+      ),
+    );
+  }
+
   Widget _buildEventCard(AssociationEvent event) {
     final palette = AdminPalette.of(context);
     final tone = event.isPast ? AppColors.inkMuted : AdminTheme.harborBlue;
@@ -233,6 +265,14 @@ class _EventsAdminScreenState extends State<EventsAdminScreen> {
                   '${DateFormat('MMM d, yyyy h:mm a').format(event.eventDate)}'
                   '${event.location != null ? ' · ${event.location}' : ''}',
                   style: TextStyle(fontSize: 16, color: palette.inkMuted),
+                ),
+                TextButton.icon(
+                  onPressed: () => _showAttendees(event),
+                  style: TextButton.styleFrom(padding: EdgeInsets.zero),
+                  icon: const Icon(Icons.groups_outlined),
+                  label: Text(
+                    '${EventRsvpStore.instance.going[event.id] ?? 0} ${event.isPast ? 'attended' : 'going'} -- see who',
+                  ),
                 ),
               ],
             ),

@@ -12,6 +12,7 @@ import '../../services/station_service.dart';
 import '../../services/supabase_service.dart';
 import '../../constants/app_colors.dart';
 import '../../widgets/admin_page_header.dart';
+import 'mentor_station_button.dart';
 import 'transfer_station_button.dart';
 import '../../widgets/admin_status_pill.dart';
 import '../../widgets/confirm_dialog.dart';
@@ -235,7 +236,10 @@ class _PermitReviewScreenState extends State<PermitReviewScreen> {
             eyebrow: 'Station review',
             title: widget.stationName,
             subtitle: 'Permits, accreditation, and the public verification seal',
-            actions: [TransferStationButton(stationId: widget.stationId, stationName: widget.stationName, onTransferred: _load)],
+            actions: [
+              MentorStationButton(stationId: widget.stationId, stationName: widget.stationName),
+              TransferStationButton(stationId: widget.stationId, stationName: widget.stationName, onTransferred: _load),
+            ],
           ),
           Expanded(
             child: _isLoading

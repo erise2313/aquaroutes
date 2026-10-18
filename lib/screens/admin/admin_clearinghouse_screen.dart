@@ -82,6 +82,54 @@ class _AdminClearinghouseScreenState extends State<AdminClearinghouseScreen> {
 
   String _station(String? id) => _stationNames[id] ?? 'Unknown station';
 
+  /// Writes WASA's decision on a disputed settlement; both stations are
+  /// notified (resolve_jug_dispute, patch_stations_members.sql).
+  Future<void> _resolveDispute(Map<String, dynamic> settlement) async {
+    final controller = TextEditingController();
+    final decision = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Decide the dispute'),
+        content: SizedBox(
+          width: 520,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('${_station(settlement['holder_station_id'] as String?)} → ${_station(settlement['owner_station_id'] as String?)}: '
+                  '${settlement['quantity']} ${jugTypeLabel(settlement['jug_type'] as String?) ?? 'jugs'}'),
+              const SizedBox(height: 4),
+              Text('Reason given: ${settlement['dispute_reason']}'),
+              const SizedBox(height: 12),
+              TextField(
+                controller: controller,
+                autofocus: true,
+                minLines: 2,
+                maxLines: 5,
+                decoration: const InputDecoration(labelText: 'Decision and what each station should do'),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')),
+          FilledButton(onPressed: () => Navigator.pop(dialogContext, controller.text.trim()), child: const Text('Send decision')),
+        ],
+      ),
+    );
+    if (decision == null || decision.isEmpty) return;
+    final id = settlement['id'] as String;
+    setState(() => _busyId = id);
+    try {
+      await _supabase.rpc('resolve_jug_dispute', params: {'p_settlement_id': id, 'p_resolution': decision});
+      await _load();
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(describeError(e))));
+    } finally {
+      if (mounted) setState(() => _busyId = null);
+    }
+  }
+
   Future<void> _reject(Map<String, dynamic> settlement) async {
     final ok = await showConfirmDialog(
       context,
@@ -190,10 +238,13 @@ class _AdminClearinghouseScreenState extends State<AdminClearinghouseScreen> {
     }
     final palette = AdminPalette.of(context);
     final fmt = DateFormat('MMM d, yyyy');
-    // Waiting proposals first; the rest newest first, as loaded.
+    // Open disputes first, then waiting proposals; the rest newest first,
+    // as loaded.
+    bool disputeOpen(Map<String, dynamic> s) => s['disputed_at'] != null && s['dispute_resolution'] == null;
     final sorted = [
-      ..._settlements.where((s) => s['status'] == 'proposed'),
-      ..._settlements.where((s) => s['status'] != 'proposed'),
+      ..._settlements.where(disputeOpen),
+      ..._settlements.where((s) => !disputeOpen(s) && s['status'] == 'proposed'),
+      ..._settlements.where((s) => !disputeOpen(s) && s['status'] != 'proposed'),
     ];
     return RefreshIndicator(
       onRefresh: _load,
@@ -237,6 +288,29 @@ class _AdminClearinghouseScreenState extends State<AdminClearinghouseScreen> {
                     '${s['confirmed_at'] != null ? ' · confirmed ${fmt.format(DateTime.parse(s['confirmed_at'] as String).toLocal())}' : ''}',
                     style: TextStyle(color: palette.inkMuted),
                   ),
+                  if (s['dispute_reason'] != null) ...[
+                    const SizedBox(height: 6),
+                    AdminStatusPill(
+                      label: disputeOpen(s) ? 'DISPUTED' : 'DISPUTE DECIDED',
+                      color: disputeOpen(s) ? AppColors.pendingClearance : AppColors.cleared,
+                      icon: Icons.gavel,
+                    ),
+                    const SizedBox(height: 4),
+                    Text('Reason: ${s['dispute_reason']}', style: TextStyle(color: palette.ink)),
+                    if (s['dispute_resolution'] != null)
+                      Text('Decision: ${s['dispute_resolution']}', style: TextStyle(color: palette.ink, fontWeight: FontWeight.w700)),
+                    if (disputeOpen(s)) ...[
+                      const SizedBox(height: 8),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: FilledButton.icon(
+                          onPressed: _busyId == null ? () => _resolveDispute(s) : null,
+                          icon: const Icon(Icons.gavel),
+                          label: const Text('Decide the dispute'),
+                        ),
+                      ),
+                    ],
+                  ],
                   if (s['status'] == 'proposed') ...[
                     const SizedBox(height: 4),
                     Text(

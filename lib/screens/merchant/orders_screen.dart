@@ -14,6 +14,7 @@ import '../../widgets/portal/portal.dart';
 import '../../utils/error_text.dart';
 import '../../utils/formatters.dart';
 import '../../utils/log.dart';
+import 'station_new_order_dialog.dart';
 import '../../services/my_station.dart';
 
 /// How one order's status reads on screen: its pill, its colour and the icon
@@ -284,6 +285,13 @@ class _MerchantOrdersScreenState extends State<MerchantOrdersScreen> {
               subtitle: 'New orders appear the moment a customer places one',
               showBack: false,
               actions: [
+                // Phone and walk-in customers (station_create_order).
+                if (_stationId != null)
+                  FilledButton.icon(
+                    onPressed: () => showStationNewOrderDialog(context, stationId: _stationId!),
+                    icon: const Icon(Icons.add),
+                    label: const Text('New order'),
+                  ),
                 IconButton(
                   icon: const Icon(Icons.refresh),
                   tooltip: 'Refresh orders',
@@ -407,7 +415,11 @@ class _MerchantOrdersScreenState extends State<MerchantOrdersScreen> {
                   children: [
                     Text('Order #$shortId', style: theme.textTheme.titleMedium),
                     Text(
-                      'Placed at $time',
+                      switch (order['order_channel']) {
+                        'phone' => 'Phone order · ${order['guest_name'] ?? ''} · $time',
+                        'walk_in' => 'Walk-in · ${order['guest_name'] ?? ''} · $time',
+                        _ => 'Placed at $time',
+                      },
                       style: theme.textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
                     ),
                   ],

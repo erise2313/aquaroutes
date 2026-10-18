@@ -92,6 +92,14 @@ class JugSettlement {
   final int quantity;
   final SettlementStatus status;
 
+  /// A dispute either station raised for WASA to decide
+  /// (dispute_jug_settlement, patch_stations_members.sql).
+  final String? disputeReason;
+  final DateTime? disputedAt;
+  final String? disputeResolution;
+
+  bool get isDisputeOpen => disputedAt != null && disputeResolution == null;
+
   const JugSettlement({
     required this.id,
     required this.holderStationId,
@@ -99,6 +107,9 @@ class JugSettlement {
     required this.jugType,
     required this.quantity,
     required this.status,
+    this.disputeReason,
+    this.disputedAt,
+    this.disputeResolution,
   });
 
   factory JugSettlement.fromMap(Map<String, dynamic> map) {
@@ -109,6 +120,9 @@ class JugSettlement {
       jugType: jugTypeFromString(map['jug_type'] as String),
       quantity: map['quantity'] as int,
       status: settlementStatusFromString(map['status'] as String? ?? 'proposed'),
+      disputeReason: map['dispute_reason'] as String?,
+      disputedAt: map['disputed_at'] == null ? null : DateTime.tryParse(map['disputed_at'] as String),
+      disputeResolution: map['dispute_resolution'] as String?,
     );
   }
 }

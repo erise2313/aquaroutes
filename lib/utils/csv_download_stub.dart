@@ -3,3 +3,5 @@
 /// browser (gentri-wasa-admin.web.app). Returning false lets the caller say
 /// so plainly instead of appearing to do nothing.
 bool downloadCsv(String filename, String content) => false;
+
+bool downloadBytes(String filename, List<int> bytes, String mimeType) => false;

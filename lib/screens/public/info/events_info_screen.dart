@@ -7,6 +7,7 @@ import '../../../services/event_service.dart';
 import '../../../services/supabase_service.dart';
 import '../../../utils/error_text.dart';
 import '../../../widgets/error_state.dart';
+import '../../../widgets/event_rsvp.dart';
 import '../../../widgets/portal/portal.dart';
 
 /// In-app mirror of the website's Events page (web/events_screen.dart):
@@ -158,6 +159,8 @@ class _EventCard extends StatelessWidget {
                   const SizedBox(height: 6),
                   Text(event.description!.trim()),
                 ],
+                const SizedBox(height: 8),
+                EventRsvpControl(eventId: event.id, isPast: event.isPast),
               ],
             ),
           ),

@@ -173,6 +173,7 @@ class _BulletinFeedState extends ConsumerState<BulletinFeed> {
     final titleController = TextEditingController();
     final bodyController = TextEditingController();
     bool isSubmitting = false;
+    bool agreedToRules = false;
     Uint8List? selectedImageBytes;
     String? selectedImageExtension;
 
@@ -187,12 +188,27 @@ class _BulletinFeedState extends ConsumerState<BulletinFeed> {
             top: 20,
             bottom: 20 + MediaQuery.of(context).viewInsets.bottom,
           ),
-          child: Column(
+          child: SingleChildScrollView(
+            child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const Text('New Post', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 16),
+              const SizedBox(height: 12),
+              const StatusCallout(
+                accent: BrandStatus.info,
+                icon: Icons.rule,
+                title: 'Before you post',
+                message: bulletinPostingRules,
+                padding: EdgeInsets.all(12),
+              ),
+              CheckboxListTile(
+                contentPadding: EdgeInsets.zero,
+                value: agreedToRules,
+                onChanged: (v) => setSheetState(() => agreedToRules = v ?? false),
+                title: const Text('I have read the posting rules'),
+              ),
+              const SizedBox(height: 8),
               DropdownButtonFormField<BulletinCategory>(
                 initialValue: selectedCategory,
                 decoration: const InputDecoration(labelText: 'Category', border: OutlineInputBorder()),
@@ -236,6 +252,12 @@ class _BulletinFeedState extends ConsumerState<BulletinFeed> {
                 onPressed: isSubmitting
                     ? null
                     : () async {
+                        if (!agreedToRules) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Please read and tick the posting rules first.')),
+                          );
+                          return;
+                        }
                         if (titleController.text.trim().isEmpty || bodyController.text.trim().isEmpty) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(content: Text('Title and body are both required.')),
@@ -296,6 +318,7 @@ class _BulletinFeedState extends ConsumerState<BulletinFeed> {
                     : const Text('Post'),
               ),
             ],
+          ),
           ),
         ),
       ),

@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../constants/app_colors.dart';
 import '../../constants/app_palette.dart';
 import '../../models/bulletin.dart';
+import '../../models/order.dart';
 import '../../models/station.dart';
 import '../../services/bulletin_service.dart';
 import '../../services/station_service.dart';
@@ -16,6 +18,26 @@ import '../../widgets/skeleton_loader.dart';
 import '../../widgets/star_rating.dart';
 import '../../widgets/wave_divider.dart';
 import '../../widgets/web_seal.dart';
+import '../app_route.dart';
+import 'quick_order_screen.dart';
+
+/// The customer's own station ("suki"): the one they've had the most
+/// delivered orders from, the most recent on a tie. Returns that station's
+/// latest delivered order with a product, to reorder in one tap -- or null
+/// before their first delivery. Pure, so it is unit-tested.
+Map<String, dynamic>? pickMyStationOrder(List<Map<String, dynamic>> orders) {
+  final delivered = orders.where((o) => o['status'] == 'done' && o['product_id'] != null && o['station_id'] != null).toList()
+    ..sort((a, b) => (b['created_at'] as String).compareTo(a['created_at'] as String));
+  if (delivered.isEmpty) return null;
+  final counts = <String, int>{};
+  for (final o in delivered) {
+    counts.update(o['station_id'] as String, (n) => n + 1, ifAbsent: () => 1);
+  }
+  final best = counts.values.reduce((a, b) => a > b ? a : b);
+  // delivered is newest first, so the first station reaching the top count
+  // is the most recent of the tied ones.
+  return delivered.firstWhere((o) => counts[o['station_id']] == best);
+}
 
 /// The app's landing tab.
 ///
@@ -54,6 +76,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
   String? _error;
   List<PublicStation> _stations = [];
   List<Bulletin> _bulletins = [];
+  Map<String, dynamic>? _myStationOrder;
 
   /// Held off until the strip has actually been laid out, so the numbers
   /// count up when they come into view rather than racing past during the
@@ -75,8 +98,25 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
     try {
       final stations = await _stationService.fetchPublicStations();
       final bulletins = await _bulletinService.fetchBulletins();
+      Map<String, dynamic>? myOrder;
+      final client = Supabase.instance.client;
+      final userId = client.auth.currentUser?.id;
+      if (userId != null) {
+        // Best-effort: the home page still works without it.
+        try {
+          final rows = await client
+              .from('orders')
+              .select('station_id, product_id, jugs_ordered, unit_price, water_type, jug_type, product_kind, status, created_at, '
+                  'water_stations!orders_station_id_fkey(station_name)')
+              .eq('customer_profile_id', userId)
+              .order('created_at', ascending: false)
+              .limit(50);
+          myOrder = pickMyStationOrder(List<Map<String, dynamic>>.from(rows));
+        } catch (_) {}
+      }
       if (!mounted) return;
       setState(() {
+        _myStationOrder = myOrder;
         _stations = stations;
         _bulletins = bulletins.take(3).toList();
         _isLoading = false;
@@ -139,6 +179,10 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                if (_myStationOrder != null) ...[
+                  _buildMyStation(_myStationOrder!),
+                  SizedBox(height: density.sectionGap),
+                ],
                 _buildStats(density),
                 SizedBox(height: density.sectionGap),
                 PortalSection(
@@ -180,6 +224,47 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildMyStation(Map<String, dynamic> order) {
+    final theme = Theme.of(context);
+    final quantity = (order['jugs_ordered'] as num).toInt();
+    final line = describeOrderLine(
+      quantity: quantity,
+      waterType: order['water_type'] as String? ?? '',
+      containerCode: order['jug_type'] as String?,
+      productKind: order['product_kind'] as String?,
+    );
+    return PortalSection(
+      title: 'My station',
+      child: PortalCard(
+        accent: AppColors.primary,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text((order['water_stations']?['station_name'] as String?) ?? 'Your station', style: theme.textTheme.titleMedium),
+            const SizedBox(height: 4),
+            Text('Your usual: $line', style: theme.textTheme.bodyMedium),
+            const SizedBox(height: 12),
+            FilledButton.icon(
+              onPressed: () => Navigator.push(
+                context,
+                appRoute(QuickOrderScreen(
+                  prefill: OrderPrefill(
+                    stationId: order['station_id'] as String,
+                    productId: order['product_id'] as String,
+                    quantity: quantity,
+                    unitPrice: (order['unit_price'] as num?)?.toDouble(),
+                  ),
+                )),
+              ),
+              icon: const Icon(Icons.refresh),
+              label: const Text('Order again'),
+            ),
+          ],
+        ),
       ),
     );
   }

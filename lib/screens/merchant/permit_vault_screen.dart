@@ -146,9 +146,11 @@ class _PermitVaultScreenState extends State<PermitVaultScreen> {
                         else
                           PortalSection(
                             title: 'Required permits',
-                            subtitle: _permits.length == 1 ? '1 document' : '${_permits.length} documents',
+                            subtitle: '${_permits.where((p) => p.isDone).length} of ${_permits.length} done',
                             child: Column(
                               children: [
+                                _buildProgress(),
+                                SizedBox(height: density.gap),
                                 for (var i = 0; i < _permits.length; i++)
                                   _buildPermitCard(_permits[i], last: i == _permits.length - 1, density: density),
                               ],
@@ -166,6 +168,37 @@ class _PermitVaultScreenState extends State<PermitVaultScreen> {
   /// Was a Card filled with green.shade50 / amber.shade50 -- a pale fill that
   /// stayed pale in dark mode, leaving light text on a near-white block.
   /// StatusCallout tints from the theme instead.
+  /// The checklist at a glance: approved and current out of required.
+  Widget _buildProgress() {
+    final theme = Theme.of(context);
+    final done = _permits.where((p) => p.isDone).length;
+    final total = _permits.length;
+    return Semantics(
+      label: '$done of $total required permits done',
+      child: ExcludeSemantics(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              done == total ? 'All $total done' : '$done of $total done -- ${total - done} to go',
+              style: theme.textTheme.titleMedium,
+            ),
+            const SizedBox(height: 8),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(6),
+              child: LinearProgressIndicator(
+                value: total == 0 ? 0 : done / total,
+                minHeight: 12,
+                color: done == total ? AppColors.cleared : theme.colorScheme.primary,
+                backgroundColor: theme.colorScheme.surfaceContainerHighest,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildAccreditationCallout() {
     if (_isAccredited) {
       return const StatusCallout(
@@ -215,6 +248,10 @@ class _PermitVaultScreenState extends State<PermitVaultScreen> {
               Expanded(child: Text(label, style: theme.textTheme.titleMedium)),
             ],
           ),
+          if (_labels[permit.permitType]?.description case final description?) ...[
+            const SizedBox(height: 6),
+            Text(description, style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+          ],
           const SizedBox(height: 10),
           // A Wrap bounds its children, so a long status label wraps rather
           // than running off the card at large system text.

@@ -15,11 +15,16 @@ class LocationPickerScreen extends StatefulWidget {
   final double? initialLongitude;
   final String? initialStationName;
 
+  /// False to pin a delivery address only (a phone order) -- no station
+  /// name field, a delivery pin, and "Pick delivery location" as the title.
+  final bool askStationName;
+
   const LocationPickerScreen({
     super.key,
     this.initialLatitude,
     this.initialLongitude,
     this.initialStationName,
+    this.askStationName = true,
   });
 
   @override
@@ -98,7 +103,7 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
       return;
     }
 
-    if (_stationNameController.text.trim().isEmpty) {
+    if (widget.askStationName && _stationNameController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please enter your water station name')),
       );
@@ -116,7 +121,7 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Pick Station Location'),
+        title: Text(widget.askStationName ? 'Pick Station Location' : 'Pick delivery location'),
         centerTitle: true,
         elevation: 0,
       ),
@@ -137,12 +142,13 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
                     point: _selectedLocation!,
                     width: 40,
                     height: 40,
-                    child: const MapPin(kind: MapPinKind.station),
+                    child: MapPin(kind: widget.askStationName ? MapPinKind.station : MapPinKind.deliveryAddress),
                   ),
                 ]),
               const AppMapAttribution(),
             ],
           ),
+          if (widget.askStationName)
           Positioned(
             top: 16,
             left: 16,

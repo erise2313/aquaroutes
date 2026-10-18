@@ -112,6 +112,9 @@ class Permit {
     return expiryDate!.difference(DateTime.now()).inDays <= 30;
   }
 
+  /// Counts toward the checklist: approved and not past its expiry.
+  bool get isDone => status == PermitStatus.approved && (daysUntilExpiry == null || daysUntilExpiry! >= 0);
+
   factory Permit.fromMap(Map<String, dynamic> map) {
     return Permit(
       id: map['id'] as String,

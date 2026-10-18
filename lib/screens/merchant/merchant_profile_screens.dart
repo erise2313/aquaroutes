@@ -13,6 +13,7 @@ import '../../constants/app_colors.dart';
 import '../../widgets/account_settings_section.dart';
 import '../../widgets/portal/portal.dart';
 import '../../utils/error_text.dart';
+import '../../widgets/station_share_card.dart';
 import '../../utils/log.dart';
 
 /// Builds the `profiles` table update payload (trimmed). Split from
@@ -325,6 +326,16 @@ class _MerchantProfileScreenState extends State<MerchantProfileScreen> {
         SizedBox(height: density.sectionGap),
         _buildAccreditationBanner(isAccredited),
         SizedBox(height: density.sectionGap),
+        if (_stationData?['id'] != null) ...[
+          PortalSection(
+            title: 'Share your station',
+            child: StationShareCard(
+              stationId: _stationData!['id'] as String,
+              stationName: (_stationData!['station_name'] as String?) ?? 'Station',
+            ),
+          ),
+          SizedBox(height: density.sectionGap),
+        ],
         PortalSection(
           title: 'Station details',
           subtitle: 'What customers see about you and how you take orders',

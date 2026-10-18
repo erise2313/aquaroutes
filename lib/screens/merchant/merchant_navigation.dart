@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'cost_calculator_screen.dart';
 import 'driver_management.dart';
 import 'hire_check_screen.dart';
 import 'jug_clearinghouse_screen.dart';
@@ -69,6 +70,13 @@ class MerchantNavigation extends StatelessWidget {
                 NavShellDestination(icon: Icons.home_outlined, selectedIcon: Icons.home, label: 'Home'),
                 NavShellDestination(icon: Icons.list_alt, label: 'Orders', group: 'Operations'),
                 NavShellDestination(icon: Icons.sell_outlined, selectedIcon: Icons.sell, label: 'Products', group: 'Operations'),
+                NavShellDestination(
+                  icon: Icons.calculate_outlined,
+                  selectedIcon: Icons.calculate,
+                  label: 'Costs',
+                  group: 'Operations',
+                  onPhone: false,
+                ),
                 NavShellDestination(icon: Icons.map_outlined, selectedIcon: Icons.map, label: 'Track', group: 'Operations'),
                 NavShellDestination(
                   icon: Icons.groups_outlined,
@@ -133,6 +141,7 @@ class MerchantNavigation extends StatelessWidget {
                 MerchantDashboardScreen(),
                 MerchantOrdersScreen(),
                 ProductsScreen(),
+                CostCalculatorScreen(),
                 TrackingScreen(),
                 DriverManagementScreen(),
                 TeamScreen(),

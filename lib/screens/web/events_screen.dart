@@ -16,6 +16,7 @@ import '../../widgets/skeleton_loader.dart';
 import '../../widgets/web_footer.dart';
 import '../../widgets/web_nav_bar.dart';
 import '../../widgets/web_page_header.dart';
+import '../../widgets/event_rsvp.dart';
 import '../../utils/error_text.dart';
 
 /// Sorted-by-event_date list of association events -- a list rather than a
@@ -153,6 +154,8 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
                       const SizedBox(height: 8),
                       Text(event.description!, style: const TextStyle(height: 1.4)),
                     ],
+                    const SizedBox(height: 8),
+                    EventRsvpControl(eventId: event.id, isPast: isPast, textColor: WebTheme.of(context).inkMuted),
                   ],
                 ),
               ),
