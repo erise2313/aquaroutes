@@ -57,17 +57,18 @@ List<StationProduct> orderableProducts(
 
 /// What "Order again" carries over from a past order. [unitPrice] is the
 /// price that order was charged, so the form can say when it has changed.
+/// Opening the form from a station's sheet passes only [stationId].
 class OrderPrefill {
   const OrderPrefill({
     required this.stationId,
-    required this.productId,
-    required this.quantity,
+    this.productId,
+    this.quantity,
     this.unitPrice,
   });
 
   final String stationId;
-  final String productId;
-  final int quantity;
+  final String? productId;
+  final int? quantity;
   final double? unitPrice;
 }
 
@@ -277,7 +278,7 @@ class _QuickOrderScreenState extends ConsumerState<QuickOrderScreen> {
           if (prefill != null && stations.any((s) => s.id == prefill.stationId)) {
             _selectedStationId = prefill.stationId;
             _selectedProductId = prefill.productId;
-            _jugCountController.text = '${prefill.quantity}';
+            if (prefill.quantity != null) _jugCountController.text = '${prefill.quantity}';
           } else if (stations.isNotEmpty) {
             _selectedStationId = _autoPickStationId(stations);
             _autoSelectedStationId = _selectedStationId;
@@ -416,7 +417,7 @@ class _QuickOrderScreenState extends ConsumerState<QuickOrderScreen> {
   /// they order rather than after.
   String? _noticeForPrefill(String stationId, List<StationProduct> products) {
     final prefill = widget.prefill;
-    if (prefill == null || stationId != prefill.stationId) return null;
+    if (prefill == null || prefill.productId == null || stationId != prefill.stationId) return null;
     StationProduct? previous;
     for (final product in products) {
       if (product.id == prefill.productId) previous = product;

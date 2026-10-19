@@ -19,6 +19,8 @@ import '../../widgets/portal/portal.dart';
 import '../../widgets/report_problem_dialog.dart';
 import '../../widgets/star_rating.dart';
 import '../../widgets/station_trust_facts.dart';
+import '../app_route.dart';
+import 'quick_order_screen.dart';
 import '../../widgets/app_map_tiles.dart';
 import '../../utils/error_text.dart';
 import '../../utils/log.dart';
@@ -466,6 +468,18 @@ class _StationMapScreenState extends State<StationMapScreen> {
             Text('Association record', style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 8),
             StationTrustPanel(station: station),
+            const SizedBox(height: 8),
+            // Signed out, the order form shows its own sign-in prompt.
+            FilledButton.icon(
+              onPressed: station.isOrderable
+                  ? () {
+                      Navigator.pop(context);
+                      Navigator.push(context, appRoute(QuickOrderScreen(prefill: OrderPrefill(stationId: station.id))));
+                    }
+                  : null,
+              icon: const Icon(Icons.local_shipping_outlined),
+              label: Text(station.isOrderable ? 'Order from this station' : 'Not taking orders right now'),
+            ),
             if (_favoriteService.isSignedIn)
               TextButton.icon(
                 onPressed: () => showReportProblemDialog(context, stationId: station.id, stationName: station.stationName),

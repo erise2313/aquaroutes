@@ -25,7 +25,7 @@ All emails end in `@gentriwasa.test`.
 | admin@ | Admin123! | WASA officer | WASA Admin | Active |
 | admin2@ | Admin123! | WASA officer | Rosa Mendoza | Active |
 | owner1@ | Owner123! | Station owner | Juan Dela Cruz | Buenavista Water Refilling Station — accredited, good standing |
-| owner2@ | Owner123! | Station owner | Maria Santos | Navarro Springs Water Station — accredited, good standing |
+| owner2@ | Owner123! | Station owner | Juan Dela Rosa | Navarro Springs Water Station — accredited, good standing |
 | owner3@ | Owner123! | Station owner | Elena Ramos | Tejero Aqua Station — **not accredited**, permits waiting for upload |
 | staff1@ | Staff123! | Station staff | — | Buenavista counter staff |
 | driver1@ | Driver123! | Driver | Pedro Reyes | Buenavista — **flagged** (confirmed incident) |
@@ -36,9 +36,11 @@ All emails end in `@gentriwasa.test`.
 | customer2@ | Customer123! | Customer | Ramon Garcia | Active, no orders yet |
 | suspended@ | Customer123! | Customer | Susana Lim | **Suspended** |
 
-Invite codes now expire (7 days by default). If a code in an old note
-doesn't work, the owner issues a new one from Home (driver code) or Team
-(staff code).
+Invite codes on 19 Oct 2026: Buenavista **BUENAV1** (no expiry), Navarro
+Springs **UHTHDD** (until 25 Oct), Tejero **TEJERO1**. No staff code has been
+issued yet: owner1 creates one under Team. New codes expire after 7 days; the
+owner always sees the current driver code in the Worker Registry (share icon)
+and the staff code under Team.
 
 The seed scripts are in `supabase/`: `seed_test_accounts.sql`,
 `seed_role_accounts.sql` (additive, safe to re-run) and `seed_demo_gaps.sql`.

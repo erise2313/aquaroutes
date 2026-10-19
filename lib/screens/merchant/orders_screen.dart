@@ -484,6 +484,15 @@ class _MerchantOrdersScreenState extends State<MerchantOrdersScreen> {
                     icon: const Icon(Icons.person_remove_outlined, size: 16),
                     label: const Text('Unassign'),
                   ),
+                // Cancelling is allowed until the driver sets out
+                // (cancel_order); out for delivery, it isn't offered.
+                if (status?.toLowerCase() == 'assigned')
+                  TextButton.icon(
+                    onPressed: () => _rejectOrder(order['id']),
+                    style: TextButton.styleFrom(foregroundColor: Theme.of(context).colorScheme.error),
+                    icon: const Icon(Icons.cancel_outlined, size: 16),
+                    label: const Text('Cancel order'),
+                  ),
                 TextButton.icon(
                   onPressed: () {
                     String customerPhone = order['customer_phone'] ?? order['guest_phone'] ?? '';
