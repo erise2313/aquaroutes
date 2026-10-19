@@ -7,7 +7,7 @@ people.
 - Public website: https://gentri-wasa.web.app
 - Admin portal: https://gentri-wasa-admin.web.app
 - App: `GenTriWASA-arm64-v8a.apk` (Desktop\GenTriWASA-APK), built 18 October
-  2026 with everything below, Trash included. Uninstall an older copy
+  2026 (evening of 19 Oct) with everything below, Trash, cancel reasons and Back included. Uninstall an older copy
   first if Android refuses the update.
 
 Every screen works in light and dark mode, uses the Atkinson Hyperlegible
@@ -202,6 +202,14 @@ Everything an officer has, plus:
 | N32 | admin | Users → try to suspend admin2 | No Suspend button; only a super admin can |
 | N33 | superadmin1 | Settings → grace period 30 → 15 | Saved; plain officers have no Settings |
 | N34 | staff1 | App sign-up with an expired staff code | Refused; owner1 renews the code in Team |
+| N35 | customer1 | Orders → a pending order → Cancel → pick a reason | Cancelled; owner1 notified "Order cancelled by the customer" with the reason |
+| N36 | owner1 | Orders → New orders → Reject → pick a reason | customer1 notified "Order cancelled by the station" with the reason |
+| N37 | customer1 / owner1 | An order the driver has started | No Cancel button for either; the server refuses it ("The driver has already left...") |
+| N38 | owner1 | Home → a tile (e.g. Permit vault) → header Back | Returns to Home; browser Back does the same on the website |
+| N39 | customer1 | App: Home → Orders tab → top-bar Back, or the phone's back button | Returns to Home before the app closes |
+| N40 | admin | Approve the last required permit of a station | Station becomes accredited, gets the seal and appears in the public directory |
+| N41 | owner1 | Clearinghouse | Jugs held both ways show as one net balance; settling more than the net is refused |
+| N42 | customer1 | Orders → an assigned order | Driver's name, phone and position on the map |
 | T1 | owner1 | Products → remove a product | Confirmation says it stays in Trash for 5 days; Account → Trash lists it with "Removed for good in 5 days" |
 | T2 | owner1 | Trash → Restore | Product is back in Products with its price |
 | T3 | customer1 | Board → comment, then delete it → Account → Trash → Restore | Comment is back under the post |
