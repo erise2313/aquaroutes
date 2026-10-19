@@ -13,14 +13,19 @@ class StarRatingDisplay extends StatelessWidget {
     if (reviewCount == 0) {
       return Text('No reviews yet', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: size * 0.75));
     }
-    return Row(
-      mainAxisSize: MainAxisSize.min,
+    // Wrap, not Row: on a narrow phone at large text the "4.5 (2)" moves
+    // under the stars instead of running off the card.
+    return Wrap(
+      crossAxisAlignment: WrapCrossAlignment.center,
+      spacing: 4,
       children: [
-        ...List.generate(5, (i) {
-          final filled = i < rating.round();
-          return Icon(filled ? Icons.star : Icons.star_border, color: Colors.amber, size: size);
-        }),
-        const SizedBox(width: 4),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: List.generate(5, (i) {
+            final filled = i < rating.round();
+            return Icon(filled ? Icons.star : Icons.star_border, color: Colors.amber, size: size);
+          }),
+        ),
         Text(
           reviewCount != null ? '${rating.toStringAsFixed(1)} ($reviewCount)' : rating.toStringAsFixed(1),
           style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: size * 0.75),

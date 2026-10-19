@@ -258,6 +258,7 @@ class _StationsDirectoryScreenState extends ConsumerState<StationsDirectoryScree
         SizedBox(
           width: 200,
           child: DropdownButtonFormField<String?>(
+            isExpanded: true,
             initialValue: _waterTypeFilter,
             decoration: InputDecoration(labelText: t('stations_filter_water_type'), border: const OutlineInputBorder(), isDense: true),
             items: const [
@@ -272,6 +273,7 @@ class _StationsDirectoryScreenState extends ConsumerState<StationsDirectoryScree
         SizedBox(
           width: 220,
           child: DropdownButtonFormField<String?>(
+            isExpanded: true,
             initialValue: _barangayFilter,
             decoration: InputDecoration(labelText: t('stations_filter_barangay'), border: const OutlineInputBorder(), isDense: true),
             items: [

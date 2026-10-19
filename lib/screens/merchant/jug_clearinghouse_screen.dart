@@ -120,15 +120,17 @@ class _JugClearinghouseScreenState extends State<JugClearinghouseScreen> {
                   ),
                   const SizedBox(height: 12),
                   DropdownButtonFormField<String>(
+                    isExpanded: true,
                     initialValue: selectedStationId,
                     decoration: const InputDecoration(labelText: 'Other Station'),
                     items: otherStations
-                        .map((s) => DropdownMenuItem(value: s['id'] as String, child: Text(s['station_name'] as String)))
+                        .map((s) => DropdownMenuItem(value: s['id'] as String, child: Text(s['station_name'] as String, overflow: TextOverflow.ellipsis)))
                         .toList(),
                     onChanged: (v) => setDialogState(() => selectedStationId = v),
                   ),
                   const SizedBox(height: 12),
                   DropdownButtonFormField<JugType>(
+                    isExpanded: true,
                     initialValue: jugType,
                     decoration: const InputDecoration(labelText: 'Jug Type'),
                     items: const [

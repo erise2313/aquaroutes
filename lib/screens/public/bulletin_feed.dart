@@ -211,6 +211,7 @@ class _BulletinFeedState extends ConsumerState<BulletinFeed> {
               ),
               const SizedBox(height: 8),
               DropdownButtonFormField<BulletinCategory>(
+                isExpanded: true,
                 initialValue: selectedCategory,
                 decoration: const InputDecoration(labelText: 'Category', border: OutlineInputBorder()),
                 items: allowedCategories

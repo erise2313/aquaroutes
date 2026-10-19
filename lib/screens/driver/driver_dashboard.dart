@@ -24,6 +24,7 @@ import '../public/bulletin_board_screen.dart';
 import 'driver_profile_screen.dart';
 import '../../utils/error_text.dart';
 import '../../utils/log.dart';
+import '../../widgets/delivery_panel_layout.dart';
 import 'package:aquaroute/constants/brand_tokens.dart';
 
 
@@ -234,21 +235,26 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
 
         final orderDetails = await supabase
             .from('orders')
-            .select('status, total_amount, guest_name, guest_phone, customer_phone, jug_exchange_origin_station_id, profiles(full_name, phone_number)')
+            .select('status, total_amount, guest_name, guest_phone, customer_phone, jug_exchange_origin_station_id')
             .eq('id', currentOrder['id'])
             .maybeSingle();
 
+        // Drivers can't read customers' profiles, so a profiles(...) embed
+        // came back empty and every delivery said "Water Customer".
+        // order_customer_contact returns just the name and phone, to the
+        // assigned driver only.
         String custName = 'Water Customer';
-        String custPhone = '';
-        if (orderDetails != null) {
-          final custProfile = orderDetails['profiles'];
-          if (custProfile is Map && custProfile['full_name'] != null) {
-            custName = custProfile['full_name'].toString();
-            custPhone = custProfile['phone_number']?.toString() ?? '';
-          } else if (orderDetails['guest_name'] != null) {
-            custName = orderDetails['guest_name'].toString();
-            custPhone = orderDetails['guest_phone']?.toString() ?? orderDetails['customer_phone']?.toString() ?? '';
+        String custPhone = orderDetails?['customer_phone']?.toString() ?? orderDetails?['guest_phone']?.toString() ?? '';
+        if (orderDetails?['guest_name'] != null) custName = orderDetails!['guest_name'].toString();
+        try {
+          final contact = await supabase.rpc('order_customer_contact', params: {'p_order_id': currentOrder['id']});
+          if (contact is List && contact.isNotEmpty) {
+            final c = contact.first as Map;
+            if ((c['full_name'] ?? '').toString().trim().isNotEmpty) custName = c['full_name'].toString();
+            if ((c['phone_number'] ?? '').toString().trim().isNotEmpty) custPhone = c['phone_number'].toString();
           }
+        } catch (_) {
+          // Keep the fallback; the delivery itself still works.
         }
 
         if (mounted) {
@@ -435,6 +441,7 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
                 ),
                 if (!noJugExchange)
                   DropdownButtonFormField<String>(
+                    isExpanded: true,
                     initialValue: jugOrigin,
                     isDense: true,
                     dropdownColor: driverPalette.surface,
@@ -446,8 +453,8 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
                     ),
                     items: [
                       if (jugOrigin != null && !otherStations.any((s) => s['id'] == jugOrigin))
-                        DropdownMenuItem(value: jugOrigin, child: Text(otherStationNames[jugOrigin] ?? 'Declared station')),
-                      ...otherStations.map((s) => DropdownMenuItem(value: s['id'] as String, child: Text(s['station_name'] as String))),
+                        DropdownMenuItem(value: jugOrigin, child: Text(otherStationNames[jugOrigin] ?? 'Declared station', overflow: TextOverflow.ellipsis)),
+                      ...otherStations.map((s) => DropdownMenuItem(value: s['id'] as String, child: Text(s['station_name'] as String, overflow: TextOverflow.ellipsis))),
                     ],
                     onChanged: (v) => setDialogState(() => jugOrigin = v),
                   ),
@@ -611,7 +618,11 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
     return Scaffold(
       backgroundColor: driverPalette.background,
       appBar: AppBar(
-        title: Text('Driver Dashboard', style: TextStyle(color: driverPalette.text, fontWeight: FontWeight.bold)),
+        // Five icons left the title as "Driver ..." on a phone. The two used
+        // most stay; the rest are under the menu.
+        title: Text('Driver Dashboard',
+            maxLines: 1, overflow: TextOverflow.ellipsis,
+            style: TextStyle(color: driverPalette.text, fontWeight: FontWeight.bold)),
         backgroundColor: driverPalette.surface,
         actions: [
           const NotificationBell(),
@@ -622,15 +633,25 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
               Navigator.push(context, MaterialPageRoute(builder: (context) => const DriverProfileScreen()));
             },
           ),
-          IconButton(icon: Icon(Icons.refresh, color: driverPalette.text), onPressed: _fetchActiveDelivery, tooltip: 'Refresh Queue'),
-          IconButton(
-            icon: Icon(Icons.campaign, color: driverPalette.text),
-            tooltip: 'Bulletin Board',
-            onPressed: () {
-              Navigator.push(context, MaterialPageRoute(builder: (context) => const BulletinBoardScreen()));
+          PopupMenuButton<String>(
+            tooltip: 'More',
+            icon: Icon(Icons.more_vert, color: driverPalette.text),
+            onSelected: (v) {
+              switch (v) {
+                case 'refresh':
+                  _fetchActiveDelivery();
+                case 'board':
+                  Navigator.push(context, MaterialPageRoute(builder: (context) => const BulletinBoardScreen()));
+                case 'signout':
+                  _signOut();
+              }
             },
+            itemBuilder: (_) => const [
+              PopupMenuItem(value: 'refresh', child: ListTile(leading: Icon(Icons.refresh), title: Text('Refresh deliveries'))),
+              PopupMenuItem(value: 'board', child: ListTile(leading: Icon(Icons.campaign), title: Text('Bulletin Board'))),
+              PopupMenuItem(value: 'signout', child: ListTile(leading: Icon(Icons.logout), title: Text('Sign Out'))),
+            ],
           ),
-          IconButton(icon: Icon(Icons.logout, color: driverPalette.alert), onPressed: _signOut, tooltip: 'Sign Out'),
         ],
       ),
       body: Column(
@@ -644,30 +665,13 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
                     ? _buildNoStationState()
                     : _currentActiveOrder == null
                         ? _buildEmptyState()
-                        : LayoutBuilder(
-                            builder: (context, constraints) {
-                              // Landscape (a phone in a windscreen cradle) puts
-                              // the map and the delivery card side by side;
-                              // stacked, both would be letterbox slivers.
-                              final card = Container(
-                                decoration: BoxDecoration(color: driverPalette.surface),
-                                child: _buildActiveDeliveryCard(),
-                              );
-                              if (constraints.maxWidth > constraints.maxHeight) {
-                                return Row(
-                                  children: [
-                                    Expanded(child: _buildMap()),
-                                    Expanded(child: card),
-                                  ],
-                                );
-                              }
-                              return Column(
-                                children: [
-                                  Expanded(flex: 5, child: _buildMap()),
-                                  Expanded(flex: 4, child: card),
-                                ],
-                              );
-                            },
+                        // Landscape (a phone in a windscreen cradle) puts the
+                        // map and the delivery card side by side.
+                        : DeliveryPanelLayout(
+                            map: _buildMap(),
+                            details: _buildDeliveryDetails(),
+                            actions: _buildDeliveryActions(),
+                            background: driverPalette.surface,
                           ),
           ),
         ],
@@ -809,13 +813,11 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
     );
   }
 
-  Widget _buildActiveDeliveryCard() {
+  Widget _buildDeliveryDetails() {
     final shortId = _currentActiveOrder!['id'].toString().substring(0, 6).toUpperCase();
     final isEnRoute = _currentActiveOrder!['status'] == 'active';
 
-    return Padding(
-      padding: const EdgeInsets.all(24.0),
-      child: Column(
+    return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Row(
@@ -832,14 +834,13 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
                         Flexible(
                           child: Text(
                             'Deliver to: $_customerName',
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(fontSize: 16, color: driverPalette.text.withValues(alpha: 0.7), fontWeight: FontWeight.bold),
+                            style: TextStyle(fontSize: 16, color: driverPalette.text.withValues(alpha: 0.8), fontWeight: FontWeight.bold),
                           ),
                         ),
-                        const SizedBox(width: 8),
-                        InkWell(
-                          onTap: () => _makePhoneCall(_customerPhone, 'Customer'),
-                          child: Icon(Icons.phone, size: 22, color: driverPalette.onDuty),
+                        IconButton(
+                          tooltip: 'Call customer',
+                          onPressed: () => _makePhoneCall(_customerPhone, 'Customer'),
+                          icon: Icon(Icons.phone, size: 22, color: driverPalette.onDuty),
                         ),
                       ],
                     ),
@@ -862,11 +863,20 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
             ],
           ),
           Divider(height: 24, thickness: 1, color: driverPalette.text.withValues(alpha: 0.7)),
-          Row(
+          // Wraps: "Call Station" drops under the name on a narrow phone
+          // rather than squeezing it.
+          Wrap(
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 8,
             children: [
-              const Icon(Icons.store, color: Colors.blueGrey, size: 18),
-              const SizedBox(width: 8),
-              Expanded(child: Text('Station: $_stationName', style: TextStyle(fontSize: 16, color: driverPalette.text.withValues(alpha: 0.7)))),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.store, color: Colors.blueGrey, size: 18),
+                  const SizedBox(width: 8),
+                  Flexible(child: Text('Station: $_stationName', style: TextStyle(fontSize: 16, color: driverPalette.text.withValues(alpha: 0.8)))),
+                ],
+              ),
               TextButton.icon(
                 onPressed: () => _makePhoneCall(_stationPhone, 'Water Station'),
                 icon: Icon(Icons.phone, size: 18, color: driverPalette.onDuty),
@@ -899,7 +909,17 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             ),
           ),
-          const Spacer(),
+        ],
+    );
+  }
+
+  /// START / COMPLETE / COULDN'T DELIVER, pinned under the scrolling details.
+  Widget _buildDeliveryActions() {
+    final isEnRoute = _currentActiveOrder!['status'] == 'active';
+    return Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
           // While still just ASSIGNED, Start Delivery is the filled/primary
           // action and Complete Delivery is outlined/secondary -- a nudge
           // toward the intended order without blocking a driver who skips
@@ -911,11 +931,11 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
               label: const Text('START DELIVERY', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
               style: ElevatedButton.styleFrom(
                 backgroundColor: driverPalette.onDuty,
-                padding: const EdgeInsets.symmetric(vertical: 20),
+                padding: const EdgeInsets.symmetric(vertical: 14),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
             OutlinedButton.icon(
               onPressed: _confirmThenComplete,
               icon: const Icon(Icons.check_circle, size: 24, color: Colors.green),
@@ -945,18 +965,22 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
             label: Text("COULDN'T DELIVER", style: TextStyle(fontWeight: FontWeight.bold, color: driverPalette.alert)),
           ),
         ],
-      ),
     );
   }
 
   Widget _buildDetailRow(IconData icon, String label, String value) {
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Icon(icon, color: Colors.blueGrey, size: 22),
         const SizedBox(width: 12),
-        Text(label, style: TextStyle(fontSize: 16, color: driverPalette.text.withValues(alpha: 0.7))),
-        const Spacer(),
-        Text(value, style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: driverPalette.text)),
+        Text(label, style: TextStyle(fontSize: 16, color: driverPalette.text.withValues(alpha: 0.8))),
+        const SizedBox(width: 12),
+        // Takes the rest of the line and wraps, right-aligned, instead of
+        // pushing past the edge ("2 × Slim 5-gal · Purified" at large text).
+        Expanded(
+          child: Text(value, textAlign: TextAlign.end, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: driverPalette.text)),
+        ),
       ],
     );
   }

@@ -410,6 +410,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
     final scheme = Theme.of(context).colorScheme;
 
     return DropdownButtonFormField<String>(
+      isExpanded: true,
       initialValue: _selectedRole,
       decoration: InputDecoration(
         labelText: "Account type",

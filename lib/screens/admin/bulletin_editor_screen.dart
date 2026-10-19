@@ -401,6 +401,7 @@ class _FloorPriceDialogState extends State<_FloorPriceDialog> {
             mainAxisSize: MainAxisSize.min,
             children: [
               DropdownButtonFormField<String>(
+                isExpanded: true,
                 initialValue: _waterType,
                 decoration: const InputDecoration(labelText: 'Water type'),
                 items: [for (final w in kWaterTypes) DropdownMenuItem(value: w, child: Text(waterTypeLabel(w)))],
@@ -408,6 +409,7 @@ class _FloorPriceDialogState extends State<_FloorPriceDialog> {
               ),
               const SizedBox(height: 8),
               DropdownButtonFormField<String>(
+                isExpanded: true,
                 initialValue: _containerCode,
                 decoration: const InputDecoration(labelText: 'Container'),
                 items: [for (final c in widget.containers) DropdownMenuItem(value: c.code, child: Text(c.label))],

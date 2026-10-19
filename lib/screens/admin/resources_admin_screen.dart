@@ -70,6 +70,7 @@ class _ResourcesAdminScreenState extends State<ResourcesAdminScreen> {
               TextField(controller: titleController, decoration: const InputDecoration(labelText: 'Title', border: OutlineInputBorder())),
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
+                isExpanded: true,
                 initialValue: category,
                 decoration: const InputDecoration(labelText: 'Category', border: OutlineInputBorder()),
                 items: const [

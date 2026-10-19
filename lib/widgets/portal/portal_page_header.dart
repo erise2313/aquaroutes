@@ -65,7 +65,12 @@ class PortalPageHeader extends StatelessWidget {
         bottom: false,
         child: Padding(
           padding: density.headerPadding,
-          child: Column(
+          child: LayoutBuilder(builder: (context, constraints) {
+            // On a phone the actions go under the title. Beside it they took
+            // half the width and squeezed the title into a column one word
+            // wide ("Live / Order / Pipelin / e") at large text sizes.
+            final actionsBelow = actions.isNotEmpty && constraints.maxWidth < 600;
+            return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Row(
@@ -114,17 +119,20 @@ class PortalPageHeader extends StatelessWidget {
                       ],
                     ),
                   ),
-                  if (actions.isNotEmpty) ...[
+                  if (actions.isNotEmpty && !actionsBelow) ...[
                     const SizedBox(width: 8),
-                    // Wraps rather than overflows once the system font size is
-                    // turned up on a narrow phone.
                     Wrap(spacing: 4, crossAxisAlignment: WrapCrossAlignment.center, children: actions),
                   ],
                 ],
               ),
+              if (actionsBelow) ...[
+                const SizedBox(height: 10),
+                Wrap(spacing: 8, runSpacing: 8, crossAxisAlignment: WrapCrossAlignment.center, children: actions),
+              ],
               if (bottom != null) ...[SizedBox(height: density.isWide ? 18 : 12), bottom!],
             ],
-          ),
+          );
+          }),
         ),
       ),
     );

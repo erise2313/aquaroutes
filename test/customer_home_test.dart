@@ -153,7 +153,7 @@ void main() {
     testWidgets('lays out without overflow across widths, text sizes and modes', (tester) async {
       for (final section in sections.entries) {
         for (final theme in _themes.entries) {
-          for (final width in [360.0, 768.0, 1280.0]) {
+          for (final width in [320.0, 360.0, 768.0, 1280.0]) {
             for (final scale in [1.0, 1.3, 2.0, 2.6]) {
               await _pump(
                 tester,

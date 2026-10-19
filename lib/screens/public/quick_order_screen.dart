@@ -660,6 +660,7 @@ class _QuickOrderScreenState extends ConsumerState<QuickOrderScreen> {
                         ],
                         _buildAddressPicker(),
                         DropdownButtonFormField<String?>(
+                          isExpanded: true,
                           initialValue: _waterTypeFilter,
                           decoration: const InputDecoration(labelText: 'Water Type', border: OutlineInputBorder(), prefixIcon: Icon(Icons.water_drop_outlined)),
                           items: [
@@ -684,6 +685,7 @@ class _QuickOrderScreenState extends ConsumerState<QuickOrderScreen> {
                         ),
                         const SizedBox(height: 12),
                         DropdownButtonFormField<String>(
+                          isExpanded: true,
                           initialValue: _selectedStationId,
                           decoration: const InputDecoration(labelText: 'Select Water Station', border: OutlineInputBorder(), prefixIcon: Icon(Icons.storefront)),
                           items: _filteredStations.map((s) {
@@ -763,6 +765,7 @@ class _QuickOrderScreenState extends ConsumerState<QuickOrderScreen> {
                               const Text('Whose station is the empty jug from?', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
                               const SizedBox(height: 4),
                               DropdownButtonFormField<String?>(
+                                isExpanded: true,
                                 initialValue: _jugExchangeOriginStationId,
                                 isDense: true,
                                 decoration: const InputDecoration(
@@ -772,7 +775,7 @@ class _QuickOrderScreenState extends ConsumerState<QuickOrderScreen> {
                                   contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                                 ),
                                 items: [
-                                  DropdownMenuItem(value: null, child: Text('${station.stationName} (this station)')),
+                                  DropdownMenuItem(value: null, child: Text('${station.stationName} (this station)', overflow: TextOverflow.ellipsis)),
                                   ..._availableStations
                                       .where((s) => s.id != station.id)
                                       .map((s) => DropdownMenuItem(value: s.id, child: Text(s.stationName, overflow: TextOverflow.ellipsis))),

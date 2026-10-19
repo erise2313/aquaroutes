@@ -151,6 +151,7 @@ class _WorkerRegistryScreenState extends State<WorkerRegistryScreen> {
                   ),
                   const SizedBox(height: 12),
                   DropdownButtonFormField<String>(
+                    isExpanded: true,
                     initialValue: incidentType,
                     decoration: const InputDecoration(labelText: 'Incident Type'),
                     items: const [

@@ -482,6 +482,7 @@ class _ProductEditorDialogState extends State<_ProductEditorDialog> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             DropdownButtonFormField<String>(
+              isExpanded: true,
               initialValue: _waterType,
               decoration: const InputDecoration(labelText: 'Water type'),
               items: [
@@ -499,6 +500,7 @@ class _ProductEditorDialogState extends State<_ProductEditorDialog> {
               ),
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
+              isExpanded: true,
               initialValue: _containerCode,
               decoration: const InputDecoration(labelText: 'Container'),
               items: [
