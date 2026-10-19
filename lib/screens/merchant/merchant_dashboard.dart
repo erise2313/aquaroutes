@@ -202,7 +202,6 @@ class _MerchantDashboardScreenState extends State<MerchantDashboardScreen> {
             eyebrow: 'Your station',
             title: 'Station Dashboard',
             subtitle: 'Live orders, takings, and the records the association asks for',
-            showBack: false,
             actions: PortalShellScope.isPresent(context) ? const [] : const [AppThemeToggle(), NotificationBell()],
           ),
           Expanded(

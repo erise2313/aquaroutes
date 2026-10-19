@@ -5,6 +5,7 @@ import '../../models/membership.dart';
 import '../../providers/app_state.dart';
 import '../../widgets/app_theme_toggle.dart';
 import '../../widgets/notification_bell.dart';
+import '../../widgets/portal/portal_back.dart';
 import '../../widgets/wasa_shield_logo.dart';
 import '../auth/login_screen.dart';
 import '../auth/registration_screen.dart';
@@ -43,7 +44,23 @@ class _PublicHomeScreenState extends ConsumerState<PublicHomeScreen> {
   /// The app opens on Home -- it used to open on the Bulletin Board.
   int _currentIndex = _homeTab;
 
-  void _openTab(int index) => setState(() => _currentIndex = index);
+  /// Tabs visited, so Back (the top-bar arrow or the phone's button)
+  /// returns to the previous tab instead of closing the app.
+  final _back = PortalBackController();
+
+  void _openTab(int index) {
+    if (index == _currentIndex) return;
+    _back.recordSection(_currentIndex, (previous) {
+      if (mounted) setState(() => _currentIndex = previous);
+    });
+    setState(() => _currentIndex = index);
+  }
+
+  @override
+  void dispose() {
+    _back.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -59,9 +76,16 @@ class _PublicHomeScreenState extends ConsumerState<PublicHomeScreen> {
       data: appThemeDataFor(ref.watch(appThemeProvider), MediaQuery.platformBrightnessOf(context)),
       child: Builder(builder: (context) {
         final onSurface = Theme.of(context).colorScheme.onSurface;
-        return Scaffold(
+        return PortalBackHandler(
+          controller: _back,
+          child: ListenableBuilder(
+            listenable: _back,
+            builder: (context, _) => Scaffold(
       appBar: AppBar(
         titleSpacing: 12,
+        leading: _back.canGoBack
+            ? IconButton(icon: const Icon(Icons.arrow_back), tooltip: 'Back', onPressed: _back.backFromButton)
+            : null,
         // Signed out there are five things competing for this row -- the
         // wordmark, the theme toggle, About, Login and Register -- and on a
         // 360px phone they don't fit, so the actions drew over the name. (It
@@ -148,6 +172,8 @@ class _PublicHomeScreenState extends ConsumerState<PublicHomeScreen> {
         ],
         ),
       ),
+            ),
+          ),
         );
       }),
     );

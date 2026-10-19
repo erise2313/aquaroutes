@@ -10,7 +10,7 @@ import '../../services/supabase_service.dart';
 import '../../utils/error_text.dart';
 import '../../utils/formatters.dart';
 import '../../widgets/admin_status_pill.dart';
-import '../../widgets/confirm_dialog.dart';
+import '../../widgets/cancel_order_dialog.dart';
 
 /// The customer's name, as given on the order.
 String adminOrderCustomerName(Map<String, dynamic> row) => (row['customer_name'] as String?) ?? 'Customer';
@@ -66,16 +66,11 @@ class _AdminOrderDialogState extends State<_AdminOrderDialog> {
 
   Future<void> _cancel() async {
     final o = widget.order;
-    final ok = await showConfirmDialog(
-      context,
-      title: 'Cancel order ${adminOrderNumber(o)}?',
-      message: 'The customer and the station are notified that it was cancelled. This cannot be undone.',
-      confirmLabel: 'Cancel order',
-    );
-    if (!ok) return;
+    final reason = await showCancelOrderDialog(context, byCustomer: false, summary: 'Order ${adminOrderNumber(o)}');
+    if (reason == null) return;
     setState(() => _busy = true);
     try {
-      await _orderService.ownerCancelOrder(o['id'] as String);
+      await _orderService.ownerCancelOrder(o['id'] as String, reason: reason);
       if (mounted) Navigator.pop(context, true);
     } catch (e) {
       if (mounted) {

@@ -1,11 +1,15 @@
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:go_router/go_router.dart';
 import '../../constants/brand_fonts.dart';
 
 import '../../constants/brand_tokens.dart';
 import '../../screens/app_route.dart';
+import '../../utils/browser_history.dart';
 import '../responsive_nav_shell.dart';
 import '../wasa_shield_logo.dart';
+import 'portal_back.dart';
 
 /// The station-owner and admin portals' shell.
 ///
@@ -74,7 +78,21 @@ class _PortalShellState extends State<PortalShell> {
   late final List<GlobalKey<NavigatorState>> _navigatorKeys =
       List.generate(widget.pages.length, (_) => GlobalKey<NavigatorState>());
 
+  /// Every section switch and every page opened inside one, so Back (the
+  /// header arrow, the phone's button, the browser's) can undo them.
+  final _back = PortalBackController();
+  late final _backObserver = [for (var i = 0; i < widget.pages.length; i++) PortalBackObserver(_back)];
+  GoRouter? _router;
+
   bool get _isWeb => widget.webLayout ?? kIsWeb;
+
+  void _goTo(int i) {
+    if (i == _index) return;
+    _back.recordSection(_index, (previous) {
+      if (mounted) setState(() => _index = previous);
+    });
+    setState(() => _index = i);
+  }
 
   void _select(int i) {
     if (i == _index) {
@@ -83,12 +101,57 @@ class _PortalShellState extends State<PortalShell> {
       _navigatorKeys[i].currentState?.popUntil((r) => r.isFirst);
       return;
     }
-    setState(() => _index = i);
+    _goTo(i);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // On the website (the owner portal is served by the URL router), each
+    // step also gets a browser history entry, so the browser's Back button
+    // walks back through the portal instead of doing nothing or leaving it.
+    // The admin portal has no URL router: there the browser's Back reaches
+    // the app as a back request, which PortalBackHandler answers.
+    final router = _isWeb ? GoRouter.maybeOf(context) : null;
+    if (router == _router) return;
+    _router?.routeInformationProvider.removeListener(_onBrowserLocation);
+    _router = router;
+    if (router == null) {
+      _back.onForward = null;
+      _back.syncBrowserBack = () {};
+      return;
+    }
+    final path = router.routeInformationProvider.value.uri.path;
+    _back.onForward = (depth) => SystemNavigator.routeInformationUpdated(
+          uri: Uri(path: path, queryParameters: {'b': '$depth'}),
+        );
+    _back.syncBrowserBack = browserHistoryBack;
+    router.routeInformationProvider.addListener(_onBrowserLocation);
+  }
+
+  void _onBrowserLocation() {
+    final uri = _router?.routeInformationProvider.value.uri;
+    if (uri == null) return;
+    final depth = int.tryParse(uri.queryParameters['b'] ?? '') ?? 0;
+    if (depth < _back.depth) _back.trimTo(depth);
+  }
+
+  @override
+  void dispose() {
+    _router?.routeInformationProvider.removeListener(_onBrowserLocation);
+    _back.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return _isWeb ? _buildWeb(context) : _buildPhone(context);
+    return PortalBackScope(
+      controller: _back,
+      child: PortalBackHandler(
+        controller: _back,
+        child: _isWeb ? _buildWeb(context) : _buildPhone(context),
+      ),
+    );
   }
 
   // -- App ---------------------------------------------------------------
@@ -129,6 +192,7 @@ class _PortalShellState extends State<PortalShell> {
       destinations: tabs,
       pages: tabPages,
       maxContentWidth: widget.maxContentWidth,
+      backController: _back,
     );
   }
 
@@ -140,7 +204,7 @@ class _PortalShellState extends State<PortalShell> {
     // A section that was already open returns to its first page, so the
     // switch always lands on the list rather than wherever it was left.
     _navigatorKeys[i].currentState?.popUntil((r) => r.isFirst);
-    if (i != _index) setState(() => _index = i);
+    _goTo(i);
     return true;
   }
 
@@ -167,6 +231,7 @@ class _PortalShellState extends State<PortalShell> {
               _SectionNavigator(
                 navigatorKey: _navigatorKeys[i],
                 maxContentWidth: widget.maxContentWidth,
+                observer: _backObserver[i],
                 child: widget.pages[i],
               ),
           ],
@@ -250,11 +315,17 @@ class PortalShellScope extends InheritedWidget {
 }
 
 class _SectionNavigator extends StatelessWidget {
-  const _SectionNavigator({required this.navigatorKey, required this.child, required this.maxContentWidth});
+  const _SectionNavigator({
+    required this.navigatorKey,
+    required this.child,
+    required this.maxContentWidth,
+    required this.observer,
+  });
 
   final GlobalKey<NavigatorState> navigatorKey;
   final Widget child;
   final double maxContentWidth;
+  final NavigatorObserver observer;
 
   // No Theme wrapper here: the page inherits the portal's Theme through the
   // Navigator, so it follows the light/dark switch. It used to be wrapped in
@@ -265,6 +336,7 @@ class _SectionNavigator extends StatelessWidget {
   Widget build(BuildContext context) {
     return Navigator(
       key: navigatorKey,
+      observers: [observer],
       onGenerateRoute: (settings) => PageRouteBuilder(
         settings: settings,
         pageBuilder: (_, _, _) => Align(

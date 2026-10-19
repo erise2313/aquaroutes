@@ -15,6 +15,7 @@ import '../../utils/error_text.dart';
 import '../../utils/formatters.dart';
 import '../../utils/log.dart';
 import 'station_new_order_dialog.dart';
+import '../../widgets/cancel_order_dialog.dart';
 import '../../services/my_station.dart';
 
 /// How one order's status reads on screen: its pill, its colour and the icon
@@ -168,16 +169,15 @@ class _MerchantOrdersScreenState extends State<MerchantOrdersScreen> {
   }
 
   Future<void> _rejectOrder(String orderId) async {
-    final confirmed = await showConfirmDialog(
+    final reason = await showCancelOrderDialog(
       context,
-      title: 'Reject Order?',
-      message: 'This order will be cancelled and the customer notified. This cannot be undone.',
-      confirmLabel: 'Reject',
+      byCustomer: false,
+      summary: 'Order #${orderId.substring(0, 6).toUpperCase()}',
     );
-    if (!confirmed) return;
+    if (reason == null) return;
 
     try {
-      await _orderService.ownerCancelOrder(orderId);
+      await _orderService.ownerCancelOrder(orderId, reason: reason);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error rejecting order. ${describeError(e)}')));
@@ -289,7 +289,6 @@ class _MerchantOrdersScreenState extends State<MerchantOrdersScreen> {
               eyebrow: 'Your station',
               title: 'Live Order Pipeline',
               subtitle: 'New orders appear the moment a customer places one',
-              showBack: false,
               actions: [
                 // Phone and walk-in customers (station_create_order).
                 if (_stationId != null)

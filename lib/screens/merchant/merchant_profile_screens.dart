@@ -302,7 +302,6 @@ class _MerchantProfileScreenState extends State<MerchantProfileScreen> {
             eyebrow: 'Your station',
             title: 'Station Profile',
             subtitle: 'Who you are, what customers see, and where to find you',
-            showBack: false,
           ),
           Expanded(
             child: _isLoading ? const Center(child: CircularProgressIndicator()) : _buildProfileContent(),

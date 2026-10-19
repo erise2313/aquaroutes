@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'portal/portal_back.dart';
+
 /// One tab's icon/label, platform-agnostic between BottomNavigationBar
 /// (narrow) and NavigationRail (wide) representations.
 class NavShellDestination {
@@ -54,7 +56,12 @@ class ResponsiveNavShell extends StatefulWidget {
     this.selectedItemColor,
     this.wideBreakpoint = 800,
     this.maxContentWidth = 1000,
+    this.backController,
   });
+
+  /// When given, switching tabs is recorded so Back returns to the tab you
+  /// came from (portal_back.dart).
+  final PortalBackController? backController;
 
   final PreferredSizeWidget? appBar;
   final List<NavShellDestination> destinations;
@@ -75,6 +82,14 @@ class ResponsiveNavShell extends StatefulWidget {
 
 class _ResponsiveNavShellState extends State<ResponsiveNavShell> {
   int _currentIndex = 0;
+
+  void _selectTab(int i) {
+    if (i == _currentIndex) return;
+    widget.backController?.recordSection(_currentIndex, (previous) {
+      if (mounted) setState(() => _currentIndex = previous);
+    });
+    setState(() => _currentIndex = i);
+  }
 
   /// Wraps a destination icon in a count badge, or returns it untouched when
   /// there's nothing pending -- a badge showing "0" would be worse than none.
@@ -97,7 +112,7 @@ class _ResponsiveNavShellState extends State<ResponsiveNavShell> {
               children: [
                 NavigationRail(
                   selectedIndex: _currentIndex,
-                  onDestinationSelected: (i) => setState(() => _currentIndex = i),
+                  onDestinationSelected: _selectTab,
                   labelType: NavigationRailLabelType.all,
                   selectedIconTheme: IconThemeData(color: widget.selectedItemColor),
                   destinations: widget.destinations
@@ -135,7 +150,7 @@ class _ResponsiveNavShellState extends State<ResponsiveNavShell> {
             maxScaleFactor: 1.3,
             child: BottomNavigationBar(
             currentIndex: _currentIndex,
-            onTap: (i) => setState(() => _currentIndex = i),
+            onTap: _selectTab,
             type: BottomNavigationBarType.fixed,
             selectedItemColor: widget.selectedItemColor,
             unselectedItemColor: Theme.of(context).colorScheme.onSurfaceVariant,

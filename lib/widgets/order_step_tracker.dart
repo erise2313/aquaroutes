@@ -28,7 +28,17 @@ List<OrderStep> orderSteps(Map<String, dynamic> order) {
       if (assigned != null) (label: 'Assigned to a driver', at: assigned, state: OrderStepState.done),
       if (out != null) (label: 'Out for delivery', at: out, state: OrderStepState.done),
       (
-        label: failed ? 'Delivery failed' : 'Cancelled',
+        label: failed
+            ? 'Delivery failed'
+            : [
+                switch (order['cancelled_by']) {
+                  'customer' => 'Cancelled by you',
+                  'station' => 'Cancelled by the station',
+                  'wasa' => 'Cancelled by WASA',
+                  _ => 'Cancelled',
+                },
+                if ((order['cancel_reason'] as String?)?.isNotEmpty ?? false) '"${order['cancel_reason']}"',
+              ].join(' -- '),
         at: _time(order['cancelled_at']) ?? _time(order['failed_at']),
         state: OrderStepState.done,
       ),

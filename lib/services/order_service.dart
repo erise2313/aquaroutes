@@ -33,20 +33,17 @@ class OrderService {
     });
   }
 
-  Future<void> ownerCancelOrder(String orderId) {
-    return _supabase.client.rpc('set_order_status', params: {
-      'p_order_id': orderId,
-      'p_new_status': 'cancelled',
-    });
+  /// The station (or an officer) calls an order off, with the reason the
+  /// customer is told (cancel_order, patch_cancel_seal_netting.sql).
+  Future<void> ownerCancelOrder(String orderId, {required String reason}) {
+    return _supabase.client.rpc('cancel_order', params: {'p_order_id': orderId, 'p_reason': reason});
   }
 
-  /// Customer self-cancel -- only valid while the order hasn't gone out for
-  /// delivery yet.
-  Future<void> cancelOrder({required String orderId}) {
-    return _supabase.client.rpc('set_order_status', params: {
-      'p_order_id': orderId,
-      'p_new_status': 'cancelled',
-    });
+  /// Customer self-cancel, with the reason the station is told. Only valid
+  /// while the order is pending or assigned -- once the driver has set out
+  /// nobody can cancel it.
+  Future<void> cancelOrder({required String orderId, required String reason}) {
+    return _supabase.client.rpc('cancel_order', params: {'p_order_id': orderId, 'p_reason': reason});
   }
 
   /// The driver couldn't complete the delivery. The order goes back to the

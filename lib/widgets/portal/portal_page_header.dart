@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../constants/brand_tokens.dart';
+import 'portal_back.dart';
 import 'portal_density.dart';
 
 /// The portals' page header: an eyebrow, a title in the display face, an
@@ -48,7 +49,11 @@ class PortalPageHeader extends StatelessWidget {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final density = PortalDensity.of(context);
-    final canPop = showBack ?? (ModalRoute.of(context)?.canPop ?? false);
+    // A page opened on top of this one, or -- in a portal -- the section
+    // visited before this one (portal_back.dart).
+    final routeCanPop = ModalRoute.of(context)?.canPop ?? false;
+    final portalBack = PortalBackScope.of(context);
+    final canPop = showBack ?? (routeCanPop || (portalBack?.canGoBack ?? false));
 
     return Container(
       width: double.infinity,
@@ -72,7 +77,13 @@ class PortalPageHeader extends StatelessWidget {
                       child: IconButton(
                         icon: const Icon(Icons.arrow_back),
                         tooltip: 'Back',
-                        onPressed: () => Navigator.of(context).maybePop(),
+                        onPressed: () {
+                          if (routeCanPop) {
+                            Navigator.of(context).maybePop();
+                          } else {
+                            portalBack?.backFromButton();
+                          }
+                        },
                       ),
                     ),
                   if (leading != null) Padding(padding: const EdgeInsets.only(right: 12), child: leading!),

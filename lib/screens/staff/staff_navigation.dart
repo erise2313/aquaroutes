@@ -115,7 +115,7 @@ class _StaffAccountScreenState extends State<StaffAccountScreen> {
     return Scaffold(
       body: Column(
         children: [
-          const PortalPageHeader(eyebrow: 'Station staff', title: 'Account', showBack: false),
+          const PortalPageHeader(eyebrow: 'Station staff', title: 'Account'),
           Expanded(
             child: ListView(
               padding: density.pagePadding,

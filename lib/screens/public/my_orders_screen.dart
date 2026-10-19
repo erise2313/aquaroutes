@@ -10,13 +10,13 @@ import '../../widgets/order_step_tracker.dart';
 import '../../widgets/report_problem_dialog.dart';
 import '../../services/supabase_service.dart';
 import '../../utils/formatters.dart';
-import '../../widgets/confirm_dialog.dart';
 import '../../widgets/error_state.dart';
 import '../../widgets/portal/portal.dart';
 import '../../widgets/star_rating.dart';
 import 'order_tracking_screen.dart';
 import 'quick_order_screen.dart';
 import '../app_route.dart';
+import '../../widgets/cancel_order_dialog.dart';
 import '../../utils/error_text.dart';
 
 /// Authenticated customer's persistent order history -- the real fix for
@@ -71,7 +71,7 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
           // outright ("more than one relationship was found"), breaking this
           // screen entirely. The constraint name survives a column rename.
           .select('id, station_id, status, jugs_ordered, water_type, jug_type, product_kind, product_id, unit_price, total_amount, created_at, '
-              'assigned_at, out_for_delivery_at, delivered_at, cancelled_at, failure_reason, failed_at, '
+              'assigned_at, out_for_delivery_at, delivered_at, cancelled_at, failure_reason, failed_at, cancel_reason, cancelled_by, '
               'water_stations!orders_station_id_fkey(station_name)')
           .eq('customer_profile_id', userId)
           .order('created_at', ascending: false);
@@ -131,16 +131,15 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
   }
 
   Future<void> _cancelOrder(String orderId, String stationName, double totalAmount) async {
-    final confirmed = await showConfirmDialog(
+    final reason = await showCancelOrderDialog(
       context,
-      title: 'Cancel Order?',
-      message: 'Your ${formatPeso(totalAmount)} order from $stationName will be cancelled. This cannot be undone.',
-      confirmLabel: 'Cancel Order',
+      byCustomer: true,
+      summary: 'Your ${formatPeso(totalAmount)} order from $stationName.',
     );
-    if (!confirmed) return;
+    if (reason == null) return;
 
     try {
-      await _orderService.cancelOrder(orderId: orderId);
+      await _orderService.cancelOrder(orderId: orderId, reason: reason);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Order cancelled.')));
       }
