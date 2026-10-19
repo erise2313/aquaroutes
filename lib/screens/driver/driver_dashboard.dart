@@ -15,6 +15,7 @@ import '../../services/order_service.dart';
 import '../../services/route_optimization.dart';
 import '../../services/supabase_service.dart';
 import '../../services/worker_credential_service.dart';
+import '../../utils/delivery_distance.dart';
 import '../../utils/formatters.dart';
 import '../../widgets/app_map_tiles.dart';
 import '../../widgets/notification_bell.dart';
@@ -303,6 +304,49 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
     } else {
       logError('driver dialer', 'no installed app handled the tel: intent');
     }
+  }
+
+  /// Metres from the phone to the drop-off pin, or null when the position
+  /// can't be had quickly (no signal, GPS off, permission refused). Never
+  /// waits more than a few seconds.
+  Future<double?> _metresFromDropOff() async {
+    final destination = _destination;
+    if (destination == null) return null;
+    Position? position;
+    try {
+      position = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(accuracy: LocationAccuracy.high, timeLimit: Duration(seconds: 4)),
+      );
+    } catch (_) {
+      try {
+        position = await Geolocator.getLastKnownPosition();
+      } catch (_) {}
+    }
+    if (position == null) return null;
+    return Geolocator.distanceBetween(position.latitude, position.longitude, destination.latitude, destination.longitude);
+  }
+
+  /// Completing far from the pin asks first, so a delivery isn't marked done
+  /// by mistake from the station or the road. It never blocks: a driver with
+  /// no signal, or whose customer met them down the street, can still finish.
+  Future<void> _confirmThenComplete() async {
+    if (_currentActiveOrder == null) return;
+    final warning = farFromDropOffWarning(await _metresFromDropOff());
+    if (warning != null && mounted) {
+      final proceed = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('Far from the drop-off'),
+          content: Text(warning),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('Not yet')),
+            FilledButton(onPressed: () => Navigator.pop(dialogContext, true), child: const Text('Mark delivered anyway')),
+          ],
+        ),
+      );
+      if (proceed != true) return;
+    }
+    if (mounted) await _showCompletionDialog();
   }
 
   Future<void> _showCompletionDialog() async {
@@ -873,7 +917,7 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
             ),
             const SizedBox(height: 12),
             OutlinedButton.icon(
-              onPressed: _showCompletionDialog,
+              onPressed: _confirmThenComplete,
               icon: const Icon(Icons.check_circle, size: 24, color: Colors.green),
               label: const Text('COMPLETE DELIVERY', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.green)),
               style: OutlinedButton.styleFrom(
@@ -884,7 +928,7 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
             ),
           ] else
             ElevatedButton.icon(
-              onPressed: _showCompletionDialog,
+              onPressed: _confirmThenComplete,
               icon: const Icon(Icons.check_circle, size: 32, color: Colors.white),
               label: const Text('COMPLETE DELIVERY', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
               style: ElevatedButton.styleFrom(
