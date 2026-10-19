@@ -7790,3 +7790,14 @@ begin
     where id = p_settlement_id;
 end;
 $function$;
+
+-- station_names(): order lists show station names to customers, who cannot
+-- read water_stations rows (they hold invite and staff codes).
+create or replace function station_names(p_ids uuid[])
+returns table (id uuid, station_name text)
+language sql stable security definer set search_path = public
+as $$
+  select ws.id, ws.station_name from water_stations ws where ws.id = any(p_ids);
+$$;
+
+grant execute on function station_names(uuid[]) to authenticated;

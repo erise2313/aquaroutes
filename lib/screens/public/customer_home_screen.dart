@@ -19,6 +19,7 @@ import '../../widgets/star_rating.dart';
 import '../../widgets/wave_divider.dart';
 import '../../widgets/web_seal.dart';
 import '../app_route.dart';
+import '../../services/station_names.dart';
 import 'quick_order_screen.dart';
 
 /// The customer's own station ("suki"): the one they've had the most
@@ -106,12 +107,12 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
         try {
           final rows = await client
               .from('orders')
-              .select('station_id, product_id, jugs_ordered, unit_price, water_type, jug_type, product_kind, status, created_at, '
-                  'water_stations!orders_station_id_fkey(station_name)')
+              .select('station_id, product_id, jugs_ordered, unit_price, water_type, jug_type, product_kind, status, created_at')
               .eq('customer_profile_id', userId)
               .order('created_at', ascending: false)
               .limit(50);
           myOrder = pickMyStationOrder(List<Map<String, dynamic>>.from(rows));
+          if (myOrder != null) await attachStationNames(client, [myOrder]);
         } catch (_) {}
       }
       if (!mounted) return;

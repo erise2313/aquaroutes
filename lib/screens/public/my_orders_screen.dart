@@ -17,6 +17,7 @@ import 'order_tracking_screen.dart';
 import 'quick_order_screen.dart';
 import '../app_route.dart';
 import '../../widgets/cancel_order_dialog.dart';
+import '../../services/station_names.dart';
 import '../../utils/error_text.dart';
 
 /// Authenticated customer's persistent order history -- the real fix for
@@ -64,20 +65,17 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
       final userId = _supabase.auth.currentUser!.id;
       final rows = await _supabase
           .from('orders')
-          // The join is named explicitly: orders has two foreign keys to
-          // water_stations -- station_id and jug_exchange_origin_station_id,
-          // the second added with jug exchange -- so a bare
-          // `water_stations(...)` became ambiguous and PostgREST refused it
-          // outright ("more than one relationship was found"), breaking this
-          // screen entirely. The constraint name survives a column rename.
           .select('id, station_id, status, jugs_ordered, water_type, jug_type, product_kind, product_id, unit_price, total_amount, created_at, '
-              'assigned_at, out_for_delivery_at, delivered_at, cancelled_at, failure_reason, failed_at, cancel_reason, cancelled_by, '
-              'water_stations!orders_station_id_fkey(station_name)')
+              'assigned_at, out_for_delivery_at, delivered_at, cancelled_at, failure_reason, failed_at, cancel_reason, cancelled_by')
           .eq('customer_profile_id', userId)
           .order('created_at', ascending: false);
+      // Station names come separately: customers can't read the stations
+      // table itself, so a join returned nothing ("Unknown Station").
+      final orders = List<Map<String, dynamic>>.from(rows);
+      await attachStationNames(_supabase, orders);
       if (mounted) {
         setState(() {
-          _orders = List<Map<String, dynamic>>.from(rows);
+          _orders = orders;
           _isLoading = false;
         });
       }

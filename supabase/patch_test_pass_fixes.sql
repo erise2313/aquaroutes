@@ -394,3 +394,15 @@ $$ language plpgsql security definer set search_path = public;
 
 -- Security advisor: fixed search_path on the Trash label helper.
 alter function trash_kind(text) set search_path = public;
+
+-- Customers could not read water_stations (it holds invite and staff codes),
+-- so their order lists showed "Unknown Station". Names only, for the ids
+-- asked about.
+create or replace function station_names(p_ids uuid[])
+returns table (id uuid, station_name text)
+language sql stable security definer set search_path = public
+as $$
+  select ws.id, ws.station_name from water_stations ws where ws.id = any(p_ids);
+$$;
+
+grant execute on function station_names(uuid[]) to authenticated;
