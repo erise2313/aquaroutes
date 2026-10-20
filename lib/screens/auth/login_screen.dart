@@ -227,7 +227,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       ),
                       const SizedBox(height: 8),
                       TextButton.icon(
-                        onPressed: () => Navigator.of(context).popUntil((route) => route.isFirst),
+                        // On the website this form is the page at /portal --
+                        // the first page, so popping had nowhere to go and
+                        // the button did nothing. There it goes to the site.
+                        onPressed: widget.onBackToSite ?? () => Navigator.of(context).popUntil((route) => route.isFirst),
                         style: TextButton.styleFrom(foregroundColor: scheme.onSurface),
                         icon: const Icon(Icons.arrow_back, size: 16),
                         label: const Text("Continue browsing as guest"),
