@@ -36,11 +36,20 @@ All emails end in `@gentriwasa.test`.
 | customer2@ | Customer123! | Customer | Ramon Garcia | Active, no orders yet |
 | suspended@ | Customer123! | Customer | Susana Lim | **Suspended** |
 
-Invite codes on 19 Oct 2026: Buenavista **BUENAV1** (no expiry), Navarro
-Springs **UHTHDD** (until 25 Oct), Tejero **TEJERO1**. No staff code has been
-issued yet: owner1 creates one under Team. New codes expire after 7 days; the
-owner always sees the current driver code in the Worker Registry (share icon)
-and the staff code under Team.
+Each station has two codes, and they are not interchangeable:
+
+| Station | Driver invite code | Staff code |
+|---|---|---|
+| Buenavista | **BUENAV1** | **STAFFBV** |
+| Navarro Springs | **XYT856** (until 27 Oct) | **STAFFNV** |
+| Tejero | **TEJERO1** | **STAFFTJ** |
+
+Codes as of 20 Oct 2026; none expire except where shown. A code issued anew
+expires after 7 days. Drivers register with the driver code; staff register
+with the staff code. Entering the wrong kind is refused with a message naming
+the right one. The owner's dashboard shows both (the card is titled "DRIVER
+INVITE CODE", with the staff code under it); Team also shows the staff code,
+and the Worker Registry share icon shows the driver code.
 
 The seed scripts are in `supabase/`: `seed_test_accounts.sql`,
 `seed_role_accounts.sql` (additive, safe to re-run) and `seed_demo_gaps.sql`.
@@ -91,8 +100,8 @@ lapses; notification switches; Help and welcome tour.
 
 ### Station staff *(new role)* — website portal and app
 
-Counter and dispatch staff. Sign up in the app with "I work at a station"
-and the owner's staff code.
+Counter and dispatch staff. Sign up in the app as "Station Staff (counter /
+dispatch)" with the station's staff code (e.g. STAFFBV), not the driver code.
 
 - **Home** — live orders.
 - **Orders** — assign, unassign, cancel, and **New order** for phone and

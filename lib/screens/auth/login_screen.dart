@@ -20,7 +20,11 @@ import 'package:aquaroute/constants/brand_tokens.dart';
 /// (Fraunces display type, navy/harbor-blue/gold-seal palette) rather than
 /// a separate mobile-only look.
 class LoginScreen extends ConsumerStatefulWidget {
-  const LoginScreen({super.key});
+  const LoginScreen({super.key, this.onBackToSite});
+
+  /// On the website, where this is the page at /portal: a way back to the
+  /// rest of the site, since this screen has no nav bar.
+  final VoidCallback? onBackToSite;
 
   @override
   ConsumerState<LoginScreen> createState() => _LoginScreenState();
@@ -125,6 +129,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
+                    if (widget.onBackToSite != null) ...[
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: TextButton.icon(
+                          onPressed: widget.onBackToSite,
+                          icon: const Icon(Icons.arrow_back),
+                          label: const Text('Back to the website'),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                    ],
                     const Center(child: WasaShieldLogo(size: 72)),
                     const SizedBox(height: 24),
 

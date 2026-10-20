@@ -143,7 +143,8 @@ class _TeamScreenState extends State<TeamScreen> {
       children: [
         PortalSection(
           title: 'Staff code',
-          subtitle: 'A new staff member chooses "Station Staff" when they register and enters this code.',
+          subtitle: 'A new staff member chooses "Station Staff (counter / dispatch)" when they register and enters this code. '
+              'It is not the driver code on your dashboard.',
           child: PortalCard(
             lift: false,
             child: Column(

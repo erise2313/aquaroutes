@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -38,13 +39,25 @@ import '../staff/staff_navigation.dart';
 class AuthGate extends ConsumerWidget {
   const AuthGate({super.key});
 
+  /// Nobody signed in. On the website this is the page at /portal, which the
+  /// nav bar's Login opens, so it is the sign-in form -- it used to be the
+  /// home page, so pressing Login seemed to do nothing. The site's home page
+  /// has its own route (/). The app opens on the public customer portal, and
+  /// the admin build on its sign-in form.
+  static Widget _signedOut(BuildContext context) {
+    if (kIsAdminPortalBuild) return const _AdminThemed(child: LoginScreen());
+    if (!kIsWeb) return const PublicHomeScreen();
+    if (GoRouter.maybeOf(context) == null) return const OrgHomeScreen();
+    return LoginScreen(onBackToSite: () => context.go('/'));
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final authState = ref.watch(authStateProvider);
 
     return authState.when(
       loading: () => const _SplashScreen(),
-      error: (_, _) => kIsAdminPortalBuild ? const _AdminThemed(child: LoginScreen()) : (kIsWeb ? const OrgHomeScreen() : const PublicHomeScreen()),
+      error: (_, _) => _signedOut(context),
       data: (state) {
         // Supabase Flutter auto-detects a password-recovery token in the
         // URL fragment on web with no extra config -- intercept it here
@@ -57,7 +70,7 @@ class AuthGate extends ConsumerWidget {
         }
 
         final session = state.session;
-        if (session == null) return kIsAdminPortalBuild ? const _AdminThemed(child: LoginScreen()) : (kIsWeb ? const OrgHomeScreen() : const PublicHomeScreen());
+        if (session == null) return _signedOut(context);
 
         final membershipAsync = ref.watch(currentMembershipProvider);
         return membershipAsync.when(

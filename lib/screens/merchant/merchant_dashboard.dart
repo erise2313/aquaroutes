@@ -111,6 +111,10 @@ class _MerchantDashboardScreenState extends State<MerchantDashboardScreen> {
   /// expiry existed, which stay valid until renewed).
   DateTime? _inviteExpires;
 
+  /// The separate code counter/dispatch staff join with (Team page). Shown
+  /// next to the driver code so owners don't hand staff the driver one.
+  String? _staffCode;
+
   /// The station's standing with WASA (patch_compliance.sql); shown at the
   /// top of the dashboard when it needs the owner's attention.
   StationStanding? _standing;
@@ -129,7 +133,7 @@ class _MerchantDashboardScreenState extends State<MerchantDashboardScreen> {
       // 1. Get the owner's station id and invite code.
       final stationData = await supabase
           .from('water_stations')
-          .select('id, invite_code, invite_code_expires_at, standing')
+          .select('id, invite_code, invite_code_expires_at, staff_invite_code, standing')
           .eq('owner_profile_id', userId)
           .maybeSingle();
 
@@ -153,6 +157,7 @@ class _MerchantDashboardScreenState extends State<MerchantDashboardScreen> {
             _doneCount = counts['done']!;
             _renewalDueCount = renewalDueCount;
             _inviteCode = inviteCode;
+            _staffCode = stationData['staff_invite_code'] as String?;
             _inviteExpires = DateTime.tryParse(stationData['invite_code_expires_at'] as String? ?? '')?.toLocal();
             _standing = stationStandingFromString(stationData['standing'] as String?);
             _isLoading = false;
@@ -519,7 +524,7 @@ class _MerchantDashboardScreenState extends State<MerchantDashboardScreen> {
   Future<void> _regenerateInviteCode() async {
     final confirmed = await showConfirmDialog(
       context,
-      title: 'Issue a new invite code?',
+      title: 'Issue a new driver code?',
       message: 'The current code will stop working straight away. Drivers already on your roster are not affected; '
           'anyone joining from now on needs the new code.',
       confirmLabel: 'Issue new code',
@@ -562,7 +567,7 @@ class _MerchantDashboardScreenState extends State<MerchantDashboardScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'STATION INVITE CODE',
+                  'DRIVER INVITE CODE',
                   style: theme.textTheme.labelSmall?.copyWith(
                     color: BrandColors.sealGoldTextFor(theme.brightness),
                     letterSpacing: 1.6,
@@ -586,7 +591,7 @@ class _MerchantDashboardScreenState extends State<MerchantDashboardScreen> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Your drivers and helpers enter this to join your station. '
+                  'Drivers enter this to join your station. '
                   'Issue a new code if a driver leaves -- the old one stops working.',
                   style: theme.textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
                 ),
@@ -604,19 +609,47 @@ class _MerchantDashboardScreenState extends State<MerchantDashboardScreen> {
                     ),
                   ),
                 ],
+                if (isCode && _staffCode != null) ...[
+                  const SizedBox(height: 10),
+                  // Wraps on a phone: the code, copy, and the Team link each
+                  // move to the next line rather than squeezing.
+                  Wrap(
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    spacing: 4,
+                    children: [
+                      Text('Staff code (counter / dispatch):', style: theme.textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant)),
+                      SelectableText(_staffCode!, style: theme.textTheme.titleMedium?.copyWith(color: scheme.primary, fontWeight: FontWeight.w700, letterSpacing: 1.5)),
+                      IconButton(
+                        icon: const Icon(Icons.copy_outlined, size: 20),
+                        color: scheme.primary,
+                        tooltip: 'Copy staff code',
+                        onPressed: () {
+                          Clipboard.setData(ClipboardData(text: _staffCode!));
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text("Copied staff code '$_staffCode'."), behavior: SnackBarBehavior.floating),
+                          );
+                        },
+                      ),
+                      TextButton(
+                        onPressed: () => _go('Team', const TeamScreen()),
+                        child: const Text('Manage on Team'),
+                      ),
+                    ],
+                  ),
+                ],
               ],
             ),
           ),
           IconButton(
             icon: const Icon(Icons.autorenew),
             color: scheme.primary,
-            tooltip: 'Issue a new invite code',
+            tooltip: 'Issue a new driver code',
             onPressed: !isCode || _regenerating ? null : _regenerateInviteCode,
           ),
           IconButton(
             icon: const Icon(Icons.copy_outlined),
             color: scheme.primary,
-            tooltip: 'Copy invite code',
+            tooltip: 'Copy driver code',
             onPressed: !isCode
                 ? null
                 : () {
