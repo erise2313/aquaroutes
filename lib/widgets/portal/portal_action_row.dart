@@ -44,13 +44,18 @@ class PortalActionRow extends StatelessWidget {
         final fits = constraints.hasBoundedWidth && available / children.length >= needed;
 
         if (fits) {
-          return Row(
-            children: [
-              for (var i = 0; i < children.length; i++) ...[
-                if (i > 0) SizedBox(width: gap),
-                Expanded(child: children[i]),
+          // Same height side by side: an outlined button next to a filled
+          // primary one (48 vs 56 dp minimum) looked mismatched.
+          return IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                for (var i = 0; i < children.length; i++) ...[
+                  if (i > 0) SizedBox(width: gap),
+                  Expanded(child: children[i]),
+                ],
               ],
-            ],
+            ),
           );
         }
 
