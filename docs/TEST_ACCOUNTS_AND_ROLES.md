@@ -9,6 +9,11 @@ testing environment's database and must never be used for real people.
   2026 for this environment. Installing it over an older build signs you out
   once; sign in again with the accounts below.
 
+**App testers need the website too.** Officer work -- approving a driver's
+documents or a station's permits, reports, incidents -- happens only in the
+admin portal. When the app is waiting on one of those, sign in to the admin
+portal as an officer, finish it, and go back to the app.
+
 The descriptions below are the starting state of the test data. Testing
 changes it (orders get delivered, codes get renewed), so expect differences
 after others have used the same accounts.
@@ -35,6 +40,8 @@ All emails end in `@gentriwasa.test`.
 | owner1@ | Owner123! | Station owner | Juan Dela Cruz | Buenavista Water Refilling Station — accredited, good standing |
 | owner2@ | Owner123! | Station owner | Juan Dela Rosa | Navarro Springs Water Station — listed, **under review**: its sanitary permit is back with the officers |
 | owner3@ | Owner123! | Station owner | Elena Ramos | Tejero Aqua Station — **not accredited**, permits waiting for upload |
+| owner4@ | Owner123! | Station owner | Rosalinda Santos | Santiago Pure Water — **lapsed**: water quality test expired 45 days ago |
+| owner5@ | Owner123! | Station owner | Ernesto Villanueva | Pasong Kawayan Aqua Hub — **lapsed**: business permit expired 60 days ago |
 | staff1@ | Staff123! | Station staff | — | Buenavista counter staff |
 | driver1@ | Driver123! | Driver | Pedro Reyes | Buenavista — cleared; has customer1's delivery in progress and an assigned one |
 | driver2@ | Driver123! | Driver | Ana Cruz | Navarro Springs — **flagged** (confirmed incident); can appeal |
@@ -52,6 +59,8 @@ Each station has two codes, and they are not interchangeable:
 | Buenavista | GW-STN-2026-0001 | **BUENAV1** | **STAFFBV** |
 | Navarro Springs | GW-STN-2026-0002 | **NAVSPR1** | **STAFFNV** |
 | Tejero | GW-STN-2026-0003 | **TEJERO1** | **STAFFTJ** |
+| Santiago (lapsed) | GW-STN-2026-0004 | **SANTGO1** | **STAFFSG** |
+| Pasong Kawayan (lapsed) | GW-STN-2026-0005 | **PKAWAY1** | **STAFFPK** |
 
 Every station has a permanent WASA station ID (GW-STN-year-number) and every
 driver a worker code (GW-WRK-year-number), so two with the same name can be
@@ -75,6 +84,11 @@ Starting data at a glance:
   Buenavista's round jugs and has proposed returning 3 (owner1 confirms or
   rejects).
 - **Officers' queue:** Navarro's sanitary permit is waiting for review.
+- **Lapsed stations:** Santiago Pure Water and Pasong Kawayan Aqua Hub were
+  accredited, then a required permit expired more than 30 days ago. They
+  are still listed and take orders, but show LAPSED, have no Accredited
+  badge and are hidden while "Accredited only" is on. Uploading a renewed
+  permit and having an officer approve it restores the accreditation.
 - **Board:** posts with reactions and comments, reviews and an event.
 
 The whole database, accounts and data included, is built by

@@ -56,8 +56,6 @@ supabase/functions/.env
 .env.*
 !.env.example
 
-# Personal editor tool settings (not shared with the team)
-.claude/settings.local.json
 
 # Firebase local cache (deploy history, hosting cache -- not config, safe to ignore)
 .firebase/
@@ -70,6 +68,3 @@ AI_SNAPSHOT.txt
 supabase/.temp/
 supabase/.branches/
 
-# Local developer tooling -- not part of the project
-.claude/
-skills-lock.json
