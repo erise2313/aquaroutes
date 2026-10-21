@@ -4544,7 +4544,13 @@ alter view jug_balances set (security_invoker = true);
 alter view bulletin_reaction_counts set (security_invoker = true);
 
 -- 2.
-alter function get_pending_orders(uuid) set search_path = public;
+-- get_pending_orders is left over from the first prototype and is not
+-- created by this script, so a brand-new project doesn't have it.
+do $$ begin
+  if to_regprocedure('public.get_pending_orders(uuid)') is not null then
+    alter function get_pending_orders(uuid) set search_path = public;
+  end if;
+end $$;
 alter function get_active_orders(uuid) set search_path = public;
 alter function generate_worker_code() set search_path = public;
 alter function peso_text(numeric) set search_path = public;
