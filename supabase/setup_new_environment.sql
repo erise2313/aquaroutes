@@ -11,8 +11,9 @@
 --     2. seed_test_accounts.sql
 --     3. seed_role_accounts.sql
 --     4. seed_officer_accounts.sql
---     5. seed_demo_content.sql
---     6. seed_evaluation_data.sql
+--     5. seed_sample_products.sql
+--     6. seed_demo_content.sql
+--     7. seed_evaluation_data.sql
 --
 -- WARNING: step 1 drops every application table before recreating it.
 -- Run this ONLY against a project you intend to build from scratch. It is
@@ -28,7 +29,7 @@
 
 
 -- =====================================================================
--- STEP 1 of 6 -- SCHEMA  (reset_and_rebuild.sql)
+-- STEP 1 of 7 -- SCHEMA  (reset_and_rebuild.sql)
 -- =====================================================================
 -- All tables, views, functions, triggers, RLS policies, storage buckets,
 -- scheduled jobs and reference data (33 barangays, permit types,
@@ -8887,7 +8888,7 @@ grant execute on function station_order_details(uuid[]) to authenticated;
 
 
 -- =====================================================================
--- STEP 2 of 6 -- ACCOUNTS AND STATIONS  (seed_test_accounts.sql)
+-- STEP 2 of 7 -- ACCOUNTS AND STATIONS  (seed_test_accounts.sql)
 -- =====================================================================
 -- admin@, owner1@ (Buenavista), owner2@ (Navarro Springs), driver1@,
 -- driver2@, customer1@ -- pre-confirmed, stations accredited.
@@ -9123,7 +9124,7 @@ end $$;
 
 
 -- =====================================================================
--- STEP 3 of 6 -- MORE ROLE ACCOUNTS  (seed_role_accounts.sql)
+-- STEP 3 of 7 -- MORE ROLE ACCOUNTS  (seed_role_accounts.sql)
 -- =====================================================================
 -- admin2@, driver3@, driver4@, customer2@, suspended@, owner3@ (station
 -- not yet accredited), superadmin1@, superadmin2@, staff1@.
@@ -9288,7 +9289,7 @@ select u.email, m.role, m.status,
 
 
 -- =====================================================================
--- STEP 4 of 6 -- OFFICER ROLE ACCOUNTS  (seed_officer_accounts.sql)
+-- STEP 4 of 7 -- OFFICER ROLE ACCOUNTS  (seed_officer_accounts.sql)
 -- =====================================================================
 -- compliance1@, workforce1@, content1@, viewer1@ (Officer123!).
 -- =====================================================================
@@ -9369,7 +9370,78 @@ select u.email, m.role, coalesce(m.officer_role, 'officer') as officer_role, m.s
 
 
 -- =====================================================================
--- STEP 5 of 6 -- DEMO CONTENT  (seed_demo_content.sql)
+-- STEP 5 of 7 -- SAMPLE PRODUCTS  (seed_sample_products.sql)
+-- =====================================================================
+-- What each seeded station sells and for how much, so customers can order.
+-- =====================================================================
+
+-- =====================================================================
+-- Sample products and prices for the seeded stations (demo/testing only).
+--
+-- Customers order products, not a station's single price. The schema step
+-- turns each existing station's price into products, but on a new project
+-- it runs before any station exists, so without this the seeded stations
+-- would have nothing to order.
+--
+--   Buenavista (owner1)      purified and alkaline, slim and round 5-gal,
+--                            1-gallon, 350 mL bottle, a new slim jug
+--   Navarro Springs (owner2) purified and mineral, slim and round 5-gal,
+--                            500 mL bottle
+--   Tejero (owner3)          purified, slim and round 5-gal
+--
+-- Prices are typical General Trias refill prices, for demonstration.
+-- Additive and idempotent: a product a station already lists is left as
+-- it is. Run after seed_role_accounts.sql. Safe to re-run.
+-- DO NOT run this against a production project with real users.
+-- =====================================================================
+
+do $$
+declare
+  r record;
+begin
+  for r in
+    select ws.id as station_id, p.water_type, p.container_code, p.kind, p.price
+      from (values
+        ('owner1@gentriwasa.test', 'purified', 'slim_5gal',    'refill',         25.00),
+        ('owner1@gentriwasa.test', 'purified', 'round_5gal',   'refill',         25.00),
+        ('owner1@gentriwasa.test', 'alkaline', 'slim_5gal',    'refill',         35.00),
+        ('owner1@gentriwasa.test', 'alkaline', 'round_5gal',   'refill',         35.00),
+        ('owner1@gentriwasa.test', 'purified', 'gallon_1',     'refill',         10.00),
+        ('owner1@gentriwasa.test', 'purified', 'bottle_350ml', 'refill',          8.00),
+        ('owner1@gentriwasa.test', 'purified', 'slim_5gal',    'new_container', 220.00),
+        ('owner2@gentriwasa.test', 'purified', 'slim_5gal',    'refill',         22.00),
+        ('owner2@gentriwasa.test', 'purified', 'round_5gal',   'refill',         22.00),
+        ('owner2@gentriwasa.test', 'mineral',  'slim_5gal',    'refill',         30.00),
+        ('owner2@gentriwasa.test', 'mineral',  'round_5gal',   'refill',         30.00),
+        ('owner2@gentriwasa.test', 'purified', 'bottle_500ml', 'refill',         10.00),
+        ('owner3@gentriwasa.test', 'purified', 'slim_5gal',    'refill',         25.00),
+        ('owner3@gentriwasa.test', 'purified', 'round_5gal',   'refill',         25.00)
+      ) as p(owner_email, water_type, container_code, kind, price)
+      join auth.users u on u.email = p.owner_email
+      join water_stations ws on ws.owner_profile_id = u.id
+  loop
+    insert into station_products (station_id, water_type, container_code, kind, price)
+    values (r.station_id, r.water_type, r.container_code, r.kind, r.price)
+    on conflict (station_id, water_type, container_code, kind) do nothing;
+  end loop;
+
+  -- Water types, containers and the "from" price shown on the map follow
+  -- the products.
+  for r in select distinct station_id from station_products loop
+    perform sync_station_from_products(r.station_id);
+  end loop;
+end $$;
+
+-- VERIFY -- products per station.
+select ws.station_name, count(*) as products, min(sp.price) as from_price
+  from station_products sp join water_stations ws on ws.id = sp.station_id
+ group by ws.station_name
+ order by ws.station_name;
+
+
+
+-- =====================================================================
+-- STEP 6 of 7 -- DEMO CONTENT  (seed_demo_content.sql)
 -- =====================================================================
 -- Bulletins with reactions and comments, station reviews, events.
 -- =====================================================================
@@ -9520,7 +9592,7 @@ end $$;
 
 
 -- =====================================================================
--- STEP 6 of 6 -- EVALUATION DATA  (seed_evaluation_data.sql)
+-- STEP 7 of 7 -- EVALUATION DATA  (seed_evaluation_data.sql)
 -- =====================================================================
 -- Orders in every live status (one mid-delivery), container balances,
 -- settlements awaiting confirmation, a permit pending review, and a
@@ -9787,6 +9859,7 @@ union all select 'officer accounts (expect 6)', count(*)::text from memberships 
 union all select 'super admins (expect 2)', count(*)::text from memberships where role = 'wasa_superadmin'
 union all select 'stations (expect 3)', count(*)::text from water_stations
 union all select 'publicly listed stations (>= 2)', count(*)::text from public_stations
+union all select 'station products (expect 14)', count(*)::text from station_products
 union all select 'orders (> 0)', count(*)::text from orders
 union all select 'bulletins (> 0)', count(*)::text from bulletins
 order by item;

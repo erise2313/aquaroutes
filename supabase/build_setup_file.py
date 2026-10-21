@@ -20,6 +20,8 @@ PARTS = [
      '-- not yet accredited), superadmin1@, superadmin2@, staff1@.'),
     ('OFFICER ROLE ACCOUNTS', 'seed_officer_accounts.sql',
      'compliance1@, workforce1@, content1@, viewer1@ (Officer123!).'),
+    ('SAMPLE PRODUCTS', 'seed_sample_products.sql',
+     'What each seeded station sells and for how much, so customers can order.'),
     ('DEMO CONTENT', 'seed_demo_content.sql',
      'Bulletins with reactions and comments, station reviews, events.'),
     ('EVALUATION DATA', 'seed_evaluation_data.sql',
@@ -74,6 +76,7 @@ union all select 'officer accounts (expect 6)', count(*)::text from memberships 
 union all select 'super admins (expect 2)', count(*)::text from memberships where role = 'wasa_superadmin'
 union all select 'stations (expect 3)', count(*)::text from water_stations
 union all select 'publicly listed stations (>= 2)', count(*)::text from public_stations
+union all select 'station products (expect 14)', count(*)::text from station_products
 union all select 'orders (> 0)', count(*)::text from orders
 union all select 'bulletins (> 0)', count(*)::text from bulletins
 order by item;
