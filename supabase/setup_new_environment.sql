@@ -9640,6 +9640,7 @@ declare
   v_station1     uuid;  -- Buenavista Water Refilling Station
   v_station2     uuid;  -- Navarro Springs Water Station
   v_owner1       uuid;
+  v_owner2       uuid;
   v_customer     uuid;
   v_driver1_wrk  uuid;  -- workers.id, not the profile id
   v_admin        uuid;
@@ -9657,6 +9658,8 @@ begin
 
   select p.id into v_owner1   from profiles p join auth.users u on u.id = p.id
     where u.email = 'owner1@gentriwasa.test';
+  select p.id into v_owner2   from profiles p join auth.users u on u.id = p.id
+    where u.email = 'owner2@gentriwasa.test';
   select p.id into v_customer from profiles p join auth.users u on u.id = p.id
     where u.email = 'customer1@gentriwasa.test';
   select p.id into v_admin    from profiles p join auth.users u on u.id = p.id
@@ -9677,7 +9680,7 @@ begin
   -- -------------------------------------------------------------------
   -- Clear anything a previous run of THIS script created.
   -- -------------------------------------------------------------------
-  delete from jug_settlements    where proposed_by = v_owner1 and quantity in (12, 7);
+  delete from jug_settlements    where proposed_by in (v_owner1, v_owner2) and quantity in (6, 3, 12, 7);
   delete from jug_ledger_entries where recorded_by = v_owner1;
   delete from orders             where client_request_id like v_marker || '%';
 
@@ -9775,22 +9778,27 @@ begin
   insert into jug_ledger_entries
     (holder_station_id, owner_station_id, jug_type, quantity, recorded_by, created_at)
   values
-    -- Buenavista is holding Navarro's containers.
+    -- Slim: Buenavista holds 18 - 6 = 12 of Navarro's, Navarro holds 4
+    -- of Buenavista's, so Buenavista owes Navarro 8 after netting.
     (v_station1, v_station2, 'slim_5gal',  18, v_owner1, now() - interval '14 days'),
     (v_station1, v_station2, 'slim_5gal',  -6, v_owner1, now() - interval '9 days'),
-    (v_station1, v_station2, 'round_5gal',  9, v_owner1, now() - interval '7 days'),
-    -- and Navarro is holding some of Buenavista's, so the net runs both ways.
-    (v_station2, v_station1, 'slim_5gal',  11, v_owner1, now() - interval '11 days'),
-    (v_station2, v_station1, 'round_5gal',  4, v_owner1, now() - interval '4 days');
+    (v_station2, v_station1, 'slim_5gal',   4, v_owner1, now() - interval '11 days'),
+    -- Round: Navarro holds 9 of Buenavista's, Buenavista holds 4 of
+    -- Navarro's, so Navarro owes Buenavista 5 -- the net runs both ways.
+    (v_station2, v_station1, 'round_5gal',  9, v_owner1, now() - interval '7 days'),
+    (v_station1, v_station2, 'round_5gal',  4, v_owner1, now() - interval '4 days');
 
   -- Awaiting confirmation from the owed station. Left as 'proposed' on
   -- purpose: confirming it is one of the things worth testing, and a
-  -- settlement takes effect only when the other party agrees.
+  -- settlement takes effect only when the other party agrees. Each is
+  -- proposed by the station holding the jugs, for no more than it owes
+  -- after netting (check_jug_settlement_proposal), so each owner has one
+  -- to confirm: owner2 confirms the slim one, owner1 the round one.
   insert into jug_settlements
     (holder_station_id, owner_station_id, jug_type, quantity, status, proposed_by, created_at)
   values
-    (v_station1, v_station2, 'slim_5gal', 12, 'proposed', v_owner1, now() - interval '2 days'),
-    (v_station2, v_station1, 'round_5gal',  7, 'proposed', v_owner1, now() - interval '1 day');
+    (v_station1, v_station2, 'slim_5gal',  6, 'proposed', v_owner1, now() - interval '2 days'),
+    (v_station2, v_station1, 'round_5gal', 3, 'proposed', v_owner2, now() - interval '1 day');
 
   -- -------------------------------------------------------------------
   -- 3. A PERMIT AWAITING REVIEW
