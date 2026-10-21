@@ -5,7 +5,7 @@ testing environment's database and must never be used for real people.
 
 - Public website: https://gentriwasa.web.app
 - Admin portal: https://gentriwasa-admin.web.app
-- App: `GenTriWASA-arm64-v8a.apk` (Desktop\GenTriWASA-APK), built 22 October
+- App: `GenTriWASA-arm64-v8a.apk` (the "1 App" folder of the testing package), built 22 October
   2026 for this environment. Installing it over an older build signs you out
   once; sign in again with the accounts below.
 
