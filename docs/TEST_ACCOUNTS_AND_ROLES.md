@@ -1,18 +1,22 @@
 # GenTri: WASA — test accounts and what each role can access
 
-Last updated 18 October 2026. For testing only — these accounts live in the
-project's database (`kdptnxvspqunjngaduok`) and must never be used for real
-people.
+Last updated 22 October 2026. For testing only — these accounts live in the
+testing environment's database and must never be used for real people.
 
-- Public website: https://gentri-wasa.web.app
-- Admin portal: https://gentri-wasa-admin.web.app
-- App: `GenTriWASA-arm64-v8a.apk` (Desktop\GenTriWASA-APK), built 18 October
-  2026 (evening of 19 Oct) with everything below, Trash, cancel reasons and Back included. Uninstall an older copy
-  first if Android refuses the update.
+- Public website: https://gentriwasa.web.app
+- Admin portal: https://gentriwasa-admin.web.app
+- App: `GenTriWASA-arm64-v8a.apk` (Desktop\GenTriWASA-APK), built 22 October
+  2026 for this environment. Installing it over an older build signs you out
+  once; sign in again with the accounts below.
+
+The descriptions below are the starting state of the test data. Testing
+changes it (orders get delivered, codes get renewed), so expect differences
+after others have used the same accounts.
 
 Every screen works in light and dark mode, uses the Atkinson Hyperlegible
 typeface, and has a **Text size** setting (Normal, Large, Extra large) under
-account settings. The interface is in English; Tagalog comes later.
+account settings. The app is in English; the website also has Tagalog
+(**EN | TL** in the top bar).
 
 ## Test accounts
 
@@ -29,39 +33,52 @@ All emails end in `@gentriwasa.test`.
 | content1@ | Officer123! | Content editor | Cora Bautista | Active |
 | viewer1@ | Officer123! | Viewer (auditor) | Vilma Santos | Active |
 | owner1@ | Owner123! | Station owner | Juan Dela Cruz | Buenavista Water Refilling Station — accredited, good standing |
-| owner2@ | Owner123! | Station owner | Juan Dela Rosa | Navarro Springs Water Station — accredited, good standing |
+| owner2@ | Owner123! | Station owner | Juan Dela Rosa | Navarro Springs Water Station — listed, **under review**: its sanitary permit is back with the officers |
 | owner3@ | Owner123! | Station owner | Elena Ramos | Tejero Aqua Station — **not accredited**, permits waiting for upload |
 | staff1@ | Staff123! | Station staff | — | Buenavista counter staff |
-| driver1@ | Driver123! | Driver | Pedro Reyes | Buenavista — **flagged** (confirmed incident) |
-| driver2@ | Driver123! | Driver | Ana Cruz | Navarro Springs — **flagged** (confirmed incident) |
-| driver3@ | Driver123! | Driver | Carlo Bautista | Buenavista — cleared |
+| driver1@ | Driver123! | Driver | Pedro Reyes | Buenavista — cleared; has customer1's delivery in progress and an assigned one |
+| driver2@ | Driver123! | Driver | Ana Cruz | Navarro Springs — **flagged** (confirmed incident); can appeal |
+| driver3@ | Driver123! | Driver | Carlo Bautista | Buenavista — cleared, nothing assigned |
 | driver4@ | Driver123! | Driver | Joy Villanueva | Navarro Springs — cleared |
-| customer1@ | Customer123! | Customer | Liza Fernandez | Active, has delivered orders from Navarro Springs |
+| customer1@ | Customer123! | Customer | Liza Fernandez | Orders in every state: pending, assigned, out for delivery, delivered (mostly Buenavista, one Navarro Springs) |
 | customer2@ | Customer123! | Customer | Ramon Garcia | Active, no orders yet |
 | suspended@ | Customer123! | Customer | Susana Lim | **Suspended** |
+| disposable@ | Disposable123! | Customer | Delete Me | No orders: delete this one to see an account deletion complete |
 
 Each station has two codes, and they are not interchangeable:
 
 | Station | WASA station ID | Driver invite code | Staff code |
 |---|---|---|---|
 | Buenavista | GW-STN-2026-0001 | **BUENAV1** | **STAFFBV** |
-| Navarro Springs | GW-STN-2026-0002 | **XYT856** (until 27 Oct) | **STAFFNV** |
-| Tejero | GW-STN-2026-0008 | **TEJERO1** | **STAFFTJ** |
+| Navarro Springs | GW-STN-2026-0002 | **NAVSPR1** | **STAFFNV** |
+| Tejero | GW-STN-2026-0003 | **TEJERO1** | **STAFFTJ** |
 
 Every station has a permanent WASA station ID (GW-STN-year-number) and every
 driver a worker code (GW-WRK-year-number), so two with the same name can be
 told apart. Driver and staff codes are typed in upper case; O/0 and I/1 are
 treated as the same.
 
-Codes as of 20 Oct 2026; none expire except where shown. A code issued anew
+These are the starting codes; none expire until an owner issues a new one. A code issued anew
 expires after 7 days. Drivers register with the driver code; staff register
 with the staff code. Entering the wrong kind is refused with a message naming
 the right one. The owner's dashboard shows both (the card is titled "DRIVER
 INVITE CODE", with the staff code under it); Team also shows the staff code,
 and the Worker Registry share icon shows the driver code.
 
-The seed scripts are in `supabase/`: `seed_test_accounts.sql`,
-`seed_role_accounts.sql` (additive, safe to re-run) and `seed_demo_gaps.sql`.
+Starting data at a glance:
+
+- **Products:** Buenavista sells purified and alkaline (slim and round
+  5-gal, 1-gallon, 350 mL bottle, a new slim jug); Navarro Springs purified
+  and mineral (slim and round 5-gal, 500 mL bottle); Tejero purified.
+- **Clearinghouse:** Buenavista holds 8 of Navarro's slim jugs and has
+  proposed returning 6 (owner2 confirms or rejects); Navarro holds 5 of
+  Buenavista's round jugs and has proposed returning 3 (owner1 confirms or
+  rejects).
+- **Officers' queue:** Navarro's sanitary permit is waiting for review.
+- **Board:** posts with reactions and comments, reviews and an event.
+
+The whole database, accounts and data included, is built by
+`supabase/setup_new_environment.sql` (see `docs/HANDOVER_DATABASE.md`).
 
 ## What each role can access
 
@@ -235,9 +252,9 @@ barangay".
 | N8 | admin | Reports → the report from N6 → View the order | The order with Liza Fernandez's name and phone; there is no Orders page in the sidebar |
 | N9 | owner2 | Reviews → Reports to WASA | The report, without the customer's name; Respond in writing works |
 | N10 | admin | Reports → open N6 → Resolved with a note, tick "open a compliance case" | customer1 notified with the note; a case appears in Cases |
-| N11 | visitor | Website → Stations | Only accredited stations; switching off "Accredited only" shows Tejero |
+| N11 | visitor | Website → Stations | Only accredited stations; switching off "Accredited only" also shows Navarro Springs (under review) |
 | N12 | visitor | Website → a station's page | Association record: standing, last water test, sanitary permit, member since, New member |
-| N13 | visitor | Verify → type "Tejero" | "Listed with WASA, not accredited" with its standing |
+| N13 | visitor | Verify → type "Navarro" | "Listed with WASA, not accredited" with its standing |
 | N14 | visitor | Verify → type "Nonexistent" | "This station is not listed with GenTri WASA", neutral colours |
 | N15 | visitor | Footer → Safe drinking water | Four articles |
 | N16 | admin | Website → Safe Drinking Water → edit an article | Change shows on the website page |
@@ -250,7 +267,7 @@ barangay".
 | N23 | owner1 | Board → New post | Posting rules shown; Post refused until ticked |
 | N24 | owner1 | Website → Events → I'll attend | Count goes up; admin → Events → see who lists Juan Dela Cruz |
 | N25 | owner1 | Profile → station QR code → Save as image (website) | PNG downloads; scanning it opens the station's page |
-| N26 | customer1 | Home | "My station: Navarro Springs" with Order again |
+| N26 | customer1 | Home | "My station: Buenavista" with Order again |
 | N27 | customer1 | Orders | Each order shows its steps and times |
 | N28 | customer1 | Account → switch off Order updates; owner2 assigns/delivers an order | No order notification arrives; switch back on and they do |
 | N29 | any role | First sign-in on a device | Three-page welcome tour; Account → Help → "Show the welcome tour again" replays it |
@@ -293,7 +310,7 @@ barangay".
 | I5 | owner1 | Orders → New orders → Assign & accept | Each driver shows a GW-WRK code with the plate |
 | A1 | customer1 | Account → Addresses → Add → pin, street, barangay, landmark → Save | The list shows the written address |
 | A2 | customer1 | Order → pick the saved address | Street, barangay and landmark fill in |
-| A3 | customer1 | Order with the street blank | Refused: "Enter the house no., street or subdivision" |
+| A3 | customer1 | Order with the street address blank | Refused: "Enter the house no., street or subdivision" |
 | A4 | owner2 | Orders → the new order | The written address under the amount |
 | A5 | driver4 | Driver dashboard → the assigned order | The written address under "Deliver to" |
 | A6 | owner1 | New order → Phone order → Deliver → pin, no typed address | Refused: "Write the delivery address too" |

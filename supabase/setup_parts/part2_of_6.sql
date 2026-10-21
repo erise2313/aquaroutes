@@ -1,4 +1,4 @@
--- GENTRI WASA setup -- PART 2 of 5. Run the parts in order,
+-- GENTRI WASA setup -- PART 2 of 6. Run the parts in order,
 -- each once, in the Supabase SQL Editor. (From setup_new_environment.sql.)
 
 insert into web_page_sections (page_key, section_key, body, sort_order) values

@@ -1,4 +1,4 @@
--- GENTRI WASA setup -- PART 1 of 5. Run the parts in order,
+-- GENTRI WASA setup -- PART 1 of 6. Run the parts in order,
 -- each once, in the Supabase SQL Editor. (From setup_new_environment.sql.)
 
 -- =====================================================================
@@ -17,6 +17,7 @@
 --     5. seed_sample_products.sql
 --     6. seed_demo_content.sql
 --     7. seed_evaluation_data.sql
+--     8. seed_test_extras.sql
 --
 -- WARNING: step 1 drops every application table before recreating it.
 -- Run this ONLY against a project you intend to build from scratch. It is
@@ -32,7 +33,7 @@
 
 
 -- =====================================================================
--- STEP 1 of 7 -- SCHEMA  (reset_and_rebuild.sql)
+-- STEP 1 of 8 -- SCHEMA  (reset_and_rebuild.sql)
 -- =====================================================================
 -- All tables, views, functions, triggers, RLS policies, storage buckets,
 -- scheduled jobs and reference data (33 barangays, permit types,

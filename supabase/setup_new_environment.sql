@@ -14,6 +14,7 @@
 --     5. seed_sample_products.sql
 --     6. seed_demo_content.sql
 --     7. seed_evaluation_data.sql
+--     8. seed_test_extras.sql
 --
 -- WARNING: step 1 drops every application table before recreating it.
 -- Run this ONLY against a project you intend to build from scratch. It is
@@ -29,7 +30,7 @@
 
 
 -- =====================================================================
--- STEP 1 of 7 -- SCHEMA  (reset_and_rebuild.sql)
+-- STEP 1 of 8 -- SCHEMA  (reset_and_rebuild.sql)
 -- =====================================================================
 -- All tables, views, functions, triggers, RLS policies, storage buckets,
 -- scheduled jobs and reference data (33 barangays, permit types,
@@ -8894,7 +8895,7 @@ grant execute on function station_order_details(uuid[]) to authenticated;
 
 
 -- =====================================================================
--- STEP 2 of 7 -- ACCOUNTS AND STATIONS  (seed_test_accounts.sql)
+-- STEP 2 of 8 -- ACCOUNTS AND STATIONS  (seed_test_accounts.sql)
 -- =====================================================================
 -- admin@, owner1@ (Buenavista), owner2@ (Navarro Springs), driver1@,
 -- driver2@, customer1@ -- pre-confirmed, stations accredited.
@@ -9130,7 +9131,7 @@ end $$;
 
 
 -- =====================================================================
--- STEP 3 of 7 -- MORE ROLE ACCOUNTS  (seed_role_accounts.sql)
+-- STEP 3 of 8 -- MORE ROLE ACCOUNTS  (seed_role_accounts.sql)
 -- =====================================================================
 -- admin2@, driver3@, driver4@, customer2@, suspended@, owner3@ (station
 -- not yet accredited), superadmin1@, superadmin2@, staff1@.
@@ -9295,7 +9296,7 @@ select u.email, m.role, m.status,
 
 
 -- =====================================================================
--- STEP 4 of 7 -- OFFICER ROLE ACCOUNTS  (seed_officer_accounts.sql)
+-- STEP 4 of 8 -- OFFICER ROLE ACCOUNTS  (seed_officer_accounts.sql)
 -- =====================================================================
 -- compliance1@, workforce1@, content1@, viewer1@ (Officer123!).
 -- =====================================================================
@@ -9376,7 +9377,7 @@ select u.email, m.role, coalesce(m.officer_role, 'officer') as officer_role, m.s
 
 
 -- =====================================================================
--- STEP 5 of 7 -- SAMPLE PRODUCTS  (seed_sample_products.sql)
+-- STEP 5 of 8 -- SAMPLE PRODUCTS  (seed_sample_products.sql)
 -- =====================================================================
 -- What each seeded station sells and for how much, so customers can order.
 -- =====================================================================
@@ -9447,7 +9448,7 @@ select ws.station_name, count(*) as products, min(sp.price) as from_price
 
 
 -- =====================================================================
--- STEP 6 of 7 -- DEMO CONTENT  (seed_demo_content.sql)
+-- STEP 6 of 8 -- DEMO CONTENT  (seed_demo_content.sql)
 -- =====================================================================
 -- Bulletins with reactions and comments, station reviews, events.
 -- =====================================================================
@@ -9598,7 +9599,7 @@ end $$;
 
 
 -- =====================================================================
--- STEP 7 of 7 -- EVALUATION DATA  (seed_evaluation_data.sql)
+-- STEP 7 of 8 -- EVALUATION DATA  (seed_evaluation_data.sql)
 -- =====================================================================
 -- Orders in every live status (one mid-delivery), container balances,
 -- settlements awaiting confirmation, a permit pending review, and a
@@ -9854,6 +9855,74 @@ order by item, detail;
 
 
 -- =====================================================================
+-- STEP 8 of 8 -- TEST EXTRAS  (seed_test_extras.sql)
+-- =====================================================================
+-- Fixed staff codes, and driver2 flagged through a confirmed incident.
+-- =====================================================================
+
+-- =====================================================================
+-- Finishing touches the test documents rely on (demo/testing only).
+--
+-- 1. Fixed staff codes STAFFBV / STAFFNV / STAFFTJ for Buenavista, Navarro
+--    Springs and Tejero (new stations get a random one), so the documents
+--    can name them.
+-- 2. One flagged driver:
+--
+-- driver2@gentriwasa.test (Ana Cruz, Navarro Springs) gets a confirmed
+-- incident, the way an officer would flag them: the confirm sets her
+-- clearance to flagged association-wide (apply_incident_resolution). The
+-- test cases need one -- a flagged driver can't be assigned, shows up in
+-- the hire check, and can appeal.
+--
+-- driver1 is left cleared: seed_evaluation_data.sql gives driver1 the
+-- delivery that is in progress.
+--
+-- Idempotent: does nothing if the incident is already there. Run after
+-- seed_evaluation_data.sql. DO NOT run this against a production project.
+-- =====================================================================
+
+do $$
+declare
+  v_marker constant text := 'seed-flag';
+  v_worker uuid;
+  v_owner2 uuid;
+  v_admin  uuid;
+begin
+  update water_stations ws set staff_invite_code = c.code
+    from (values ('owner1@gentriwasa.test', 'STAFFBV'),
+                 ('owner2@gentriwasa.test', 'STAFFNV'),
+                 ('owner3@gentriwasa.test', 'STAFFTJ')) as c(email, code)
+    join auth.users u on u.email = c.email
+   where ws.owner_profile_id = u.id and ws.staff_invite_code is distinct from c.code;
+
+  select w.id into v_worker from workers w join auth.users u on u.id = w.profile_id
+   where u.email = 'driver2@gentriwasa.test';
+  select id into v_owner2 from auth.users where email = 'owner2@gentriwasa.test';
+  select id into v_admin from auth.users where email = 'admin@gentriwasa.test';
+  if v_worker is null or v_owner2 is null or v_admin is null then
+    raise exception 'Run seed_test_accounts.sql first: driver2, owner2 and admin are needed.';
+  end if;
+
+  if not exists (select 1 from worker_incidents where description like '%[' || v_marker || ']%') then
+    insert into worker_incidents (worker_id, reported_by_profile_id, incident_type, description, amount_involved)
+    values (v_worker, v_owner2, 'Cash shortage',
+            'Remitted 3 deliveries short by a total of PHP 210 and did not explain the difference. [' || v_marker || ']',
+            210.00);
+    update worker_incidents
+       set status = 'confirmed_flag', resolved_by = v_admin, resolved_at = now() - interval '2 days'
+     where description like '%[' || v_marker || ']%';
+  end if;
+end $$;
+
+-- VERIFY -- codes and driver clearance.
+select station_code, station_name, invite_code, staff_invite_code from water_stations order by station_code;
+select u.email, w.clearance_status
+  from workers w join auth.users u on u.id = w.profile_id
+ order by u.email;
+
+
+
+-- =====================================================================
 -- FINAL CHECK -- compare each value with the expected one
 -- =====================================================================
 select 'tables and views in public (expect 53)' as item, count(*)::text as value
@@ -9871,6 +9940,7 @@ union all select 'barangays (expect 33)', count(*)::text from barangays
 union all select 'test login accounts (>= 20)', count(*)::text from auth.users where email like '%@gentriwasa.test'
 union all select 'officer accounts (expect 6)', count(*)::text from memberships where role = 'wasa_admin'
 union all select 'super admins (expect 2)', count(*)::text from memberships where role = 'wasa_superadmin'
+union all select 'flagged drivers (expect 1)', count(*)::text from workers where clearance_status = 'flagged'
 union all select 'stations (expect 3)', count(*)::text from water_stations
 union all select 'publicly listed stations (>= 2)', count(*)::text from public_stations
 union all select 'station products (expect 14)', count(*)::text from station_products

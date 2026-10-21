@@ -1,4 +1,4 @@
--- GENTRI WASA setup -- PART 5 of 5. Run the parts in order,
+-- GENTRI WASA setup -- PART 5 of 6. Run the parts in order,
 -- each once, in the Supabase SQL Editor. (From setup_new_environment.sql.)
 
 create or replace function register_driver_for_station(p_invite_code text, p_full_name text, p_phone_number text, p_vehicle_plate text, p_jug_capacity integer)
@@ -793,7 +793,7 @@ grant execute on function station_order_details(uuid[]) to authenticated;
 
 
 -- =====================================================================
--- STEP 2 of 7 -- ACCOUNTS AND STATIONS  (seed_test_accounts.sql)
+-- STEP 2 of 8 -- ACCOUNTS AND STATIONS  (seed_test_accounts.sql)
 -- =====================================================================
 -- admin@, owner1@ (Buenavista), owner2@ (Navarro Springs), driver1@,
 -- driver2@, customer1@ -- pre-confirmed, stations accredited.
@@ -1029,7 +1029,7 @@ end $$;
 
 
 -- =====================================================================
--- STEP 3 of 7 -- MORE ROLE ACCOUNTS  (seed_role_accounts.sql)
+-- STEP 3 of 8 -- MORE ROLE ACCOUNTS  (seed_role_accounts.sql)
 -- =====================================================================
 -- admin2@, driver3@, driver4@, customer2@, suspended@, owner3@ (station
 -- not yet accredited), superadmin1@, superadmin2@, staff1@.
@@ -1194,7 +1194,7 @@ select u.email, m.role, m.status,
 
 
 -- =====================================================================
--- STEP 4 of 7 -- OFFICER ROLE ACCOUNTS  (seed_officer_accounts.sql)
+-- STEP 4 of 8 -- OFFICER ROLE ACCOUNTS  (seed_officer_accounts.sql)
 -- =====================================================================
 -- compliance1@, workforce1@, content1@, viewer1@ (Officer123!).
 -- =====================================================================
@@ -1275,7 +1275,7 @@ select u.email, m.role, coalesce(m.officer_role, 'officer') as officer_role, m.s
 
 
 -- =====================================================================
--- STEP 5 of 7 -- SAMPLE PRODUCTS  (seed_sample_products.sql)
+-- STEP 5 of 8 -- SAMPLE PRODUCTS  (seed_sample_products.sql)
 -- =====================================================================
 -- What each seeded station sells and for how much, so customers can order.
 -- =====================================================================
@@ -1346,7 +1346,7 @@ select ws.station_name, count(*) as products, min(sp.price) as from_price
 
 
 -- =====================================================================
--- STEP 6 of 7 -- DEMO CONTENT  (seed_demo_content.sql)
+-- STEP 6 of 8 -- DEMO CONTENT  (seed_demo_content.sql)
 -- =====================================================================
 -- Bulletins with reactions and comments, station reviews, events.
 -- =====================================================================
@@ -1497,7 +1497,7 @@ end $$;
 
 
 -- =====================================================================
--- STEP 7 of 7 -- EVALUATION DATA  (seed_evaluation_data.sql)
+-- STEP 7 of 8 -- EVALUATION DATA  (seed_evaluation_data.sql)
 -- =====================================================================
 -- Orders in every live status (one mid-delivery), container balances,
 -- settlements awaiting confirmation, a permit pending review, and a
@@ -1753,26 +1753,28 @@ order by item, detail;
 
 
 -- =====================================================================
--- FINAL CHECK -- compare each value with the expected one
+-- STEP 8 of 8 -- TEST EXTRAS  (seed_test_extras.sql)
 -- =====================================================================
-select 'tables and views in public (expect 53)' as item, count(*)::text as value
-  from information_schema.tables where table_schema = 'public'
-union all select 'app functions (expect 133)', count(*)::text
-  from pg_proc p join pg_namespace s on s.oid = p.pronamespace
- where s.nspname = 'public' and not exists (select 1 from pg_depend d where d.objid = p.oid and d.deptype = 'e')
-union all select 'row security policies (expect 132)', count(*)::text from pg_policies where schemaname in ('public', 'storage')
-union all select 'storage buckets (expect 7)', count(*)::text from storage.buckets
-union all select 'private buckets (expect 3)', count(*)::text from storage.buckets where not public
-union all select 'scheduled jobs (expect 2)', count(*)::text from cron.job
-union all select 'realtime tables (expect 3)', count(*)::text from pg_publication_tables
- where pubname = 'supabase_realtime' and tablename in ('notifications', 'orders', 'workers')
-union all select 'barangays (expect 33)', count(*)::text from barangays
-union all select 'test login accounts (>= 20)', count(*)::text from auth.users where email like '%@gentriwasa.test'
-union all select 'officer accounts (expect 6)', count(*)::text from memberships where role = 'wasa_admin'
-union all select 'super admins (expect 2)', count(*)::text from memberships where role = 'wasa_superadmin'
-union all select 'stations (expect 3)', count(*)::text from water_stations
-union all select 'publicly listed stations (>= 2)', count(*)::text from public_stations
-union all select 'station products (expect 14)', count(*)::text from station_products
-union all select 'orders (> 0)', count(*)::text from orders
-union all select 'bulletins (> 0)', count(*)::text from bulletins
-order by item;
+-- Fixed staff codes, and driver2 flagged through a confirmed incident.
+-- =====================================================================
+
+-- =====================================================================
+-- Finishing touches the test documents rely on (demo/testing only).
+--
+-- 1. Fixed staff codes STAFFBV / STAFFNV / STAFFTJ for Buenavista, Navarro
+--    Springs and Tejero (new stations get a random one), so the documents
+--    can name them.
+-- 2. One flagged driver:
+--
+-- driver2@gentriwasa.test (Ana Cruz, Navarro Springs) gets a confirmed
+-- incident, the way an officer would flag them: the confirm sets her
+-- clearance to flagged association-wide (apply_incident_resolution). The
+-- test cases need one -- a flagged driver can't be assigned, shows up in
+-- the hire check, and can appeal.
+--
+-- driver1 is left cleared: seed_evaluation_data.sql gives driver1 the
+-- delivery that is in progress.
+--
+-- Idempotent: does nothing if the incident is already there. Run after
+-- seed_evaluation_data.sql. DO NOT run this against a production project.
+-- =====================================================================

@@ -28,6 +28,8 @@ PARTS = [
      'Orders in every live status (one mid-delivery), container balances,\n'
      '-- settlements awaiting confirmation, a permit pending review, and a\n'
      '-- disposable account for testing deletion.'),
+    ('TEST EXTRAS', 'seed_test_extras.sql',
+     'Fixed staff codes, and driver2 flagged through a confirmed incident.'),
 ]
 
 HEADER = """-- =====================================================================
@@ -74,6 +76,7 @@ union all select 'barangays (expect 33)', count(*)::text from barangays
 union all select 'test login accounts (>= 20)', count(*)::text from auth.users where email like '%@gentriwasa.test'
 union all select 'officer accounts (expect 6)', count(*)::text from memberships where role = 'wasa_admin'
 union all select 'super admins (expect 2)', count(*)::text from memberships where role = 'wasa_superadmin'
+union all select 'flagged drivers (expect 1)', count(*)::text from workers where clearance_status = 'flagged'
 union all select 'stations (expect 3)', count(*)::text from water_stations
 union all select 'publicly listed stations (>= 2)', count(*)::text from public_stations
 union all select 'station products (expect 14)', count(*)::text from station_products

@@ -1,4 +1,4 @@
--- GENTRI WASA setup -- PART 3 of 5. Run the parts in order,
+-- GENTRI WASA setup -- PART 3 of 6. Run the parts in order,
 -- each once, in the Supabase SQL Editor. (From setup_new_environment.sql.)
 
 create table if not exists bulletin_reports (

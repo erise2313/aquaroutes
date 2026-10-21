@@ -1,4 +1,4 @@
--- GENTRI WASA setup -- PART 4 of 5. Run the parts in order,
+-- GENTRI WASA setup -- PART 4 of 6. Run the parts in order,
 -- each once, in the Supabase SQL Editor. (From setup_new_environment.sql.)
 
 do $$ begin
