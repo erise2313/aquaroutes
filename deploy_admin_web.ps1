@@ -6,8 +6,21 @@
 # skips the public marketing site and only lets wasa_admin sign in.
 # Builds into build/web_admin (a separate output dir from the main site's
 # build/web) so both builds can coexist.
+#
+# Another environment (another Supabase project and Firebase account):
+#   .\deploy_admin_web.ps1 -EnvFile .env.handover -Project gentriwasa -Account gentriwasawebapp@gmail.com
 
-$envContent = Get-Content .env | Where-Object { $_ -match '=' }
+param(
+    [string]$EnvFile = ".env",
+    [string]$Project = "",
+    [string]$Account = ""
+)
+
+if (-not (Test-Path $EnvFile)) {
+    Write-Error "$EnvFile not found"
+    exit 1
+}
+$envContent = Get-Content $EnvFile | Where-Object { $_ -match '=' -and $_ -notmatch '^\s*#' }
 $envMap = @{}
 foreach ($line in $envContent) {
     $parts = $line -split '=', 2
@@ -18,7 +31,7 @@ $supabaseUrl = $envMap['SUPABASE_URL']
 $supabaseAnonKey = $envMap['SUPABASE_ANON_KEY']
 
 if (-not $supabaseUrl -or -not $supabaseAnonKey) {
-    Write-Error "SUPABASE_URL or SUPABASE_ANON_KEY missing from .env"
+    Write-Error "SUPABASE_URL or SUPABASE_ANON_KEY missing from $EnvFile"
     exit 1
 }
 
@@ -28,12 +41,18 @@ $outputDir = Join-Path (Get-Location).Path "build\web_admin"
 $mapDefine = @()
 if ($envMap['MAPTILER_KEY']) { $mapDefine = @("--dart-define=MAPTILER_KEY=$($envMap['MAPTILER_KEY'])") }
 
+# The public site's address (station share links) and this portal's own
+# (links back to it), for environments other than the original.
+$siteDefine = @()
+if ($envMap['PUBLIC_SITE_URL']) { $siteDefine += @("--dart-define=PUBLIC_SITE_URL=$($envMap['PUBLIC_SITE_URL'])") }
+if ($envMap['ADMIN_PORTAL_URL']) { $siteDefine += @("--dart-define=ADMIN_PORTAL_URL=$($envMap['ADMIN_PORTAL_URL'])") }
+
 & "C:\flutter\flutter\bin\flutter.bat" build web --source-maps `
     --dart-define=SUPABASE_URL=$supabaseUrl `
     --dart-define=SUPABASE_ANON_KEY=$supabaseAnonKey `
     --dart-define=PORTAL=admin `
     -o $outputDir `
-    @mapDefine
+    @mapDefine @siteDefine
 
 if ($LASTEXITCODE -ne 0) {
     Write-Error "flutter build web failed"
@@ -59,4 +78,7 @@ $robotsBody = "User-agent: *`nDisallow: /`n"
 $adminSitemap = Join-Path $outputDir "sitemap.xml"
 if (Test-Path $adminSitemap) { Remove-Item $adminSitemap }
 
-firebase deploy --only hosting:admin
+$deployArgs = @()
+if ($Project) { $deployArgs += @("--project", $Project) }
+if ($Account) { $deployArgs += @("--account", $Account) }
+firebase deploy --only hosting:admin @deployArgs

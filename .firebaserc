@@ -22,6 +22,16 @@
           "gentriwasa-eval-admin"
         ]
       }
+    },
+    "gentriwasa": {
+      "hosting": {
+        "main": [
+          "gentriwasa"
+        ],
+        "admin": [
+          "gentriwasa-admin"
+        ]
+      }
     }
   },
   "etags": {}

@@ -9,7 +9,9 @@ import '../utils/csv_download.dart';
 import 'portal/portal.dart';
 
 /// The public site's address. Station pages live under `/stations/<id>`.
-const publicSiteUrl = 'https://gentri-wasa.web.app';
+/// Set per environment at build time (PUBLIC_SITE_URL in the env file the
+/// deploy scripts read); the original site when it isn't given.
+const publicSiteUrl = String.fromEnvironment('PUBLIC_SITE_URL', defaultValue: 'https://gentri-wasa.web.app');
 
 String stationPublicLink(String stationId) => '$publicSiteUrl/stations/$stationId';
 
