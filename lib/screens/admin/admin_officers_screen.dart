@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../constants/admin_palette.dart';
@@ -8,6 +9,7 @@ import '../../widgets/admin_page_header.dart';
 import '../../widgets/admin_status_pill.dart';
 import '../../widgets/confirm_dialog.dart';
 import '../../widgets/error_state.dart';
+import '../../models/officer_role.dart';
 import '../../widgets/portal/portal.dart';
 
 /// Super admins only: the association's officers and super admins.
@@ -49,7 +51,7 @@ class _AdminOfficersScreenState extends State<AdminOfficersScreen> {
     try {
       final rows = await _supabase
           .from('memberships')
-          .select('id, profile_id, role, status, profiles(full_name, phone_number)')
+          .select('id, profile_id, role, status, officer_role, profiles(full_name, phone_number)')
           .inFilter('role', ['wasa_superadmin', 'wasa_admin'])
           .order('role', ascending: false);
       if (mounted) {
@@ -81,17 +83,184 @@ class _AdminOfficersScreenState extends State<AdminOfficersScreen> {
     }
   }
 
+  /// Picks an officer role, explaining what each may change.
+  Future<OfficerRole?> _pickRole({required String title, OfficerRole? current}) {
+    var selected = current ?? OfficerRole.officer;
+    return showDialog<OfficerRole>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Text(title),
+          content: SingleChildScrollView(
+            child: RadioGroup<OfficerRole>(
+              groupValue: selected,
+              onChanged: (v) => setDialogState(() => selected = v ?? selected),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  for (final role in OfficerRole.values)
+                    RadioListTile<OfficerRole>(
+                      value: role,
+                      contentPadding: EdgeInsets.zero,
+                      title: Text(role.label),
+                      subtitle: Text(role.description),
+                    ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')),
+            FilledButton(onPressed: () => Navigator.pop(dialogContext, selected), child: const Text('Choose')),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// A new hire: the account is made here, with a temporary password shown
+  /// once. They must set their own password at first sign-in.
+  Future<void> _createOfficer() async {
+    final nameController = TextEditingController();
+    final emailController = TextEditingController();
+    var role = OfficerRole.officer;
+    String? error;
+    final submitted = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Create an officer account'),
+          content: SizedBox(
+            width: 460,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const Text('For a new hire. You get a temporary password to give them; they set their own the first time they sign in.'),
+                  const SizedBox(height: 12),
+                  TextField(controller: nameController, decoration: const InputDecoration(labelText: 'Full name')),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: emailController,
+                    keyboardType: TextInputType.emailAddress,
+                    decoration: const InputDecoration(labelText: 'Email address'),
+                  ),
+                  const SizedBox(height: 12),
+                  OutlinedButton.icon(
+                    onPressed: () async {
+                      final picked = await _pickRole(title: 'Officer role', current: role);
+                      if (picked != null) setDialogState(() => role = picked);
+                    },
+                    icon: const Icon(Icons.badge_outlined),
+                    label: Text('Role: ${role.label}'),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(role.description, style: Theme.of(context).textTheme.bodySmall),
+                  if (error != null) ...[
+                    const SizedBox(height: 8),
+                    Text(error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+                  ],
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('Cancel')),
+            FilledButton(
+              onPressed: () {
+                if (nameController.text.trim().length < 2 || !emailController.text.contains('@')) {
+                  setDialogState(() => error = 'Enter their full name and email address.');
+                  return;
+                }
+                Navigator.pop(dialogContext, true);
+              },
+              child: const Text('Create account'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (submitted != true || !mounted) return;
+
+    setState(() => _busy = true);
+    try {
+      final response = await _supabase.functions.invoke('create-officer', body: {
+        'email': emailController.text.trim(),
+        'full_name': nameController.text.trim(),
+        'officer_role': role.key,
+      });
+      final data = response.data as Map;
+      if (!mounted) return;
+      await _showTemporaryPassword(data['email'] as String, data['temporary_password'] as String, role);
+      await _load();
+    } on FunctionException catch (e) {
+      final details = e.details;
+      final message = details is Map && details['error'] is String
+          ? details['error'] as String
+          : 'Could not create the account (error ${e.status}).';
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(describeError(e))));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  /// Shown once: the password is not stored anywhere it can be read back.
+  Future<void> _showTemporaryPassword(String email, String password, OfficerRole role) {
+    return showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Account created'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('$email is now a ${role.label.toLowerCase()}.'),
+            const SizedBox(height: 12),
+            const Text('Temporary password:'),
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                Expanded(
+                  child: SelectableText(
+                    password,
+                    style: Theme.of(dialogContext).textTheme.headlineSmall?.copyWith(letterSpacing: 1.5),
+                  ),
+                ),
+                IconButton(
+                  tooltip: 'Copy password',
+                  icon: const Icon(Icons.copy_outlined),
+                  onPressed: () => Clipboard.setData(ClipboardData(text: password)),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'Give it to them in person or by private message. This is the only time it is shown. '
+              'They sign in at the admin portal and must choose their own password straight away.',
+            ),
+          ],
+        ),
+        actions: [FilledButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Done'))],
+      ),
+    );
+  }
+
+  /// Someone who already has an account (for example a customer account).
   Future<void> _addOfficer() async {
     final emailController = TextEditingController();
     final email = await showDialog<String>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Add an officer'),
+        title: const Text('Promote an existing account'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('The person registers in the app first (as a customer is fine). Enter the email they used.'),
+            const Text('For someone who already has a customer account. Enter the email they signed up with.'),
             const SizedBox(height: 12),
             TextField(
               controller: emailController,
@@ -118,7 +287,7 @@ class _AdminOfficersScreenState extends State<AdminOfficersScreen> {
     }
     if (!mounted) return;
     if (found.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('No account uses $email. Ask them to register first.')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('No account uses $email. Use "Create officer account" instead.')));
       return;
     }
     final account = found.first;
@@ -128,18 +297,30 @@ class _AdminOfficersScreenState extends State<AdminOfficersScreen> {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${name ?? email} is already an officer.')));
       return;
     }
-    final ok = await showConfirmDialog(
-      context,
-      title: 'Make ${name == null || name.isEmpty ? email : name} an officer?',
-      message: 'They will be able to review permits, decide worker incidents, moderate the bulletin and edit the '
-          'website. Station owners, staff and drivers can\'t be officers -- they need a separate account.',
-      confirmLabel: 'Make officer',
-      isDestructive: false,
-    );
-    if (!ok) return;
+    final role = await _pickRole(title: 'Make ${name == null || name.isEmpty ? email : name} an officer');
+    if (role == null) return;
     await _run(
-      () => _supabase.rpc('superadmin_set_role', params: {'p_profile': account['profile_id'], 'p_role': 'wasa_admin'}),
-      '${name ?? email} is now an officer.',
+      () async {
+        await _supabase.rpc('superadmin_set_role', params: {
+          'p_profile': account['profile_id'],
+          'p_role': role == OfficerRole.superadmin ? 'wasa_superadmin' : 'wasa_admin',
+        });
+        if (role != OfficerRole.superadmin) {
+          await _supabase.rpc('superadmin_set_officer_role', params: {'p_profile': account['profile_id'], 'p_officer_role': role.key});
+        }
+      },
+      '${name ?? email} is now a ${role.label.toLowerCase()}.',
+    );
+  }
+
+  Future<void> _changeOfficerRole(Map<String, dynamic> m) async {
+    final name = (m['profiles']?['full_name'] as String?) ?? 'This officer';
+    final current = OfficerRole.fromMembership(m['role'] as String?, m['officer_role'] as String?);
+    final role = await _pickRole(title: 'Role for $name', current: current);
+    if (role == null || role == current) return;
+    await _run(
+      () => _supabase.rpc('superadmin_set_officer_role', params: {'p_profile': m['profile_id'], 'p_officer_role': role.key}),
+      '$name is now a ${role.label.toLowerCase()}.',
     );
   }
 
@@ -196,9 +377,13 @@ class _AdminOfficersScreenState extends State<AdminOfficersScreen> {
           subtitle: 'Who can act for WASA, and with what powers',
           actions: [
             FilledButton.icon(
-              onPressed: _busy ? null : _addOfficer,
+              onPressed: _busy ? null : _createOfficer,
               icon: const Icon(Icons.person_add_alt_1_outlined),
-              label: const Text('Add officer'),
+              label: const Text('Create officer account'),
+            ),
+            OutlinedButton(
+              onPressed: _busy ? null : _addOfficer,
+              child: const Text('Promote an existing account'),
             ),
           ],
         ),
@@ -222,6 +407,7 @@ class _AdminOfficersScreenState extends State<AdminOfficersScreen> {
   Widget _buildTile(Map<String, dynamic> m) {
     final palette = AdminPalette.of(context);
     final isSuper = m['role'] == 'wasa_superadmin';
+    final officerRole = OfficerRole.fromMembership(m['role'] as String?, m['officer_role'] as String?);
     final active = m['status'] == 'active';
     final isSelf = m['profile_id'] == _supabase.auth.currentUser?.id;
     final name = (m['profiles']?['full_name'] as String?) ?? 'Unnamed';
@@ -241,7 +427,7 @@ class _AdminOfficersScreenState extends State<AdminOfficersScreen> {
             children: [
               Text(name, style: TextStyle(fontWeight: FontWeight.w700, color: palette.ink)),
               AdminStatusPill(
-                label: isSuper ? 'SUPER ADMIN' : 'OFFICER',
+                label: (officerRole?.label ?? 'Officer').toUpperCase(),
                 color: isSuper ? AppColors.seal : AppColors.primary,
                 icon: isSuper ? Icons.workspace_premium_outlined : Icons.verified_user_outlined,
               ),
@@ -257,8 +443,8 @@ class _AdminOfficersScreenState extends State<AdminOfficersScreen> {
               runSpacing: 8,
               children: [
                 OutlinedButton(
-                  onPressed: _busy ? null : () => _setRole(m, isSuper ? 'wasa_admin' : 'wasa_superadmin'),
-                  child: Text(isSuper ? 'Make officer only' : 'Make super admin'),
+                  onPressed: _busy ? null : () => _changeOfficerRole(m),
+                  child: const Text('Change role'),
                 ),
                 OutlinedButton(
                   onPressed: _busy ? null : () => _toggleSuspend(m),

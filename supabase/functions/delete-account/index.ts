@@ -80,18 +80,22 @@ Deno.serve(async (req) => {
   // a station owner and must go through the admin-reviewed request.
   const { data: memberships, error: membershipError } = await admin
     .from("memberships")
-    .select("role, status")
+    .select("role, status, officer_role")
     .eq("profile_id", caller.id);
   if (membershipError) return json({ error: "Could not check your account." }, 500);
   // Super admins are officers too. Checking wasa_admin alone refused them
   // ("Only WASA admin can delete another account").
+  // Deleting accounts is the "accounts" area: super admins and full
+  // officers only, not a compliance, workforce, content or viewer officer
+  // (supabase/patch_officer_roles.sql).
   const callerIsAdmin = (memberships ?? []).some(
-    (m) => (m.role === "wasa_admin" || m.role === "wasa_superadmin") && m.status === "active",
+    (m) => m.status === "active" &&
+      (m.role === "wasa_superadmin" || (m.role === "wasa_admin" && (m.officer_role ?? "officer") === "officer")),
   );
 
   let profileId: string;
   if (requested !== null && requested !== caller.id) {
-    if (!callerIsAdmin) return json({ error: "Only WASA admin can delete another account." }, 403);
+    if (!callerIsAdmin) return json({ error: "Only a super admin or a full officer can delete another account." }, 403);
     const { data: pending, error: pendingError } = await admin
       .from("account_deletion_requests")
       .select("id")

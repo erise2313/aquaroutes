@@ -21,6 +21,7 @@ import '../../widgets/web_seal.dart';
 import '../../utils/error_text.dart';
 import '../../constants/admin_palette.dart';
 import '../../widgets/portal/fill_grid.dart';
+import '../../widgets/officer_role_note.dart';
 import '../../utils/log.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
@@ -230,6 +231,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       child: ListView(
                         padding: density.pagePadding,
                         children: [
+                          const OfficerRoleNote(),
                           PortalSection(
                             title: 'Needs your attention',
                             subtitle: 'Queues that stay open until somebody works them',

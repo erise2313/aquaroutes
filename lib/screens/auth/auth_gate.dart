@@ -20,6 +20,7 @@ import 'login_screen.dart';
 import 'no_membership_screen.dart';
 import '../../constants/portal_build.dart';
 import '../help/first_run_tour.dart';
+import 'first_password_gate.dart';
 import '../staff/staff_navigation.dart';
 
 /// Root routing widget. Restores an existing session on relaunch (the old
@@ -99,7 +100,8 @@ class AuthGate extends ConsumerWidget {
             switch (membership.role) {
               case AppRole.wasaAdmin:
               case AppRole.wasaSuperadmin:
-                return withTour(const AdminNavigation());
+                // A new officer replaces their temporary password first.
+                return FirstPasswordGate(child: withTour(const AdminNavigation()));
               case AppRole.stationStaff:
                 // Website and app alike: dispatch is done at a counter as
                 // often as on a phone.

@@ -59,6 +59,9 @@ class Membership {
   final String? stationId;
   final String status;
 
+  /// For officers: what they may change (models/officer_role.dart).
+  final String? officerRole;
+
   const Membership({
     required this.id,
     required this.profileId,
@@ -66,6 +69,7 @@ class Membership {
     required this.role,
     this.stationId,
     required this.status,
+    this.officerRole,
   });
 
   bool get isActive => status == 'active';
@@ -78,6 +82,7 @@ class Membership {
       role: appRoleFromString(map['role'] as String),
       stationId: map['station_id'] as String?,
       status: map['status'] as String? ?? 'active',
+      officerRole: map['officer_role'] as String?,
     );
   }
 }
