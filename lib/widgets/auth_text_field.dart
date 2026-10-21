@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 /// Shared styled field for the auth screens (login/register), with a
 /// built-in show/hide toggle for password fields -- previously every
@@ -24,6 +25,9 @@ class AuthTextField extends StatefulWidget {
     this.onSubmitted,
     this.validator,
     this.autofillHints,
+    this.textCapitalization = TextCapitalization.none,
+    this.inputFormatters,
+    this.helperText,
   });
 
   final TextEditingController controller;
@@ -35,6 +39,9 @@ class AuthTextField extends StatefulWidget {
   final void Function(String)? onSubmitted;
   final String? Function(String?)? validator;
   final Iterable<String>? autofillHints;
+  final TextCapitalization textCapitalization;
+  final List<TextInputFormatter>? inputFormatters;
+  final String? helperText;
 
   @override
   State<AuthTextField> createState() => _AuthTextFieldState();
@@ -55,11 +62,15 @@ class _AuthTextFieldState extends State<AuthTextField> {
       onFieldSubmitted: widget.onSubmitted,
       validator: widget.validator,
       autofillHints: widget.autofillHints,
+      textCapitalization: widget.textCapitalization,
+      inputFormatters: widget.inputFormatters,
       // Pinned to the scheme's own text colour so it can never inherit an
       // ink that the fill below doesn't suit.
       style: TextStyle(color: scheme.onSurface),
       decoration: InputDecoration(
         labelText: widget.label,
+        helperText: widget.helperText,
+        helperMaxLines: 3,
         labelStyle: TextStyle(color: scheme.onSurfaceVariant),
         prefixIcon: Icon(widget.icon, color: scheme.onSurfaceVariant),
         suffixIcon: widget.isPassword

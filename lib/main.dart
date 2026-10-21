@@ -97,7 +97,7 @@ class _MyAppState extends ConsumerState<MyApp> {
         darkTheme: WebTheme.dark,
         themeMode: webMode.material,
         routerConfig: _router,
-        builder: (context, child) => AppTextScale(child: child ?? const SizedBox.shrink()),
+        builder: (context, child) => AppTextScale(child: SnackBarsAboveDialogs(child: child ?? const SizedBox.shrink())),
       );
     }
 
@@ -112,8 +112,31 @@ class _MyAppState extends ConsumerState<MyApp> {
       theme: AppTheme.light,
       darkTheme: AppTheme.dark,
       themeMode: appMode.material,
-      builder: (context, child) => AppTextScale(child: child ?? const SizedBox.shrink()),
+      builder: (context, child) => AppTextScale(child: SnackBarsAboveDialogs(child: child ?? const SizedBox.shrink())),
       home: const AuthGate(),
+    );
+  }
+}
+
+/// Puts SnackBars above dialogs.
+///
+/// A message raised while a dialog is open ("Choose what went wrong",
+/// "Could not save") showed on the page's Scaffold, underneath the dialog
+/// and its dimmed backdrop, where nobody could read it (APP-333). A
+/// ScaffoldMessenger shows SnackBars only on the outermost Scaffold, so one
+/// placed around the whole navigator -- dialogs included -- draws every
+/// SnackBar on top. It paints nothing itself.
+class SnackBarsAboveDialogs extends StatelessWidget {
+  const SnackBarsAboveDialogs({super.key, required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      resizeToAvoidBottomInset: false,
+      body: child,
     );
   }
 }

@@ -20,6 +20,7 @@ import '../../widgets/wave_divider.dart';
 import '../../widgets/web_seal.dart';
 import '../app_route.dart';
 import '../../services/station_names.dart';
+import '../../utils/data_changes.dart';
 import 'quick_order_screen.dart';
 
 /// The customer's own station ("suki"): the one they've had the most
@@ -84,9 +85,19 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
   /// first frame.
   bool _statsRevealed = false;
 
+  /// A review changed a station's rating: show the new one.
+  void _onStationsChanged() => _load();
+
+  @override
+  void dispose() {
+    DataChanges.stations.removeListener(_onStationsChanged);
+    super.dispose();
+  }
+
   @override
   void initState() {
     super.initState();
+    DataChanges.stations.addListener(_onStationsChanged);
     _load();
   }
 

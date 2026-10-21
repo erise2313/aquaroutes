@@ -44,14 +44,34 @@ ThemeData appThemeDataFor(AppThemeMode mode, Brightness platformBrightness) {
 
 const _prefsKey = 'app_theme_mode';
 
-class AppThemeNotifier extends Notifier<AppThemeMode> {
+class AppThemeNotifier extends Notifier<AppThemeMode> with WidgetsBindingObserver {
   @override
   AppThemeMode build() {
     // Starts on the phone's setting and loads any stored override right
     // after; reading preferences is async and blocking the first frame on
     // it would be worse than a brief default.
     _restore();
+    final binding = WidgetsBinding.instance;
+    binding.addObserver(this);
+    ref.onDispose(() => binding.removeObserver(this));
     return AppThemeMode.system;
+  }
+
+  /// The phone's theme changed while the app was open. The latest change
+  /// wins: the app follows the phone again. A light/dark choice made with
+  /// the app-bar toggle used to stick forever, so testers who had tapped it
+  /// once found the app ignoring the phone (APP-299, APP-303).
+  @override
+  void didChangePlatformBrightness() {
+    if (state != AppThemeMode.system) set(AppThemeMode.system);
+  }
+
+  /// Light or dark from the app-bar toggle. Choosing what the phone already
+  /// shows means "follow the phone", so that is what is stored.
+  Future<void> choose(Brightness wanted) {
+    final phone = WidgetsBinding.instance.platformDispatcher.platformBrightness;
+    if (wanted == phone) return set(AppThemeMode.system);
+    return set(wanted == Brightness.dark ? AppThemeMode.dark : AppThemeMode.light);
   }
 
   Future<void> _restore() async {

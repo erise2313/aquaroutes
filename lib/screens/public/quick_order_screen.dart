@@ -32,6 +32,7 @@ import 'order_confirmation_screen.dart';
 import '../app_route.dart';
 import '../../widgets/app_map_tiles.dart';
 import '../../utils/error_text.dart';
+import '../../utils/data_changes.dart';
 import 'package:aquaroute/constants/brand_tokens.dart';
 
 /// Most a single order may contain. Mirrors v_max_qty in insert_quick_order
@@ -160,6 +161,7 @@ class _QuickOrderScreenState extends ConsumerState<QuickOrderScreen> {
   @override
   void initState() {
     super.initState();
+    DataChanges.addresses.addListener(_onAddressesChanged);
     if (Supabase.instance.client.auth.currentUser != null) {
       _initializeForSession();
     } else {
@@ -187,8 +189,14 @@ class _QuickOrderScreenState extends ConsumerState<QuickOrderScreen> {
     });
   }
 
+  /// An address saved or changed on the Addresses screen.
+  void _onAddressesChanged() {
+    if (_hasInitializedForSession) _loadAddresses();
+  }
+
   @override
   void dispose() {
+    DataChanges.addresses.removeListener(_onAddressesChanged);
     _phoneController.dispose();
     _jugCountController.dispose();
     super.dispose();

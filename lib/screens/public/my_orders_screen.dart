@@ -18,6 +18,7 @@ import 'quick_order_screen.dart';
 import '../app_route.dart';
 import '../../widgets/cancel_order_dialog.dart';
 import '../../services/station_names.dart';
+import '../../utils/data_changes.dart';
 import '../../utils/error_text.dart';
 
 /// Authenticated customer's persistent order history -- the real fix for
@@ -307,6 +308,8 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
                           rating: rating,
                           comment: commentController.text.trim().isEmpty ? null : commentController.text.trim(),
                         );
+                        // The station's rating on the map and home tabs.
+                        DataChanges.stationsChanged();
                         if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Thanks for your review!')));
                       } catch (e) {
                         if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not submit review. ${describeError(e)}')));

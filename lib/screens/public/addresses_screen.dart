@@ -11,6 +11,7 @@ import '../../widgets/custom_map_marker.dart';
 import '../../widgets/error_state.dart';
 import '../app_route.dart';
 import '../../widgets/trash_note.dart';
+import '../../utils/data_changes.dart';
 import '../../utils/error_text.dart';
 
 /// A customer's saved delivery addresses. Ordering used to mean dropping a
@@ -63,7 +64,10 @@ class _AddressesScreenState extends State<AddressesScreen> {
       context,
       appRoute(AddressEditorScreen(existing: existing, isFirst: _addresses.isEmpty)),
     );
-    if (saved == true) _load();
+    if (saved == true) {
+      DataChanges.addressesChanged();
+      _load();
+    }
   }
 
   Future<void> _delete(CustomerAddress address) async {
@@ -76,6 +80,7 @@ class _AddressesScreenState extends State<AddressesScreen> {
     if (!confirmed) return;
     try {
       await _service.deleteAddress(address.id);
+      DataChanges.addressesChanged();
       _load();
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not remove it. ${describeError(e)}')));
@@ -85,6 +90,7 @@ class _AddressesScreenState extends State<AddressesScreen> {
   Future<void> _makeDefault(CustomerAddress address) async {
     try {
       await _service.setDefault(address.id);
+      DataChanges.addressesChanged();
       _load();
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not update it. ${describeError(e)}')));

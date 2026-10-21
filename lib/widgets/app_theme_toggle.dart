@@ -11,8 +11,8 @@ import '../providers/app_theme_provider.dart';
 /// public website's toggle in the nav bar -- disappears the moment they sign
 /// in, leaving a station owner in a dark portal with no visible way back.
 ///
-/// Tapping moves between light and dark explicitly; "Follow phone" stays
-/// available in Account settings for anyone who wants it back.
+/// Tapping moves between light and dark. Landing on the phone's own theme
+/// means following the phone again; Account settings has the full choice.
 class AppThemeToggle extends ConsumerWidget {
   const AppThemeToggle({super.key, this.color});
 
@@ -27,8 +27,8 @@ class AppThemeToggle extends ConsumerWidget {
     return IconButton(
       tooltip: isDark ? 'Switch to light mode' : 'Switch to dark mode',
       icon: Icon(isDark ? Icons.light_mode_outlined : Icons.dark_mode_outlined, color: color),
-      onPressed: () => ref.read(appThemeProvider.notifier).set(
-            isDark ? AppThemeMode.light : AppThemeMode.dark,
+      onPressed: () => ref.read(appThemeProvider.notifier).choose(
+            isDark ? Brightness.light : Brightness.dark,
           ),
     );
   }

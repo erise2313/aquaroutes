@@ -23,6 +23,7 @@ import '../app_route.dart';
 import 'quick_order_screen.dart';
 import '../../widgets/app_map_tiles.dart';
 import '../../utils/error_text.dart';
+import '../../utils/data_changes.dart';
 import '../../utils/log.dart';
 
 /// Public, no-login interactive map/list of every WASA-verified station.
@@ -61,9 +62,31 @@ class _StationMapScreenState extends State<StationMapScreen> {
 
   static const _generalTriasCenter = LatLng(14.3868, 120.8817);
 
+  /// Where the map should open: on the customer when they are in or near
+  /// General Trias, otherwise on General Trias itself -- every station is
+  /// there, and a tester at home in another town saw an empty map of their
+  /// own street (APP-031).
+  static LatLng _centreFor(double? lat, double? lng) {
+    if (lat == null || lng == null) return _generalTriasCenter;
+    final here = LatLng(lat, lng);
+    const nearKm = 15.0;
+    final km = const Distance().as(LengthUnit.Kilometer, here, _generalTriasCenter);
+    return km <= nearKm ? here : _generalTriasCenter;
+  }
+
+  /// A review changed a station's rating: show the new one.
+  void _onStationsChanged() => _load();
+
+  @override
+  void dispose() {
+    DataChanges.stations.removeListener(_onStationsChanged);
+    super.dispose();
+  }
+
   @override
   void initState() {
     super.initState();
+    DataChanges.stations.addListener(_onStationsChanged);
     _filter = widget.waterTypeFilter;
     _load();
   }
@@ -168,7 +191,7 @@ class _StationMapScreenState extends State<StationMapScreen> {
     // view is showing instead), which is harmless: mapCenter in build() then
     // centres it correctly the next time the map is built.
     try {
-      _mapController.move(LatLng(position.latitude, position.longitude), 13);
+      _mapController.move(_centreFor(position.latitude, position.longitude), 13);
     } catch (_) {}
   }
 
@@ -191,7 +214,7 @@ class _StationMapScreenState extends State<StationMapScreen> {
   @override
   Widget build(BuildContext context) {
     final filtered = _filteredStations;
-    final mapCenter = _userLat != null && _userLng != null ? LatLng(_userLat!, _userLng!) : _generalTriasCenter;
+    final mapCenter = _centreFor(_userLat, _userLng);
 
     return Scaffold(
       appBar: AppBar(

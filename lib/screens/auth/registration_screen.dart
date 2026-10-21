@@ -14,6 +14,9 @@ import '../merchant/location_picker_screen.dart';
 import '../web/privacy_policy_screen.dart';
 import '../../utils/log.dart';
 import '../../utils/error_text.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/services.dart';
+import '../../utils/jug_capacity.dart';
 import 'package:aquaroute/constants/brand_tokens.dart';
 
 /// Self-registration for the three roles that can sign themselves up:
@@ -95,7 +98,8 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
 
   // Generates a random 6-character invite code for a new station.
   String _generateInviteCode() {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    // No 0/O or 1/I: they look alike, and drivers type these codes in.
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
     final rnd = Random();
     return String.fromCharCodes(Iterable.generate(6, (_) => chars.codeUnitAt(rnd.nextInt(chars.length))));
   }
@@ -149,6 +153,21 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
       // have the RPC silently applied to the old, still-signed-in identity.
       final currentSessionEmail = supabase.auth.currentSession?.user.email;
       final isRetryOfSameAccount = currentSessionEmail != null && currentSessionEmail == _emailController.text.trim();
+
+      // The retry is only for an account whose role was never linked. One
+      // that already has a role is simply an existing account: treating it
+      // as a retry let someone "register" an email already in use and land
+      // on the home page (APP-173).
+      if (isRetryOfSameAccount) {
+        final existing = await supabase
+            .from('memberships')
+            .select('id')
+            .eq('profile_id', supabase.auth.currentUser!.id)
+            .limit(1);
+        if (existing.isNotEmpty) {
+          throw const AuthException('This email already has an account. Log in instead.');
+        }
+      }
 
       if (!isRetryOfSameAccount) {
         final res = await supabase.auth.signUp(
@@ -431,11 +450,13 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
           borderSide: BorderSide(color: scheme.primary, width: 2),
         ),
       ),
-      items: const [
-        DropdownMenuItem(value: 'station_owner', child: Text("Water Station Owner")),
-        DropdownMenuItem(value: 'driver', child: Text("Driver / Helper")),
-        DropdownMenuItem(value: 'station_staff', child: Text("Station Staff (counter / dispatch)")),
-        DropdownMenuItem(value: 'public_consumer', child: Text("Resident / Customer Account")),
+      // Customers and drivers use the mobile app only, so the website
+      // offers just the station accounts.
+      items: [
+        const DropdownMenuItem(value: 'station_owner', child: Text("Water Station Owner")),
+        if (!kIsWeb) const DropdownMenuItem(value: 'driver', child: Text("Driver / Helper")),
+        const DropdownMenuItem(value: 'station_staff', child: Text("Station Staff (counter / dispatch)")),
+        if (!kIsWeb) const DropdownMenuItem(value: 'public_consumer', child: Text("Resident / Customer Account")),
       ],
       onChanged: (String? newValue) {
         if (newValue != null) {
@@ -597,6 +618,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
           label: "Station Staff Code",
           icon: Icons.vpn_key,
           textInputAction: TextInputAction.next,
+          textCapitalization: TextCapitalization.characters,
           validator: (v) => _requiredField(v, 'the staff code from the station owner'),
         ),
         const SizedBox(height: 8),
@@ -645,6 +667,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                 label: "Enter Station Invite Code",
                 icon: Icons.numbers,
                 textInputAction: TextInputAction.next,
+                textCapitalization: TextCapitalization.characters,
                 validator: (v) => _requiredField(v, 'the station invite code'),
               ),
             ],
@@ -671,7 +694,9 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                 icon: Icons.scale,
                 keyboardType: TextInputType.number,
                 textInputAction: TextInputAction.next,
-                validator: (v) => _requiredField(v, 'the jug capacity'),
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                helperText: '1 to $kMaxJugCapacity',
+                validator: jugCapacityError,
               ),
             ),
           ],

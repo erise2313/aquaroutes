@@ -16,7 +16,10 @@ class StationService {
   }
 
   Future<List<PublicStation>> fetchPublicStations() async {
-    final rows = await _supabase.client.from('public_stations').select();
+    // Offline, the request could hang for minutes, so the Map tab sat on a
+    // blank loading screen with no Retry (APP-306/307). A time limit turns
+    // that into the screen's error message and Retry button.
+    final rows = await _supabase.client.from('public_stations').select().timeout(const Duration(seconds: 15));
     return rows.map((r) => PublicStation.fromMap(r)).toList();
   }
 

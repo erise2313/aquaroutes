@@ -41,6 +41,12 @@ class NotificationService {
     return _supabase.client.from('notifications').update({'is_read': true}).eq('id', id);
   }
 
+  /// Removes one notification from the person's own inbox (RLS allows
+  /// deleting only your own rows).
+  Future<void> delete(String id) {
+    return _supabase.client.from('notifications').delete().eq('id', id);
+  }
+
   Future<void> markAllRead() async {
     final userId = _supabase.client.auth.currentUser?.id;
     if (userId == null) return;

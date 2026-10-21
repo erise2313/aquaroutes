@@ -83,7 +83,11 @@ Deno.serve(async (req) => {
     .select("role, status")
     .eq("profile_id", caller.id);
   if (membershipError) return json({ error: "Could not check your account." }, 500);
-  const callerIsAdmin = (memberships ?? []).some((m) => m.role === "wasa_admin" && m.status === "active");
+  // Super admins are officers too. Checking wasa_admin alone refused them
+  // ("Only WASA admin can delete another account").
+  const callerIsAdmin = (memberships ?? []).some(
+    (m) => (m.role === "wasa_admin" || m.role === "wasa_superadmin") && m.status === "active",
+  );
 
   let profileId: string;
   if (requested !== null && requested !== caller.id) {

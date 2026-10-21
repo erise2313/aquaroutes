@@ -74,39 +74,47 @@ class AdminFilterBar extends StatelessWidget {
           ),
           for (final group in filters) ...[
             const SizedBox(height: 10),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.only(right: 10, top: 2),
-                  child: Text(
-                    group.label,
-                    style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      color: AdminPalette.of(context).ink.withValues(alpha: 0.7),
-                    ),
-                  ),
+            // Label beside the chips on a wide screen; above them on a
+            // phone, where a label column squeezed the chips into one per
+            // line and left the label floating beside them.
+            LayoutBuilder(builder: (context, constraints) {
+              final label = Text(
+                group.label,
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
-                Expanded(
-                  child: Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: group.options.entries
-                        .map((e) => ChoiceChip(
-                              label: Text(e.value),
-                              selected: group.selected == e.key,
-                              onSelected: (_) => group.onChanged(e.key),
-                              selectedColor: AdminTheme.harborBlue.withValues(alpha: 0.16),
-                              labelStyle: TextStyle(
-                                fontWeight: group.selected == e.key ? FontWeight.w700 : FontWeight.w500,
-                                color: AdminPalette.of(context).ink,
-                              ),
-                            ))
-                        .toList(),
-                  ),
-                ),
-              ],
-            ),
+              );
+              final chips = Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: group.options.entries
+                    .map((e) => ChoiceChip(
+                          label: Text(e.value),
+                          selected: group.selected == e.key,
+                          onSelected: (_) => group.onChanged(e.key),
+                          selectedColor: AdminTheme.harborBlue.withValues(alpha: 0.16),
+                          labelStyle: TextStyle(
+                            fontWeight: group.selected == e.key ? FontWeight.w700 : FontWeight.w500,
+                            color: AdminPalette.of(context).ink,
+                          ),
+                        ))
+                    .toList(),
+              );
+              if (constraints.maxWidth < 560) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [label, const SizedBox(height: 6), chips],
+                );
+              }
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Padding(padding: const EdgeInsets.only(right: 10, top: 2), child: label),
+                  Expanded(child: chips),
+                ],
+              );
+            }),
           ],
           if (resultSummary != null)
             Padding(

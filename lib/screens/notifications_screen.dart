@@ -13,8 +13,17 @@ import '../utils/error_text.dart';
 /// The in-app inbox, shared by every portal (the bell in each app bar opens
 /// it). Rows come from database triggers via Realtime, so this screen only
 /// displays them and marks them read.
-class NotificationsScreen extends ConsumerWidget {
+class NotificationsScreen extends ConsumerStatefulWidget {
   const NotificationsScreen({super.key});
+
+  @override
+  ConsumerState<NotificationsScreen> createState() => _NotificationsScreenState();
+}
+
+class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
+  /// Deleted here, hidden at once: a swiped-away row must leave the list in
+  /// the same frame, before the live stream reports the delete.
+  final _removed = <String>{};
 
   /// Where a notification leads, which depends on who is reading it: a
   /// customer's orders live in My Orders, an owner's in the station's
@@ -32,7 +41,7 @@ class NotificationsScreen extends ConsumerWidget {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final notificationsAsync = ref.watch(notificationsProvider);
     final role = ref.watch(currentMembershipProvider).value?.role;
     final service = ref.watch(notificationServiceProvider);
@@ -57,7 +66,8 @@ class NotificationsScreen extends ConsumerWidget {
             child: Text('Could not load your notifications. ${describeError(e)}', textAlign: TextAlign.center),
           ),
         ),
-        data: (notifications) {
+        data: (all) {
+          final notifications = [for (final n in all) if (!_removed.contains(n.id)) n];
           if (notifications.isEmpty) {
             return Center(
               child: Padding(
@@ -86,7 +96,35 @@ class NotificationsScreen extends ConsumerWidget {
             itemBuilder: (context, index) {
               final notification = notifications[index];
               final destination = _destinationFor(notification, role);
-              return ListTile(
+              Future<void> remove() async {
+                setState(() => _removed.add(notification.id));
+                try {
+                  await service.delete(notification.id);
+                } catch (e) {
+                  if (mounted) setState(() => _removed.remove(notification.id));
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not delete. ${describeError(e)}')));
+                  }
+                }
+              }
+
+              // Swipe either way, or the bin button, removes it.
+              return Dismissible(
+                key: ValueKey(notification.id),
+                onDismissed: (_) => remove(),
+                background: Container(
+                  color: Theme.of(context).colorScheme.errorContainer,
+                  alignment: Alignment.centerLeft,
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Icon(Icons.delete_outline, color: Theme.of(context).colorScheme.onErrorContainer),
+                ),
+                secondaryBackground: Container(
+                  color: Theme.of(context).colorScheme.errorContainer,
+                  alignment: Alignment.centerRight,
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Icon(Icons.delete_outline, color: Theme.of(context).colorScheme.onErrorContainer),
+                ),
+                child: ListTile(
                 leading: Icon(
                   switch (notification.category) {
                     'permit' => Icons.folder_shared_outlined,
@@ -108,15 +146,25 @@ class NotificationsScreen extends ConsumerWidget {
                       : '${notification.body}\n${notificationAge(notification.createdAt)}',
                 ),
                 isThreeLine: notification.body != null,
-                trailing: notification.isRead
-                    ? null
-                    : Icon(Icons.circle, size: 10, color: Theme.of(context).colorScheme.primary),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (!notification.isRead)
+                      Icon(Icons.circle, size: 10, color: Theme.of(context).colorScheme.primary, semanticLabel: 'Unread'),
+                    IconButton(
+                      icon: const Icon(Icons.delete_outline),
+                      tooltip: 'Delete notification',
+                      onPressed: remove,
+                    ),
+                  ],
+                ),
                 onTap: () {
                   if (!notification.isRead) service.markRead(notification.id);
                   if (destination != null) {
                     Navigator.push(context, appRoute(destination));
                   }
                 },
+                ),
               );
             },
           );

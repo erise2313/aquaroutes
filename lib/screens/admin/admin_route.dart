@@ -23,7 +23,12 @@ Route<T> adminRoute<T>(Widget child) {
     builder: (context) => Consumer(
       builder: (context, ref, _) => Theme(
         data: adminThemeDataFor(ref.watch(adminThemeProvider)),
-        child: child,
+        // Sidebar sections are bare Columns that rely on the shell's
+        // Scaffold. Opened on their own (a dashboard shortcut on a phone)
+        // they had none, so they drew on black: a grey header and dark
+        // labels nobody could read. A screen with its own Scaffold is
+        // unaffected; SafeArea keeps the header out of the status bar.
+        child: Scaffold(body: SafeArea(bottom: false, child: child)),
       ),
     ),
   );

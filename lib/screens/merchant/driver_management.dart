@@ -10,6 +10,8 @@ import '../../services/supabase_service.dart';
 import '../../services/worker_service.dart';
 import '../../widgets/portal/portal.dart';
 import '../../utils/log.dart';
+import 'package:flutter/services.dart';
+import '../../utils/jug_capacity.dart';
 import '../../services/my_station.dart';
 
 /// Station-scoped fleet roster. Fixes the most severe bug found in the old
@@ -302,30 +304,45 @@ class _DriverManagementScreenState extends State<DriverManagementScreen> {
     final plateController = TextEditingController(text: worker.vehiclePlate);
     final capController = TextEditingController(text: worker.jugCapacity?.toString());
 
+    String? capacityError;
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text("Configure ${worker.fullName}"),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(controller: plateController, decoration: const InputDecoration(labelText: "Plate Number")),
-            TextField(controller: capController, decoration: const InputDecoration(labelText: "Capacity (Jugs)")),
+      // The error shows in the dialog: a SnackBar would sit behind it.
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Text("Configure ${worker.fullName}"),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(controller: plateController, decoration: const InputDecoration(labelText: "Plate Number")),
+              const SizedBox(height: 12),
+              TextField(
+                controller: capController,
+                keyboardType: TextInputType.number,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                decoration: InputDecoration(labelText: "Capacity (Jugs)", helperText: '1 to $kMaxJugCapacity', errorText: capacityError),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
+            ElevatedButton(
+              onPressed: () async {
+                final error = jugCapacityError(capController.text, required: false);
+                if (error != null) {
+                  setDialogState(() => capacityError = error);
+                  return;
+                }
+                await _workerService.updateWorker(worker.id, {
+                  'vehicle_plate': plateController.text,
+                  'jug_capacity': int.tryParse(capController.text),
+                });
+                if (context.mounted) Navigator.pop(context);
+              },
+              child: const Text("Save"),
+            ),
           ],
         ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
-          ElevatedButton(
-            onPressed: () async {
-              await _workerService.updateWorker(worker.id, {
-                'vehicle_plate': plateController.text,
-                'jug_capacity': int.tryParse(capController.text),
-              });
-              if (context.mounted) Navigator.pop(context);
-            },
-            child: const Text("Save"),
-          ),
-        ],
       ),
     );
   }

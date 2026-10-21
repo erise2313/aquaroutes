@@ -16,7 +16,12 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 /// arrives as a `ClientException` or an XMLHttpRequest error instead.
 String describeError(Object error) {
   if (error is PostgrestException) return error.message;
-  if (error is AuthException) return error.message;
+  if (error is AuthException) {
+    if (error.code == 'user_already_exists' || error.message.contains('already registered')) {
+      return 'This email already has an account. Log in instead.';
+    }
+    return error.message;
+  }
   if (error is StorageException) return error.message;
   if (error is TimeoutException) return 'That took too long. Check your connection and try again.';
 

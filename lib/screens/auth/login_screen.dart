@@ -12,6 +12,7 @@ import '../../widgets/wasa_shield_logo.dart';
 import '../../widgets/web_page_route.dart';
 import 'registration_screen.dart';
 import '../../utils/error_text.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:aquaroute/constants/brand_tokens.dart';
 
 /// Signs the user in and lets AuthGate (screens/auth/auth_gate.dart) handle
@@ -65,6 +66,28 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             email: _emailController.text.trim(),
             password: _passwordController.text,
           );
+      // Customers and drivers use the mobile app only. On the website they
+      // are signed straight back out with a message, rather than let in.
+      if (kIsWeb && !kIsAdminPortalBuild) {
+        final client = Supabase.instance.client;
+        final rows = await client
+            .from('memberships')
+            .select('role')
+            .eq('profile_id', client.auth.currentUser!.id)
+            .eq('status', 'active');
+        final roles = [for (final r in rows) r['role'] as String];
+        if (roles.isNotEmpty && roles.every((r) => r == 'public_consumer' || r == 'driver')) {
+          await client.auth.signOut();
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+              content: Text('Customer and driver accounts sign in on the GenTri: WASA mobile app. '
+                  'The website is for station owners, station staff and WASA.'),
+              duration: Duration(seconds: 8),
+            ));
+          }
+          return;
+        }
+      }
       if (mounted) {
         Navigator.of(context).popUntil((route) => route.isFirst);
       }

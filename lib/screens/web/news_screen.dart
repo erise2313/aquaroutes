@@ -132,6 +132,10 @@ class _NewsScreenState extends ConsumerState<NewsScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text('Log in to $action.'),
+        // A SnackBar with a button now stays until it is tapped unless told
+        // otherwise, so this one never went away.
+        persist: false,
+        showCloseIcon: true,
         // The portal URL shows the sign-in form to a signed-out visitor.
         action: SnackBarAction(label: 'Log In', onPressed: () => openWebPage(context, WebRoutes.portal, const LoginScreen())),
       ),

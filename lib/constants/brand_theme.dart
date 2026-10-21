@@ -138,6 +138,9 @@ class BrandTheme {
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: s.card,
+        // In a multi-line box the label sits at the top, not floating in
+        // the middle of the empty space.
+        alignLabelWithHint: true,
         labelStyle: TextStyle(color: s.inkMuted, fontSize: BrandType.bodyMedium),
         floatingLabelStyle: TextStyle(color: primary, fontWeight: FontWeight.w600),
         hintStyle: TextStyle(color: s.inkMuted),

@@ -161,6 +161,7 @@ class _WorkerRegistryScreenState extends State<WorkerRegistryScreen> {
                     ],
                     onChanged: (v) => setDialogState(() => incidentType = v ?? incidentType),
                   ),
+                  const SizedBox(height: 12),
                   TextFormField(
                     controller: amountController,
                     keyboardType: TextInputType.number,
@@ -170,6 +171,7 @@ class _WorkerRegistryScreenState extends State<WorkerRegistryScreen> {
                       return double.tryParse(v.trim()) == null ? 'Enter a valid number.' : null;
                     },
                   ),
+                  const SizedBox(height: 12),
                   TextFormField(
                     controller: descriptionController,
                     maxLines: 3,

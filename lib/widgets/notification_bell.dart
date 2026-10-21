@@ -43,6 +43,8 @@ class _NotificationBellState extends ConsumerState<NotificationBell> {
     messenger.showSnackBar(SnackBar(
       content: Text(newest.body == null ? newest.title : '${newest.title} · ${newest.body}'),
       duration: const Duration(seconds: 5),
+      // Without this a SnackBar with a button stays until tapped.
+      persist: false,
       action: SnackBarAction(label: 'View', onPressed: _open),
     ));
   }

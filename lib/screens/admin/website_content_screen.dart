@@ -413,7 +413,9 @@ class _ItemsEditorState extends State<_ItemsEditor> {
                 TextField(controller: iconController, decoration: const InputDecoration(labelText: 'Icon key (optional)')),
               if (widget.showTitleField)
                 TextField(controller: titleController, decoration: const InputDecoration(labelText: 'Title')),
+                const SizedBox(height: 12),
               TextField(controller: bodyController, maxLines: 4, decoration: const InputDecoration(labelText: 'Body')),
+              const SizedBox(height: 12),
               TextField(controller: sortController, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Order (lower shows first)')),
             ],
           ),
@@ -575,7 +577,9 @@ class _FaqEditorState extends State<_FaqEditor> {
             mainAxisSize: MainAxisSize.min,
             children: [
               TextField(controller: questionController, decoration: const InputDecoration(labelText: 'Question')),
-              TextField(controller: answerController, maxLines: 4, decoration: const InputDecoration(labelText: 'Answer')),
+              const SizedBox(height: 12),
+              TextField(controller: answerController, maxLines: 4, decoration: const InputDecoration(labelText: 'Answer', alignLabelWithHint: true)),
+              const SizedBox(height: 12),
               TextField(controller: sortController, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Order (lower shows first)')),
             ],
           ),
@@ -735,6 +739,7 @@ class _PermitLabelsEditorState extends State<_PermitLabelsEditor> {
             mainAxisSize: MainAxisSize.min,
             children: [
               TextField(controller: labelController, decoration: const InputDecoration(labelText: 'Display name')),
+              const SizedBox(height: 12),
               TextField(controller: noteController, maxLines: 3, decoration: const InputDecoration(labelText: 'Requirement note')),
               const SizedBox(height: 8),
               TextField(

@@ -64,6 +64,11 @@ class _ReportProblemDialogState extends State<_ReportProblemDialog> {
   String? _photoName;
   bool _sending = false;
 
+  // Shown inside the dialog. These were SnackBars, which appear behind a
+  // dialog's dimmed backdrop where nobody sees them.
+  bool _showMissing = false;
+  String? _message;
+
   @override
   void dispose() {
     _details.dispose();
@@ -75,10 +80,11 @@ class _ReportProblemDialogState extends State<_ReportProblemDialog> {
     final file = result?.files.single;
     if (file?.bytes == null) return;
     if (file!.bytes!.length > 5 * 1024 * 1024) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('That photo is over 5 MB. Choose a smaller one.')));
+      if (mounted) setState(() => _message = 'That photo is over 5 MB. Choose a smaller one.');
       return;
     }
     setState(() {
+      _message = null;
       _photo = file.bytes;
       _photoName = file.name;
     });
@@ -86,10 +92,16 @@ class _ReportProblemDialogState extends State<_ReportProblemDialog> {
 
   Future<void> _send() async {
     if (_category == null || _details.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Choose what went wrong and describe it.')));
+      setState(() {
+        _showMissing = true;
+        _message = null;
+      });
       return;
     }
-    setState(() => _sending = true);
+    setState(() {
+      _sending = true;
+      _message = null;
+    });
     final client = Supabase.instance.client;
     try {
       String? photoPath;
@@ -108,8 +120,10 @@ class _ReportProblemDialogState extends State<_ReportProblemDialog> {
       if (mounted) Navigator.pop(context, true);
     } catch (e) {
       if (mounted) {
-        setState(() => _sending = false);
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not send. ${describeError(e)}')));
+        setState(() {
+          _sending = false;
+          _message = 'Could not send. ${describeError(e)}';
+        });
       }
     }
   }
@@ -140,7 +154,10 @@ class _ReportProblemDialogState extends State<_ReportProblemDialog> {
               DropdownButtonFormField<String>(
                 initialValue: _category,
                 isExpanded: true,
-                decoration: const InputDecoration(labelText: 'What went wrong'),
+                decoration: InputDecoration(
+                  labelText: 'What went wrong',
+                  errorText: _showMissing && _category == null ? 'Choose what went wrong' : null,
+                ),
                 items: [
                   for (final c in stationReportCategories.entries)
                     DropdownMenuItem(value: c.key, child: Text(c.value, overflow: TextOverflow.ellipsis)),
@@ -154,7 +171,13 @@ class _ReportProblemDialogState extends State<_ReportProblemDialog> {
                 minLines: 3,
                 maxLines: 6,
                 maxLength: 1000,
-                decoration: const InputDecoration(labelText: 'Describe what happened, and when'),
+                onChanged: (_) {
+                  if (_showMissing) setState(() {});
+                },
+                decoration: InputDecoration(
+                  labelText: 'Describe what happened, and when',
+                  errorText: _showMissing && _details.text.trim().isEmpty ? 'Describe what happened' : null,
+                ),
               ),
               const SizedBox(height: 4),
               OutlinedButton.icon(
@@ -166,6 +189,11 @@ class _ReportProblemDialogState extends State<_ReportProblemDialog> {
                 Padding(
                   padding: const EdgeInsets.only(top: 4),
                   child: Text(_photoName!, style: theme.textTheme.bodySmall, overflow: TextOverflow.ellipsis),
+                ),
+              if (_message != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Text(_message!, style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error)),
                 ),
             ],
           ),

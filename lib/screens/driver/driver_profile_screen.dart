@@ -16,6 +16,8 @@ import '../app_route.dart';
 import '../public/info/about_wasa_hub_screen.dart';
 import '../../utils/error_text.dart';
 import '../../utils/log.dart';
+import 'package:flutter/services.dart';
+import '../../utils/jug_capacity.dart';
 import 'package:aquaroute/constants/brand_tokens.dart';
 
 /// Driver profile + the Digital WASA Worker QR Badge. Clearance status is
@@ -117,6 +119,11 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
 
   Future<void> _saveProfile() async {
     if (_worker == null) return;
+    final capacityError = jugCapacityError(_jugCapacityController.text, required: false);
+    if (capacityError != null) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Jug capacity: $capacityError.')));
+      return;
+    }
     setState(() => _isSaving = true);
 
     try {
@@ -225,6 +232,7 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
         content: TextField(
           controller: controller,
           style: TextStyle(color: driverPalette.text),
+          textCapitalization: TextCapitalization.characters,
           decoration: InputDecoration(
             labelText: 'Station Invite Code',
             labelStyle: TextStyle(color: driverPalette.text.withValues(alpha: 0.7)),
@@ -373,9 +381,11 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
                   TextField(
                     controller: _jugCapacityController,
                     keyboardType: TextInputType.number,
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                     style: TextStyle(color: driverPalette.text),
                     decoration: InputDecoration(
                       labelText: 'Jug Capacity',
+                      helperText: '1 to $kMaxJugCapacity',
                       labelStyle: TextStyle(color: driverPalette.text.withValues(alpha: 0.7)),
                       border: OutlineInputBorder(),
                       prefixIcon: Icon(Icons.water_drop, color: driverPalette.text.withValues(alpha: 0.7)),
