@@ -53,7 +53,7 @@ supabase/functions/.env
 # Secret Environment Variables
 .env
 
-# Personal Claude Code permission overrides (not shared with the team)
+# Personal editor tool settings (not shared with the team)
 .claude/settings.local.json
 
 # Firebase local cache (deploy history, hosting cache -- not config, safe to ignore)
