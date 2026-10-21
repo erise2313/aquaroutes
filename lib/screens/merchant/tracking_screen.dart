@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
@@ -34,10 +36,34 @@ class _TrackingScreenState extends State<TrackingScreen> {
   final RouteOptimizationService _routeService = RouteOptimizationService();
   final supabase = Supabase.instance.client;
 
+  /// On-duty drivers' last reported positions (station_driver_positions).
+  /// The map used to show the station and the stops but no drivers at all.
+  List<Map<String, dynamic>> _drivers = [];
+  Timer? _driverTimer;
+
   @override
   void initState() {
     super.initState();
     _generateRoute();
+    _loadDrivers();
+    // Drivers report every few seconds; a 20-second refresh keeps the dots
+    // current without hammering the server.
+    _driverTimer = Timer.periodic(const Duration(seconds: 20), (_) => _loadDrivers());
+  }
+
+  @override
+  void dispose() {
+    _driverTimer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _loadDrivers() async {
+    try {
+      final rows = await supabase.rpc('station_driver_positions');
+      if (mounted) setState(() => _drivers = List<Map<String, dynamic>>.from(rows as List));
+    } catch (e) {
+      logError('fleet positions', e);
+    }
   }
 
   Future<void> _generateRoute() async {
@@ -117,14 +143,42 @@ class _TrackingScreenState extends State<TrackingScreen> {
                   height: 44,
                   child: MapPin(kind: i == 0 ? MapPinKind.currentStop : MapPinKind.queuedStop),
                 ),
+              for (final d in _drivers)
+                Marker(
+                  point: LatLng((d['latitude'] as num).toDouble(), (d['longitude'] as num).toDouble()),
+                  width: 44,
+                  height: 44,
+                  child: Tooltip(
+                    message: '${d['full_name'] ?? 'Driver'} · ${d['worker_code'] ?? ''}',
+                    child: const MapPin(kind: MapPinKind.driver),
+                  ),
+                ),
             ],
           ),
+          // Who is on duty, readable without tapping each dot.
+          if (_drivers.isNotEmpty)
+            Positioned(
+              top: 8,
+              left: 8,
+              right: 8,
+              child: Card(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  child: Text(
+                    'On duty: ${_drivers.map((d) => '${d['full_name']} (${d['worker_code']})').join(', ')}',
+                  ),
+                ),
+              ),
+            ),
           if (_stopPoints.isNotEmpty) RouteStatusBanner(isApproximate: _routeApproximate, summary: _routeSummary),
           const AppMapAttribution(showRoutingCredit: true),
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: _isGeneratingRoute ? null : _generateRoute,
+        onPressed: _isGeneratingRoute ? null : () {
+          _generateRoute();
+          _loadDrivers();
+        },
         label: Text(_isGeneratingRoute ? 'Refreshing...' : 'Refresh Route'),
         icon: _isGeneratingRoute
             ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))

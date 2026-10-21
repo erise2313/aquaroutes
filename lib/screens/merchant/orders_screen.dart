@@ -16,6 +16,10 @@ import '../../utils/log.dart';
 import 'station_new_order_dialog.dart';
 import '../../widgets/cancel_order_dialog.dart';
 import '../../utils/phone_call.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
+import '../../widgets/app_map_tiles.dart';
+import '../../widgets/custom_map_marker.dart';
 import '../../services/my_station.dart';
 
 /// How one order's status reads on screen: its pill, its colour and the icon
@@ -62,6 +66,75 @@ class _MerchantOrdersScreenState extends State<MerchantOrdersScreen> {
   List<dynamic> _availableDrivers = [];
   String? _stationId;
   StreamSubscription<List<Map<String, dynamic>>>? _ordersSubscription;
+
+  /// Customer name, phone and delivery coordinates per order
+  /// (station_order_details). Owners can't read customers' profiles or the
+  /// PostGIS delivery point directly, so app orders showed no name and the
+  /// delivery point couldn't be shown at all.
+  final Map<String, Map<String, dynamic>> _details = {};
+
+  Future<void> _loadDetails(List<dynamic> orders) async {
+    final missing = [for (final o in orders) if (!_details.containsKey(o['id'])) o['id'] as String];
+    if (missing.isEmpty) return;
+    try {
+      final rows = await supabase.rpc('station_order_details', params: {'p_ids': missing});
+      if (!mounted) return;
+      setState(() {
+        for (final r in rows as List) {
+          _details[r['order_id'] as String] = Map<String, dynamic>.from(r as Map);
+        }
+      });
+    } catch (e) {
+      logError('station order details', e);
+    }
+  }
+
+  void _showDeliveryPoint(dynamic order) {
+    final d = _details[order['id']];
+    final lat = (d?['latitude'] as num?)?.toDouble();
+    final lng = (d?['longitude'] as num?)?.toDouble();
+    if (lat == null || lng == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('This order has no delivery point (pickup at the station).')));
+      return;
+    }
+    final point = LatLng(lat, lng);
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text('Deliver to ${d?['customer_name'] ?? 'the customer'}'),
+        content: SizedBox(
+          width: 480,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if ((order['delivery_address'] as String?)?.isNotEmpty ?? false) ...[
+                Text(order['delivery_address'] as String),
+                const SizedBox(height: 8),
+              ],
+              SizedBox(
+                height: 260,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: FlutterMap(
+                    options: MapOptions(initialCenter: point, initialZoom: 16),
+                    children: [
+                      const AppMapTiles(),
+                      MarkerLayer(markers: [
+                        Marker(point: point, width: 40, height: 40, child: const MapPin(kind: MapPinKind.deliveryAddress)),
+                      ]),
+                      const AppMapAttribution(),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Close'))],
+      ),
+    );
+  }
 
   @override
   void initState() {
@@ -118,6 +191,7 @@ class _MerchantOrdersScreenState extends State<MerchantOrdersScreen> {
               // tab -- they previously got miscounted into "Done".
             }
 
+            unawaited(_loadDetails([...pending, ...active, ...done]));
             if (mounted) {
               setState(() {
                 _newOrders = pending;
@@ -423,7 +497,9 @@ class _MerchantOrdersScreenState extends State<MerchantOrdersScreen> {
                       switch (order['order_channel']) {
                         'phone' => 'Phone order · ${order['guest_name'] ?? ''} · $time',
                         'walk_in' => 'Walk-in · ${order['guest_name'] ?? ''} · $time',
-                        _ => 'Placed at $time',
+                        // App orders: the customer's name, from
+                        // station_order_details once it has loaded.
+                        _ => '${_details[order['id']]?['customer_name'] ?? 'App order'} · $time',
                       },
                       style: theme.textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
                     ),
@@ -508,11 +584,17 @@ class _MerchantOrdersScreenState extends State<MerchantOrdersScreen> {
                   ),
                 TextButton.icon(
                   onPressed: () {
-                    String customerPhone = order['customer_phone'] ?? order['guest_phone'] ?? '';
+                    final String customerPhone = order['customer_phone'] ?? order['guest_phone'] ??
+                        _details[order['id']]?['customer_phone'] ?? '';
                     _makePhoneCall(customerPhone);
                   },
                   icon: const Icon(Icons.phone, size: 16),
                   label: const Text('Call customer'),
+                ),
+                TextButton.icon(
+                  onPressed: () => _showDeliveryPoint(order),
+                  icon: const Icon(Icons.map_outlined, size: 16),
+                  label: const Text('Delivery point'),
                 ),
               ],
             ),
