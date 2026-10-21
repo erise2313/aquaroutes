@@ -23,6 +23,7 @@ import '../../widgets/mentor_pairs_card.dart';
 import '../../widgets/notification_bell.dart';
 import '../../widgets/portal/portal.dart';
 import '../../utils/log.dart';
+import '../../utils/keep_together.dart';
 import '../../constants/brand_tokens.dart';
 import '../../utils/error_text.dart';
 import '../../widgets/confirm_dialog.dart';
@@ -212,7 +213,7 @@ class _MerchantDashboardScreenState extends State<MerchantDashboardScreen> {
             title: 'Station Dashboard',
             subtitle: _stationCode == null
                 ? 'Live orders, takings, and the records the association asks for'
-                : 'WASA station ID $_stationCode · live orders, takings and records',
+                : 'WASA station ID ${keepTogether(_stationCode!)}',
             actions: PortalShellScope.isPresent(context) ? const [] : const [AppThemeToggle(), NotificationBell()],
           ),
           Expanded(

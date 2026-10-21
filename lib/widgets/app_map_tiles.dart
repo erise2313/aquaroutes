@@ -84,13 +84,15 @@ class AppMapAttribution extends StatelessWidget {
   Widget _link(String label, String semanticsLabel, Uri target) {
     return TextButton(
       onPressed: () => launchUrl(target, mode: LaunchMode.externalApplication),
-      // 48dp hit area (Touch_Target_Size) while the visible text stays the
-      // small print attribution conventionally is.
+      // Kept compact: at 16 sp and 48 dp per line the credit covered most
+      // of a small map (the driver's, on a small phone with large text) and
+      // sat on top of the route summary.
       style: TextButton.styleFrom(
-        minimumSize: const Size(48, 48),
+        minimumSize: const Size(40, 32),
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
         padding: const EdgeInsets.symmetric(horizontal: 6),
         foregroundColor: const Color(0xFF0B3D6B),
-        textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+        textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
       ),
       child: Text(label, semanticsLabel: semanticsLabel),
     );
@@ -100,24 +102,26 @@ class AppMapAttribution extends StatelessWidget {
   Widget build(BuildContext context) {
     return Align(
       alignment: Alignment.bottomRight,
-      child: Container(
-        margin: const EdgeInsets.all(4),
-        padding: const EdgeInsets.symmetric(horizontal: 2),
-        // Fixed light pill in both themes: it sits on map tiles, which are
-        // light regardless of the app's theme.
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.88),
-          borderRadius: BorderRadius.circular(6),
-        ),
-        child: Wrap(
-          alignment: WrapAlignment.end,
-          crossAxisAlignment: WrapCrossAlignment.center,
-          children: [
-            if (MapTileConfig.usesMapTiler)
-              _link('© MapTiler', 'MapTiler copyright', _maptilerCopyright),
-            _link('© OpenStreetMap contributors', 'OpenStreetMap copyright and licence', _osmCopyright),
-            if (showRoutingCredit) _link('Improve this map', 'Report a problem with the map', _fixTheMap),
-          ],
+      child: MediaQuery.withClampedTextScaling(
+        maxScaleFactor: 1.0,
+        child: Container(
+          margin: const EdgeInsets.all(4),
+          padding: const EdgeInsets.symmetric(horizontal: 2),
+          // Fixed light pill in both themes: it sits on map tiles, which are
+          // light regardless of the app's theme.
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.88),
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: Wrap(
+            alignment: WrapAlignment.end,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              if (MapTileConfig.usesMapTiler) _link('© MapTiler', 'MapTiler copyright', _maptilerCopyright),
+              _link('© OpenStreetMap', 'OpenStreetMap copyright and licence', _osmCopyright),
+              if (showRoutingCredit) _link('Improve this map', 'Report a problem with the map', _fixTheMap),
+            ],
+          ),
         ),
       ),
     );

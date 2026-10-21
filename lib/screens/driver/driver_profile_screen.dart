@@ -18,6 +18,7 @@ import '../../utils/error_text.dart';
 import '../../utils/log.dart';
 import 'package:flutter/services.dart';
 import '../../utils/jug_capacity.dart';
+import '../../utils/phone_input.dart';
 import 'package:aquaroute/constants/brand_tokens.dart';
 
 /// Driver profile + the Digital WASA Worker QR Badge. Clearance status is
@@ -357,6 +358,7 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
                   TextField(
                     controller: _phoneController,
                     keyboardType: TextInputType.phone,
+                    inputFormatters: phoneInputFormatters,
                     style: TextStyle(color: driverPalette.text),
                     decoration: InputDecoration(
                       labelText: 'Phone Number',

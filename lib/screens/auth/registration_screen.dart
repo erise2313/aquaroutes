@@ -542,13 +542,31 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
           autofillHints: const [AutofillHints.name],
         ),
         const SizedBox(height: 16),
-        WrittenAddressFields(
-          street: _stationStreetController,
-          city: _stationCityController,
-          landmark: _stationLandmarkController,
-          barangay: _stationBarangay,
-          onBarangayChanged: (v) => setState(() => _stationBarangay = v),
-        ),
+        // The shared address fields take this form's filled, borderless
+        // look so the page doesn't mix two field styles.
+        Builder(builder: (context) {
+          final theme = Theme.of(context);
+          final scheme = theme.colorScheme;
+          final radius = BorderRadius.circular(10);
+          return Theme(
+            data: theme.copyWith(
+              inputDecorationTheme: theme.inputDecorationTheme.copyWith(
+                filled: true,
+                fillColor: scheme.surfaceContainerHighest,
+                border: OutlineInputBorder(borderRadius: radius, borderSide: BorderSide.none),
+                enabledBorder: OutlineInputBorder(borderRadius: radius, borderSide: BorderSide.none),
+                focusedBorder: OutlineInputBorder(borderRadius: radius, borderSide: BorderSide(color: scheme.primary, width: 2)),
+              ),
+            ),
+            child: WrittenAddressFields(
+              street: _stationStreetController,
+              city: _stationCityController,
+              landmark: _stationLandmarkController,
+              barangay: _stationBarangay,
+              onBarangayChanged: (v) => setState(() => _stationBarangay = v),
+            ),
+          );
+        }),
         const SizedBox(height: 12),
         Align(
           alignment: Alignment.centerLeft,

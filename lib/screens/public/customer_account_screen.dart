@@ -9,6 +9,7 @@ import '../../widgets/portal/portal.dart';
 import 'addresses_screen.dart';
 import 'my_orders_screen.dart';
 import '../app_route.dart';
+import '../../utils/phone_input.dart';
 import '../../utils/error_text.dart';
 
 /// Account screen for a signed-in customer (public_consumer membership) --
@@ -156,6 +157,7 @@ class _CustomerAccountScreenState extends ConsumerState<CustomerAccountScreen> {
                             TextField(
                               controller: _phoneController,
                               keyboardType: TextInputType.phone,
+                              inputFormatters: phoneInputFormatters,
                               decoration: const InputDecoration(labelText: 'Phone number', prefixIcon: Icon(Icons.phone_outlined)),
                             ),
                             const SizedBox(height: 16),

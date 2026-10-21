@@ -140,6 +140,8 @@ class _ResponsiveNavShellState extends State<ResponsiveNavShell> {
           );
         }
 
+        final navTheme = Theme.of(context).bottomNavigationBarTheme;
+        final crowded = MediaQuery.sizeOf(context).width / widget.destinations.length < 72;
         return Scaffold(
           appBar: widget.appBar,
           body: IndexedStack(index: _currentIndex, children: widget.pages),
@@ -147,8 +149,17 @@ class _ResponsiveNavShellState extends State<ResponsiveNavShell> {
           // in: past ~130% the labels push the tabs apart and clip. Every
           // other surface scales freely.
           bottomNavigationBar: MediaQuery.withClampedTextScaling(
-            maxScaleFactor: 1.3,
+            // Five or six tabs on a narrow phone have about 60 dp each: at
+            // 130% "Products" became "Produ...", so the labels stay at the
+            // normal size there.
+            maxScaleFactor: widget.destinations.length > 4 && MediaQuery.sizeOf(context).width < 420 ? 1.0 : 1.3,
             child: BottomNavigationBar(
+            // Even at the normal size, six 16 sp labels in ~60 dp tabs cut
+            // "Products" short; crowded bars get a smaller label instead.
+            selectedFontSize: crowded ? 12.5 : 14,
+            unselectedFontSize: crowded ? 12.5 : 12,
+            selectedLabelStyle: crowded ? navTheme.selectedLabelStyle?.copyWith(fontSize: 12.5) : null,
+            unselectedLabelStyle: crowded ? navTheme.unselectedLabelStyle?.copyWith(fontSize: 12.5) : null,
             currentIndex: _currentIndex,
             onTap: _selectTab,
             type: BottomNavigationBarType.fixed,

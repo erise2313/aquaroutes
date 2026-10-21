@@ -7,6 +7,7 @@ import '../../services/product_service.dart';
 import '../../services/supabase_service.dart';
 import '../../utils/error_text.dart';
 import '../../utils/formatters.dart';
+import '../../utils/phone_input.dart';
 import 'location_picker_screen.dart';
 
 /// How a station-entered order is placed (station_create_order,
@@ -249,6 +250,7 @@ class _StationNewOrderDialogState extends State<_StationNewOrderDialog> {
                             TextField(
                               controller: _phone,
                               keyboardType: TextInputType.phone,
+                              inputFormatters: phoneInputFormatters,
                               decoration: InputDecoration(
                                 labelText: _channel == StationOrderChannel.walkIn ? 'Phone (optional)' : 'Phone number',
                               ),

@@ -55,6 +55,7 @@ class BrandTheme {
     // The one main action on a screen is a filled button; it gets the
     // larger target the UI plan asks for (56), the rest keep 48.
     const minPrimaryButton = Size(64, BrandType.minPrimaryTarget);
+    const buttonPadding = EdgeInsets.symmetric(horizontal: 24, vertical: 10);
 
     return base.copyWith(
       extensions: extensions,
@@ -103,6 +104,9 @@ class BrandTheme {
           foregroundColor: onPrimary,
           elevation: 0,
           minimumSize: minPrimaryButton,
+          // Room for a label that wraps to two lines at large text; a
+          // one-line button keeps its minimum height.
+          padding: buttonPadding,
           textStyle: buttonText,
           shape: controlShape,
         ),
@@ -112,6 +116,9 @@ class BrandTheme {
           backgroundColor: primary,
           foregroundColor: onPrimary,
           minimumSize: minPrimaryButton,
+          // Room for a label that wraps to two lines at large text; a
+          // one-line button keeps its minimum height.
+          padding: buttonPadding,
           textStyle: buttonText,
           shape: controlShape,
         ),
@@ -121,6 +128,9 @@ class BrandTheme {
           foregroundColor: primary,
           side: BorderSide(color: primary, width: 1.5),
           minimumSize: minButton,
+          // Room for a label that wraps to two lines at large text; a
+          // one-line button keeps its minimum height.
+          padding: buttonPadding,
           textStyle: buttonText,
           shape: controlShape,
         ),

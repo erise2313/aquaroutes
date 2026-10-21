@@ -35,6 +35,7 @@ import '../../utils/error_text.dart';
 import '../../utils/data_changes.dart';
 import '../../widgets/written_address_fields.dart';
 import '../../utils/written_address.dart';
+import '../../utils/phone_input.dart';
 import 'package:aquaroute/constants/brand_tokens.dart';
 
 /// Most a single order may contain. Mirrors v_max_qty in insert_quick_order
@@ -857,7 +858,8 @@ class _QuickOrderScreenState extends ConsumerState<QuickOrderScreen> {
                         TextFormField(
                           controller: _phoneController,
                           keyboardType: TextInputType.phone,
-                          decoration: const InputDecoration(labelText: 'Contact Number for This Delivery', border: OutlineInputBorder(), prefixIcon: Icon(Icons.phone_outlined)),
+                          inputFormatters: phoneInputFormatters,
+                          decoration: const InputDecoration(labelText: 'Contact number', border: OutlineInputBorder(), prefixIcon: Icon(Icons.phone_outlined)),
                           validator: (v) {
                             final trimmed = v?.trim() ?? '';
                             if (trimmed.isEmpty) return 'Enter your phone number';

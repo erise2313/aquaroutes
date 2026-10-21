@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -50,18 +52,48 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
   String? _error;
   List<Map<String, dynamic>> _orders = [];
 
+  /// The tab stays alive, so without this a new order or a status change
+  /// ("Out for delivery", "Delivered") showed only after pull-to-refresh
+  /// or a restart.
+  StreamSubscription<List<Map<String, dynamic>>>? _ordersSubscription;
+
   @override
   void initState() {
     super.initState();
     _load();
+    final userId = _supabase.auth.currentUser?.id;
+    if (userId != null) {
+      var first = true;
+      _ordersSubscription = _supabase
+          .from('orders')
+          .stream(primaryKey: ['id'])
+          .eq('customer_profile_id', userId)
+          .listen((_) {
+        // The first event is the current list, already loaded above.
+        if (first) {
+          first = false;
+          return;
+        }
+        _load(quiet: true);
+      }, onError: (Object _) {});
+    }
   }
 
-  Future<void> _load() async {
+  @override
+  void dispose() {
+    _ordersSubscription?.cancel();
+    super.dispose();
+  }
+
+  /// [quiet] keeps the list on screen while it reloads (live updates).
+  Future<void> _load({bool quiet = false}) async {
     if (!mounted) return;
-    setState(() {
-      _isLoading = true;
-      _error = null;
-    });
+    if (!quiet) {
+      setState(() {
+        _isLoading = true;
+        _error = null;
+      });
+    }
     try {
       final userId = _supabase.auth.currentUser!.id;
       final rows = await _supabase
@@ -81,7 +113,7 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
         });
       }
     } catch (e) {
-      if (mounted) {
+      if (mounted && !quiet) {
         setState(() {
           _error = 'Could not load your orders. ${describeError(e)}';
           _isLoading = false;

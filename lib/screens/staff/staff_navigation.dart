@@ -115,7 +115,14 @@ class _StaffAccountScreenState extends State<StaffAccountScreen> {
     return Scaffold(
       body: Column(
         children: [
-          const PortalPageHeader(eyebrow: 'Station staff', title: 'Account'),
+          // In the app all five staff tabs fit the bottom bar, so there is
+          // no "More" page carrying the sidebar's bell and sign-out; they
+          // live here instead.
+          PortalPageHeader(
+            eyebrow: 'Station staff',
+            title: 'Account',
+            actions: [if (!kIsWeb) const NotificationBell()],
+          ),
           Expanded(
             child: ListView(
               padding: density.pagePadding,
@@ -147,6 +154,19 @@ class _StaffAccountScreenState extends State<StaffAccountScreen> {
                 ),
                 SizedBox(height: density.sectionGap),
                 const PortalCard(lift: false, padding: EdgeInsets.zero, child: AccountSettingsSection()),
+                if (!kIsWeb) ...[
+                  SizedBox(height: density.sectionGap),
+                  OutlinedButton.icon(
+                    onPressed: () => Supabase.instance.client.auth.signOut(),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: theme.colorScheme.error,
+                      side: BorderSide(color: theme.colorScheme.error, width: 1.5),
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                    ),
+                    icon: const Icon(Icons.logout),
+                    label: const Text('Sign out', style: TextStyle(fontWeight: FontWeight.bold)),
+                  ),
+                ],
               ],
             ),
           ),

@@ -62,8 +62,11 @@ class DeliveryPanelLayout extends StatelessWidget {
             ],
           );
         }
-        // A bounded share for the map so the details always get room.
-        final mapHeight = (constraints.maxHeight * 0.36).clamp(120.0, 340.0);
+        // A bounded share for the map so the details always get room. On a
+        // short space (small phone, large text, a notice banner above) the
+        // map gives up more so the order details stay readable.
+        final share = constraints.maxHeight < 600 ? 0.26 : 0.36;
+        final mapHeight = (constraints.maxHeight * share).clamp(120.0, 340.0);
         return Column(
           children: [
             SizedBox(height: mapHeight, child: map),

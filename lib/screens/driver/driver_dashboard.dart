@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
@@ -51,6 +53,7 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
   String? _stationId;
   LatLng? _stationLocation;
   int _missingCredentialsCount = 0;
+  int _credentialsInReview = 0;
 
   Map<String, dynamic>? _currentActiveOrder;
 
@@ -72,10 +75,47 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
   bool _routeApproximate = false;
   String? _routeSummary;
 
+  /// Live updates: a new assignment used to show only after the driver
+  /// refreshed or restarted the app. The stream on the driver's own orders
+  /// triggers a check; the timer catches what the stream can't see (an
+  /// order unassigned from this driver no longer matches its filter).
+  StreamSubscription<List<Map<String, dynamic>>>? _ordersSubscription;
+  Timer? _ordersPoll;
+  String? _activeOrdersKey;
+  bool _checkingOrders = false;
+
   @override
   void initState() {
     super.initState();
     _initializeDriver();
+  }
+
+  String _ordersKey(List<dynamic> rows) => (rows.map((o) => o['id'].toString()).toList()..sort()).join(',');
+
+  void _watchOrders() {
+    _ordersSubscription?.cancel();
+    _ordersSubscription = supabase
+        .from('orders')
+        .stream(primaryKey: ['id'])
+        .eq('driver_worker_id', _workerId!)
+        .listen((_) => _checkForOrderChanges(), onError: (Object e) => logError('driver orders stream', e));
+    _ordersPoll?.cancel();
+    _ordersPoll = Timer.periodic(const Duration(seconds: 45), (_) => _checkForOrderChanges());
+  }
+
+  /// Reloads the delivery panel only when the set of assigned orders
+  /// changed, so the map and route aren't rebuilt on every tick.
+  Future<void> _checkForOrderChanges() async {
+    if (_checkingOrders || _isLoading || _stationId == null || !mounted) return;
+    _checkingOrders = true;
+    try {
+      final rows = List<dynamic>.from(await supabase.rpc('get_active_orders', params: {'p_station_id': _stationId}) as List);
+      if (_ordersKey(rows) != _activeOrdersKey) await _fetchActiveDelivery();
+    } catch (e) {
+      logError('driver orders check', e);
+    } finally {
+      _checkingOrders = false;
+    }
   }
 
   @override
@@ -89,6 +129,8 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
     if (_isOnDuty && _workerId != null) {
       _locationService.stopTracking(_workerId!);
     }
+    _ordersSubscription?.cancel();
+    _ordersPoll?.cancel();
     super.dispose();
   }
 
@@ -109,7 +151,12 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
       _stationId = worker['station_id'] as String?;
 
       final credentials = await _credentialService.fetchWorkerCredentials(_workerId!);
-      _missingCredentialsCount = credentials.where((c) => c.status != PermitStatus.approved).length;
+      // Missing or rejected documents need the driver; ones already sent
+      // are only waiting on WASA, so they get a calmer note, not "submit".
+      _missingCredentialsCount = credentials
+          .where((c) => c.status == PermitStatus.missing || c.status == PermitStatus.rejected)
+          .length;
+      _credentialsInReview = credentials.where((c) => c.status == PermitStatus.pendingReview).length;
 
       if (_stationId == null) {
         if (mounted) setState(() => _isLoading = false);
@@ -143,6 +190,7 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
       }
 
       await _fetchActiveDelivery();
+      _watchOrders();
     } catch (e) {
       logError('driver init', e);
       if (mounted) {
@@ -222,6 +270,7 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
     try {
       final response = await supabase.rpc('get_active_orders', params: {'p_station_id': _stationId});
       List<dynamic> activeOrders = List<dynamic>.from(response as List);
+      _activeOrdersKey = _ordersKey(activeOrders);
 
       if (activeOrders.isNotEmpty) {
         final stops = activeOrders
@@ -576,6 +625,10 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
 
   Future<void> _startDelivery() async {
     if (_currentActiveOrder == null) return;
+    // A delivery on the road should be trackable, so going out puts the
+    // driver on duty (GPS on). If location is refused the delivery still
+    // starts; the duty toggle explains why GPS is off.
+    if (!_isOnDuty) await _toggleOnDuty(true);
     try {
       await _orderService.startDelivery(_currentActiveOrder!['id'] as String);
       _fetchActiveDelivery();
@@ -624,9 +677,13 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
       appBar: AppBar(
         // Five icons left the title as "Driver ..." on a phone. The two used
         // most stay; the rest are under the menu.
-        title: Text('Driver Dashboard',
-            maxLines: 1, overflow: TextOverflow.ellipsis,
-            style: TextStyle(color: driverPalette.text, fontWeight: FontWeight.bold)),
+        // On a small phone with large text the title shrinks to fit rather
+        // than ending in "Dashb...".
+        title: FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: Alignment.centerLeft,
+          child: Text('Driver Dashboard', maxLines: 1, style: TextStyle(color: driverPalette.text, fontWeight: FontWeight.bold)),
+        ),
         backgroundColor: driverPalette.surface,
         actions: [
           const NotificationBell(),
@@ -660,7 +717,7 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
       ),
       body: Column(
         children: [
-          if (_missingCredentialsCount > 0) _buildCredentialsBanner(),
+          if (_missingCredentialsCount > 0 || _credentialsInReview > 0) _buildCredentialsBanner(),
           _buildOnDutyBar(),
           Expanded(
             child: _isLoading
@@ -696,7 +753,9 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
-                  'Action needed: submit your Government ID and Driver\'s License to complete WASA clearance.',
+                  _missingCredentialsCount > 0
+                      ? 'Action needed: submit your Government ID and Driver\'s License to complete WASA clearance.'
+                      : 'Your documents were sent. WASA is reviewing them.',
                   style: TextStyle(color: driverPalette.text, fontWeight: FontWeight.bold, fontSize: 16),
                 ),
               ),
@@ -824,50 +883,15 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
     return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          // The status sits beside the order number, so the customer's name
+          // and address get the full width instead of wrapping out of view
+          // beside the pill on a small phone.
+          Wrap(
+            spacing: 12,
+            runSpacing: 6,
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Order #$shortId', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: driverPalette.text)),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        Flexible(
-                          child: Text(
-                            'Deliver to: $_customerName',
-                            style: TextStyle(fontSize: 16, color: driverPalette.text.withValues(alpha: 0.8), fontWeight: FontWeight.bold),
-                          ),
-                        ),
-                        IconButton(
-                          tooltip: 'Call customer',
-                          onPressed: () => _makePhoneCall(_customerPhone, 'Customer'),
-                          icon: Icon(Icons.phone, size: 22, color: driverPalette.onDuty),
-                        ),
-                      ],
-                    ),
-                    // Street, barangay and landmark, to find the gate the
-                    // pin is near.
-                    if (_deliveryAddress.isNotEmpty)
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Icon(Icons.place_outlined, size: 18, color: driverPalette.text.withValues(alpha: 0.7)),
-                          const SizedBox(width: 6),
-                          Expanded(
-                            child: SelectableText(
-                              _deliveryAddress,
-                              style: TextStyle(fontSize: 16, color: driverPalette.text),
-                            ),
-                          ),
-                        ],
-                      ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
+              Text('Order #$shortId', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: driverPalette.text)),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
@@ -882,6 +906,38 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
               ),
             ],
           ),
+          const SizedBox(height: 4),
+          Row(
+            children: [
+              Flexible(
+                child: Text(
+                  'Deliver to: $_customerName',
+                  style: TextStyle(fontSize: 16, color: driverPalette.text.withValues(alpha: 0.8), fontWeight: FontWeight.bold),
+                ),
+              ),
+              IconButton(
+                tooltip: 'Call customer',
+                onPressed: () => _makePhoneCall(_customerPhone, 'Customer'),
+                icon: Icon(Icons.phone, size: 22, color: driverPalette.onDuty),
+              ),
+            ],
+          ),
+          // Street, barangay and landmark, to find the gate the
+          // pin is near.
+          if (_deliveryAddress.isNotEmpty)
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(Icons.place_outlined, size: 18, color: driverPalette.text.withValues(alpha: 0.7)),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: SelectableText(
+                    _deliveryAddress,
+                    style: TextStyle(fontSize: 16, color: driverPalette.text),
+                  ),
+                ),
+              ],
+            ),
           Divider(height: 24, thickness: 1, color: driverPalette.text.withValues(alpha: 0.7)),
           // Wraps: "Call Station" drops under the name on a narrow phone
           // rather than squeezing it.

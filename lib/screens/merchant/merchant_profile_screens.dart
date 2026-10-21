@@ -2,6 +2,7 @@ import 'package:aquaroute/screens/merchant/location_picker_screen.dart';
 import 'package:aquaroute/screens/merchant/permit_vault_screen.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../services/photo_service.dart';
@@ -17,6 +18,7 @@ import '../../widgets/station_share_card.dart';
 import '../../widgets/written_address_fields.dart';
 import '../../utils/written_address.dart';
 import '../../services/station_address.dart';
+import '../../utils/phone_input.dart';
 import '../../utils/log.dart';
 
 /// Builds the `profiles` table update payload (trimmed). Split from
@@ -617,6 +619,7 @@ class _MerchantProfileScreenState extends State<MerchantProfileScreen> {
             label: 'Phone number',
             hint: 'Enter contact phone number',
             keyboardType: TextInputType.phone,
+            inputFormatters: phoneInputFormatters,
           ),
           const SizedBox(height: 16),
           _buildSaveButton(),
@@ -848,6 +851,7 @@ class _MerchantProfileScreenState extends State<MerchantProfileScreen> {
     int maxLines = 1,
     bool readOnly = false,
     TextInputType keyboardType = TextInputType.text,
+    List<TextInputFormatter>? inputFormatters,
   }) {
     final scheme = Theme.of(context).colorScheme;
 
@@ -856,6 +860,7 @@ class _MerchantProfileScreenState extends State<MerchantProfileScreen> {
       maxLines: maxLines,
       readOnly: readOnly,
       keyboardType: keyboardType,
+      inputFormatters: inputFormatters,
       decoration: InputDecoration(
         labelText: label,
         hintText: hint,

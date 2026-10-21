@@ -22,7 +22,9 @@ class BulletinBoardScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: showAppBar ? AppBar(title: const Text('Association Bulletin Board')) : null,
-      body: const BulletinFeed(),
+      // Without an app bar the feed started under the phone's status bar
+      // ("Official floor prices" over the clock) in the owner app.
+      body: showAppBar ? const BulletinFeed() : const SafeArea(bottom: false, child: BulletinFeed()),
     );
   }
 }

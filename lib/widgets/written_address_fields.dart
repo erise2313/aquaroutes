@@ -68,10 +68,15 @@ class _WrittenAddressFieldsState extends State<WrittenAddressFields> {
           enabled: widget.enabled,
           textCapitalization: TextCapitalization.words,
           decoration: const InputDecoration(
-            labelText: 'House no., street, subdivision',
-            hintText: 'e.g. Blk 3 Lot 5, Sampaguita St., Greenwoods',
+            // A short label that fits a small phone at large text; the
+            // hint says what goes in it.
+            labelText: 'Street address',
+            hintText: 'House no., street, subdivision',
             prefixIcon: Icon(Icons.home_outlined),
           ),
+          // Re-checked as you type, so the message clears once it's filled
+          // in rather than staying red until the next submit.
+          autovalidateMode: AutovalidateMode.onUserInteraction,
           validator: (v) => (v ?? '').trim().length < 3 ? 'Enter the house no., street or subdivision' : null,
         ),
         const SizedBox(height: 12),
@@ -88,6 +93,7 @@ class _WrittenAddressFieldsState extends State<WrittenAddressFields> {
           ),
           items: [for (final b in options) DropdownMenuItem(value: b, child: Text(b, overflow: TextOverflow.ellipsis))],
           onChanged: widget.enabled ? widget.onBarangayChanged : null,
+          autovalidateMode: AutovalidateMode.onUserInteraction,
           validator: (v) => (v ?? '').isEmpty ? 'Choose the barangay' : null,
         ),
         const SizedBox(height: 12),
@@ -96,6 +102,7 @@ class _WrittenAddressFieldsState extends State<WrittenAddressFields> {
           enabled: widget.enabled,
           textCapitalization: TextCapitalization.words,
           decoration: const InputDecoration(labelText: 'City', prefixIcon: Icon(Icons.map_outlined)),
+          autovalidateMode: AutovalidateMode.onUserInteraction,
           validator: (v) => (v ?? '').trim().isEmpty ? 'Enter the city' : null,
         ),
         const SizedBox(height: 12),

@@ -216,9 +216,20 @@ class _DriverManagementScreenState extends State<DriverManagementScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(worker.fullName, style: theme.textTheme.titleMedium),
-                        Text(
-                          "Plate: ${worker.vehiclePlate ?? 'N/A'} · ${worker.workerCode}",
-                          style: theme.textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+                        // Plate and worker code wrap as whole pieces, so a
+                        // narrow phone never splits "GW-" from the rest.
+                        Wrap(
+                          spacing: 8,
+                          children: [
+                            Text(
+                              "Plate: ${worker.vehiclePlate ?? 'N/A'} ·",
+                              style: theme.textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+                            ),
+                            Text(
+                              worker.workerCode,
+                              style: theme.textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+                            ),
+                          ],
                         ),
                       ],
                     ),

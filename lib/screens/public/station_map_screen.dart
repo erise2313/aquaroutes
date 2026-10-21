@@ -368,7 +368,9 @@ class _StationMapScreenState extends State<StationMapScreen> {
                           child: Text(
                             station.stationName,
                             style: theme.textTheme.titleMedium,
-                            maxLines: 1,
+                            // Two lines: at large text one line showed only
+                            // "Buenavista W...", and names are what people pick by.
+                            maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
