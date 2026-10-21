@@ -1,18 +1,68 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
+import 'package:aquaroute/constants/brand_fonts.dart';
+import 'package:aquaroute/providers/app_state.dart';
+import 'package:aquaroute/providers/web_locale_provider.dart';
+import 'package:aquaroute/web_strings.dart';
 import 'package:aquaroute/widgets/web_nav_bar.dart';
 import 'package:aquaroute/widgets/wasa_shield_logo.dart';
 
-Widget _harness() => const ProviderScope(
+// The real brand font, so widths are the site's and not the test font's
+// (every glyph a full square, about twice as wide).
+Widget _harness({List<Override> overrides = const []}) => ProviderScope(
+      overrides: overrides,
       child: MaterialApp(
-        home: Scaffold(appBar: WebNavBar(currentPage: WebPage.home), body: SizedBox()),
+        theme: ThemeData(fontFamily: BrandFonts.family),
+        home: const Scaffold(appBar: WebNavBar(currentPage: WebPage.home), body: SizedBox()),
       ),
     );
+
+class _TagalogLocale extends WebLocaleNotifier {
+  @override
+  WebLocale build() => WebLocale.tl;
+}
 
 const _navLabels = ['Home', 'About', 'Accreditation', 'For Owners', 'News', 'Stations', 'Contact'];
 
 void main() {
+  setUpAll(() async {
+    final loader = FontLoader(BrandFonts.family)
+      ..addFont(rootBundle.load('assets/fonts/AtkinsonHyperlegible-Regular.ttf'))
+      ..addFont(rootBundle.load('assets/fonts/AtkinsonHyperlegible-Bold.ttf'));
+    await loader.load();
+  });
+
+  // Switching to TL used to hide every link behind the menu for signed-out
+  // visitors on an ordinary laptop: the Tagalog labels ("Magparehistro ng
+  // Istasyon", "Makipag-ugnayan") pushed the row past the bar's width.
+  for (final tagalog in [false, true]) {
+    for (final signedIn in [false, true]) {
+      for (final width in [1366.0, 1440.0]) {
+        final lang = tagalog ? 'TL' : 'EN';
+        final who = signedIn ? 'signed in' : 'signed out';
+        testWidgets('all links show at ${width.toInt()}px in $lang, $who', (tester) async {
+          tester.view.physicalSize = Size(width, 900);
+          tester.view.devicePixelRatio = 1.0;
+          addTearDown(tester.view.reset);
+
+          await tester.pumpWidget(_harness(overrides: [
+            isSignedInProvider.overrideWith((ref) => signedIn),
+            if (tagalog) webLocaleProvider.overrideWith(_TagalogLocale.new),
+          ]));
+          await tester.pumpAndSettle();
+
+          expect(tester.takeException(), isNull);
+          final locale = tagalog ? WebLocale.tl : WebLocale.en;
+          expect(find.byIcon(Icons.menu), findsNothing, reason: 'links collapsed into the menu');
+          expect(find.text(WebStrings.t(locale, 'nav_contact')), findsOneWidget);
+        });
+      }
+    }
+  }
+
   // The nav used to be full-bleed while the page sections below sit in a
   // centred column, so on a wide monitor the actions ended in a large
   // unexplained gap on the right with none on the left.

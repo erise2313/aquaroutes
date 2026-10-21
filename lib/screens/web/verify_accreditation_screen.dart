@@ -119,7 +119,7 @@ class _VerifyAccreditationScreenState extends ConsumerState<VerifyAccreditationS
                           else if (_error != null)
                             ErrorState(message: _error!, onRetry: _load)
                           else if (_hasSearched && _searchController.text.trim().isNotEmpty)
-                            matches.isEmpty ? _buildNotFoundCard() : Column(children: matches.map(_buildMatchCard).toList()),
+                            matches.isEmpty ? _buildNotFoundCard() : Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: matches.map(_buildMatchCard).toList()),
                         ],
                       ),
                     ),

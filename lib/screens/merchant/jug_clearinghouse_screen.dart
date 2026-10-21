@@ -313,7 +313,7 @@ class _JugClearinghouseScreenState extends State<JugClearinghouseScreen> {
                                   title: 'Nothing outstanding',
                                   message: 'You have no unsettled jug balances with other stations.',
                                 )
-                              : Column(children: _balances.map(_buildBalanceCard).toList()),
+                              : Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: _balances.map(_buildBalanceCard).toList()),
                         ),
                         SizedBox(height: density.sectionGap),
                         PortalSection(
@@ -325,7 +325,7 @@ class _JugClearinghouseScreenState extends State<JugClearinghouseScreen> {
                                   title: 'No settlements yet',
                                   message: 'When you or another station proposes to settle a balance, it appears here.',
                                 )
-                              : Column(children: _settlements.map(_buildSettlementCard).toList()),
+                              : Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: _settlements.map(_buildSettlementCard).toList()),
                         ),
                       ],
                     ),

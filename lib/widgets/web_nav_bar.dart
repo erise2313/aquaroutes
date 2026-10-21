@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../constants/brand_fonts.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -122,13 +123,13 @@ class WebNavBar extends ConsumerWidget implements PreferredSizeWidget {
     // measurement rather than a guess: guessing here is what silently clips
     // links when it runs low. It branches on which action set is rendered --
     // the signed-in pair is narrower than Login + Register a Station.
-    const bold14 = TextStyle(fontSize: 16, fontWeight: FontWeight.w600);
-    const code13 = TextStyle(fontSize: 16, fontWeight: FontWeight.w700);
+    const bold14 = TextStyle(fontFamily: BrandFonts.family, fontSize: 16, fontWeight: FontWeight.w600);
+    const code13 = TextStyle(fontFamily: BrandFonts.family, fontSize: 16, fontWeight: FontWeight.w700);
     final toggleWidth = 20 +
         BrandTopBar.measureText('EN', code13) +
-        BrandTopBar.measureText('  |  ', const TextStyle(fontSize: 16)) +
+        BrandTopBar.measureText('  |  ', const TextStyle(fontFamily: BrandFonts.family, fontSize: 16)) +
         BrandTopBar.measureText('TL', code13);
-    final signedInActionsWidth = 44 + 8 + 40 + BrandTopBar.measureText(t('nav_dashboard'), bold14);
+    final signedInActionsWidth = 48 + 8 + 40 + BrandTopBar.measureText(t('nav_dashboard'), bold14);
     final signedOutActionsWidth = 32 +
         BrandTopBar.measureText(t('nav_login'), bold14) +
         8 +
@@ -136,9 +137,16 @@ class WebNavBar extends ConsumerWidget implements PreferredSizeWidget {
         BrandTopBar.measureText(t('nav_register'), bold14);
     final actionsWidth = 12 + // gap before the toggle
         toggleWidth +
-        44 + // light/dark toggle button
+        48 + // light/dark toggle button
         21 + // divider + its margins
         (isSignedIn ? signedInActionsWidth : signedOutActionsWidth);
+    // The same cluster without the primary button (Register / Dashboard):
+    // the bar drops that before it hides the links. Login still leads to
+    // registration, and the account menu to the dashboard.
+    final actionsWidthWithoutPrimary = actionsWidth -
+        8 -
+        40 -
+        BrandTopBar.measureText(t(isSignedIn ? 'nav_dashboard' : 'nav_register'), bold14);
 
     return BrandTopBar(
       onBrandTap: () => _go(context, WebPage.home, const OrgHomeScreen()),
@@ -149,6 +157,7 @@ class WebNavBar extends ConsumerWidget implements PreferredSizeWidget {
       activeColor: Theme.of(context).colorScheme.primary,
       underlineColor: WebTheme.sealGold,
       actionsWidth: actionsWidth,
+      actionsWidthWithoutPrimary: actionsWidthWithoutPrimary,
       links: [
         for (final page in pages)
           BrandNavLink(
@@ -225,7 +234,7 @@ class WebNavBar extends ConsumerWidget implements PreferredSizeWidget {
             onPressed: () => openWebPage(context, WebRoutes.portal, const LoginScreen()),
             style: TextButton.styleFrom(
               foregroundColor: palette.ink,
-              textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+              textStyle: const TextStyle(fontFamily: BrandFonts.family, fontSize: 16, fontWeight: FontWeight.w600),
               padding: EdgeInsets.symmetric(horizontal: layout.compact ? 8 : 16),
             ),
             child: Text(t('nav_login')),
@@ -249,7 +258,7 @@ class WebNavBar extends ConsumerWidget implements PreferredSizeWidget {
     elevation: 0,
     padding: const EdgeInsets.symmetric(horizontal: 20),
     minimumSize: const Size(0, 44),
-    textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+    textStyle: const TextStyle(fontFamily: BrandFonts.family, fontSize: 16, fontWeight: FontWeight.w600),
     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
   );
 }
@@ -310,6 +319,7 @@ class _LocaleToggle extends StatelessWidget {
     // The unselected language in the muted ink rather than faded ink: at
     // 45% opacity it was below the contrast floor older readers need.
     TextStyle styleFor(WebLocale l) => TextStyle(
+          fontFamily: BrandFonts.family,
           fontSize: 16,
           fontWeight: l == locale ? FontWeight.w700 : FontWeight.w400,
           color: l == locale ? WebTheme.of(context).ink : WebTheme.of(context).inkMuted,
@@ -330,14 +340,14 @@ class _LocaleToggle extends StatelessWidget {
               ? Text(
                   target == WebLocale.tl ? 'TL' : 'EN',
                   key: ValueKey(locale),
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: WebTheme.of(context).ink),
+                  style: TextStyle(fontFamily: BrandFonts.family, fontSize: 16, fontWeight: FontWeight.w700, color: WebTheme.of(context).ink),
                 )
               : Row(
                   key: ValueKey(locale),
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text('EN', style: styleFor(WebLocale.en)),
-                    Text('  |  ', style: TextStyle(fontSize: 16, color: WebTheme.of(context).inkMuted)),
+                    Text('  |  ', style: TextStyle(fontFamily: BrandFonts.family, fontSize: 16, color: WebTheme.of(context).inkMuted)),
                     Text('TL', style: styleFor(WebLocale.tl)),
                   ],
                 ),

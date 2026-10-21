@@ -284,7 +284,7 @@ class _PermitReviewScreenState extends State<PermitReviewScreen> {
                       PortalSection(
                         title: 'Permits',
                         subtitle: 'Every permit for this station, including ones not required here',
-                        child: Column(children: _permits.map(_buildPermitTile).toList()),
+                        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: _permits.map(_buildPermitTile).toList()),
                       ),
                     ],
                   ),

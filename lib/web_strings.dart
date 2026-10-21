@@ -12,7 +12,7 @@ class WebStrings {
   static const Map<String, Map<WebLocale, String>> _strings = {
     // Nav
     'nav_home': {WebLocale.en: 'Home', WebLocale.tl: 'Home'},
-    'nav_about': {WebLocale.en: 'About', WebLocale.tl: 'Tungkol Sa Amin'},
+    'nav_about': {WebLocale.en: 'About', WebLocale.tl: 'Tungkol'},
     // Nav labels are wayfinding, not page titles -- the full headings
     // ("How Accreditation Works", "For Station Owners") still open at the top
     // of their own pages. At full length these two alone ate ~40% of the link
@@ -21,9 +21,9 @@ class WebStrings {
     'nav_for_owners': {WebLocale.en: 'For Owners', WebLocale.tl: 'Para sa May-ari'},
     'nav_news': {WebLocale.en: 'News', WebLocale.tl: 'Balita'},
     'nav_stations': {WebLocale.en: 'Stations', WebLocale.tl: 'Mga Istasyon'},
-    'nav_contact': {WebLocale.en: 'Contact', WebLocale.tl: 'Makipag-ugnayan'},
+    'nav_contact': {WebLocale.en: 'Contact', WebLocale.tl: 'Kontak'},
     'nav_login': {WebLocale.en: 'Login', WebLocale.tl: 'Mag-login'},
-    'nav_register': {WebLocale.en: 'Register a Station', WebLocale.tl: 'Magparehistro ng Istasyon'},
+    'nav_register': {WebLocale.en: 'Register a Station', WebLocale.tl: 'Magparehistro'},
     'nav_menu_tooltip': {WebLocale.en: 'Open menu', WebLocale.tl: 'Buksan ang menu'},
     // Shown in place of Login/Register once someone is signed in. The bar
     // used to render Login and Register a Station unconditionally, so a

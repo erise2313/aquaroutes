@@ -348,6 +348,7 @@ class _BulletinFeedState extends ConsumerState<BulletinFeed> {
                       title: 'Official floor prices',
                       subtitle: 'The least a member station may charge for a refill',
                       child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           for (var i = 0; i < _floorPrices.length; i++)
                             _buildFloorPriceCard(_floorPrices[i], last: i == _floorPrices.length - 1),

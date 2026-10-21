@@ -267,6 +267,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                                     message: 'Every permit, incident and credential submitted so far has been decided.',
                                   )
                                 : Column(
+                                    crossAxisAlignment: CrossAxisAlignment.stretch,
                                     children: [
                                       // Capped: these build eagerly, and a large
                                       // backlog would build hundreds of rows before

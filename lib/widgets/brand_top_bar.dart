@@ -54,6 +54,7 @@ class BrandTopBar extends StatelessWidget implements PreferredSizeWidget {
     required this.links,
     required this.actionsBuilder,
     required this.actionsWidth,
+    this.actionsWidthWithoutPrimary,
     required this.onBrandTap,
     required this.background,
     required this.foreground,
@@ -74,6 +75,13 @@ class BrandTopBar extends StatelessWidget implements PreferredSizeWidget {
   /// precisely what used to clip "For Station Owners" and drop the last three
   /// links off the row.
   final double actionsWidth;
+
+  /// The cluster's width with its primary button left out. When given, a
+  /// bar that is a little short keeps the link row and drops the primary
+  /// button first; it collapses to the menu only if that still doesn't
+  /// fit. Without it a slightly longer label (Tagalog's run much wider)
+  /// hid every link behind the menu on an ordinary laptop screen.
+  final double? actionsWidthWithoutPrimary;
 
   final VoidCallback onBrandTap;
 
@@ -108,8 +116,10 @@ class BrandTopBar extends StatelessWidget implements PreferredSizeWidget {
   /// The same TextPainter measurement the bar uses internally, exposed so a
   /// caller sizes its actions on the same basis rather than by eye.
   static double measureText(String text, TextStyle style) {
+    // The site draws its labels in the brand font; measuring in the
+    // platform default instead under- or over-counted the row.
     final painter = TextPainter(
-      text: TextSpan(text: text, style: style),
+      text: TextSpan(text: text, style: style.fontFamily == null ? style.copyWith(fontFamily: BrandFonts.family) : style),
       textDirection: TextDirection.ltr,
       maxLines: 1,
     )..layout();
@@ -125,7 +135,7 @@ class BrandTopBar extends StatelessWidget implements PreferredSizeWidget {
     const style = TextStyle(fontSize: 16, fontWeight: FontWeight.w700);
     var total = 0.0;
     for (final link in links) {
-      total += measureText(link.label, style) + 24; // button padding + margin
+      total += measureText(link.label, style) + 18; // button padding + margin
     }
     return total;
   }
@@ -154,8 +164,13 @@ class BrandTopBar extends StatelessWidget implements PreferredSizeWidget {
                       measureText('GENTRI WASA', BrandFonts.display(fontSize: 19, fontWeight: FontWeight.w600)) +
                       12;
 
-                  final isWide = constraints.maxWidth >= brandWidth + 20 + measureLinks(links) + actionsWidth + 16;
-                  final hasRoomForPrimary = isWide || constraints.maxWidth >= brandWidth + 48 + actionsWidth + 24;
+                  final linksWidth = measureLinks(links);
+                  final fitsWithPrimary = constraints.maxWidth >= brandWidth + 20 + linksWidth + actionsWidth + 16;
+                  final fitsWithoutPrimary = actionsWidthWithoutPrimary != null &&
+                      constraints.maxWidth >= brandWidth + 20 + linksWidth + actionsWidthWithoutPrimary! + 16;
+                  final isWide = fitsWithPrimary || fitsWithoutPrimary;
+                  final hasRoomForPrimary =
+                      fitsWithPrimary || (!isWide && constraints.maxWidth >= brandWidth + 48 + actionsWidth + 24);
                   final compact = constraints.maxWidth < 700;
                   final layout = BrandBarLayout(compact: compact, isWide: isWide, hasRoomForPrimary: hasRoomForPrimary);
 
@@ -296,7 +311,7 @@ class _BrandNavLinkViewState extends State<_BrandNavLinkView> {
           onPressed: widget.link.onTap,
           style: TextButton.styleFrom(
             minimumSize: const Size(0, 48),
-            padding: const EdgeInsets.symmetric(horizontal: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 7),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -304,6 +319,7 @@ class _BrandNavLinkViewState extends State<_BrandNavLinkView> {
               AnimatedDefaultTextStyle(
                 duration: const Duration(milliseconds: 150),
                 style: TextStyle(
+                  fontFamily: BrandFonts.family,
                   color: color,
                   fontWeight: widget.link.isActive ? FontWeight.w700 : FontWeight.w500,
                   fontSize: 16,
