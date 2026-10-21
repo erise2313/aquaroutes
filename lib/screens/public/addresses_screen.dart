@@ -12,6 +12,7 @@ import '../../widgets/error_state.dart';
 import '../app_route.dart';
 import '../../widgets/trash_note.dart';
 import '../../utils/data_changes.dart';
+import '../../widgets/written_address_fields.dart';
 import '../../utils/error_text.dart';
 
 /// A customer's saved delivery addresses. Ordering used to mean dropping a
@@ -154,9 +155,13 @@ class _AddressesScreenState extends State<AddressesScreen> {
                           ],
                         ],
                       ),
+                      // The written address; older addresses saved as a pin
+                      // only are flagged so the customer adds the words.
                       subtitle: Text(
-                        address.notes ??
-                            '${address.latitude.toStringAsFixed(4)}, ${address.longitude.toStringAsFixed(4)}',
+                        address.hasWrittenAddress
+                            ? address.writtenAddress
+                            : 'Tap to add the street and barangay${(address.notes ?? '').isEmpty ? '' : ' · ${address.notes}'}',
+                        style: address.hasWrittenAddress ? null : TextStyle(color: Theme.of(context).colorScheme.error),
                       ),
                       onTap: () => _edit(existing: address),
                       trailing: PopupMenuButton<String>(
@@ -203,6 +208,9 @@ class _AddressEditorScreenState extends State<AddressEditorScreen> {
   final _mapController = MapController();
   late final _labelController = TextEditingController(text: widget.existing?.label ?? '');
   late final _notesController = TextEditingController(text: widget.existing?.notes ?? '');
+  late final _streetController = TextEditingController(text: widget.existing?.street ?? '');
+  late final _cityController = TextEditingController(text: widget.existing?.city ?? '');
+  late String? _barangay = widget.existing?.barangay;
   late LatLng _point = widget.existing != null
       ? LatLng(widget.existing!.latitude, widget.existing!.longitude)
       : (widget.initialPoint ?? const LatLng(14.3868, 120.8817));
@@ -213,6 +221,8 @@ class _AddressEditorScreenState extends State<AddressEditorScreen> {
   void dispose() {
     _labelController.dispose();
     _notesController.dispose();
+    _streetController.dispose();
+    _cityController.dispose();
     super.dispose();
   }
 
@@ -227,6 +237,9 @@ class _AddressEditorScreenState extends State<AddressEditorScreen> {
         longitude: _point.longitude,
         notes: _notesController.text,
         isDefault: _isDefault,
+        street: _streetController.text,
+        barangay: _barangay,
+        city: _cityController.text,
       );
       if (mounted) Navigator.pop(context, true);
     } catch (e) {
@@ -241,9 +254,13 @@ class _AddressEditorScreenState extends State<AddressEditorScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: Text(widget.existing == null ? 'Add address' : 'Edit ${widget.existing!.label}')),
-      body: Column(
+      // The map takes a share of the screen and the form scrolls under it:
+      // with the written-address fields, a full-height map left the Save
+      // button off the bottom of a small phone.
+      body: LayoutBuilder(builder: (context, constraints) => Column(
         children: [
-          Expanded(
+          SizedBox(
+            height: (constraints.maxHeight * 0.38).clamp(160.0, 360.0),
             child: Stack(
               children: [
                 FlutterMap(
@@ -274,9 +291,10 @@ class _AddressEditorScreenState extends State<AddressEditorScreen> {
               ],
             ),
           ),
-          SafeArea(
+          Expanded(
+            child: SafeArea(
             top: false,
-            child: Padding(
+            child: SingleChildScrollView(
               padding: const EdgeInsets.all(16),
               child: Form(
                 key: _formKey,
@@ -289,16 +307,15 @@ class _AddressEditorScreenState extends State<AddressEditorScreen> {
                       decoration: const InputDecoration(labelText: 'Name', hintText: 'Home, Work, Mama\'s house', border: OutlineInputBorder()),
                       validator: validateAddressLabel,
                     ),
-                    const SizedBox(height: 8),
-                    TextFormField(
-                      controller: _notesController,
-                      maxLength: 200,
-                      decoration: const InputDecoration(
-                        labelText: 'Landmark or instructions (optional)',
-                        hintText: 'Blue gate beside the sari-sari store',
-                        border: OutlineInputBorder(),
-                        counterText: '',
-                      ),
+                    const SizedBox(height: 12),
+                    // Written address, so a driver can find the gate, not
+                    // just the pin. The landmark is the address's notes.
+                    WrittenAddressFields(
+                      street: _streetController,
+                      city: _cityController,
+                      landmark: _notesController,
+                      barangay: _barangay,
+                      onBarangayChanged: (v) => setState(() => _barangay = v),
                     ),
                     SwitchListTile(
                       contentPadding: EdgeInsets.zero,
@@ -318,9 +335,10 @@ class _AddressEditorScreenState extends State<AddressEditorScreen> {
                 ),
               ),
             ),
+            ),
           ),
         ],
-      ),
+      )),
     );
   }
 }

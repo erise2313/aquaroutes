@@ -15,6 +15,7 @@ import '../../widgets/skeleton_loader.dart';
 import '../../utils/error_text.dart';
 import '../../widgets/event_rsvp.dart';
 import '../../widgets/trash_note.dart';
+import '../../widgets/officer_can.dart';
 import '../../constants/admin_palette.dart';
 
 class EventsAdminScreen extends StatefulWidget {
@@ -169,11 +170,11 @@ class _EventsAdminScreenState extends State<EventsAdminScreen> {
     final visible = _showPast ? past : upcoming;
 
     return Scaffold(
-      floatingActionButton: FloatingActionButton.extended(
+      floatingActionButton: OfficerCan(area: OfficerArea.content, child: FloatingActionButton.extended(
         onPressed: () => _eventFlow(),
         icon: const Icon(Icons.add),
         label: const Text('New Event'),
-      ),
+      )),
       body: Column(
         children: [
           AdminPageHeader(
@@ -278,17 +279,17 @@ class _EventsAdminScreenState extends State<EventsAdminScreen> {
               ],
             ),
           ),
-          IconButton(
+          OfficerCan(area: OfficerArea.content, child: IconButton(
             icon: const Icon(Icons.edit_outlined),
             tooltip: 'Edit event',
             onPressed: () => _eventFlow(editing: event),
-          ),
-          IconButton(
+          )),
+          OfficerCan(area: OfficerArea.content, child: IconButton(
             icon: const Icon(Icons.delete_outline),
             color: AppColors.flagged,
             tooltip: 'Delete event',
             onPressed: () => _delete(event),
-          ),
+          )),
         ],
       ),
     );

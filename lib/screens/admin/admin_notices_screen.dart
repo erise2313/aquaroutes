@@ -7,6 +7,7 @@ import '../../constants/brand_tokens.dart';
 import '../../utils/error_text.dart';
 import '../../widgets/admin_page_header.dart';
 import '../../widgets/error_state.dart';
+import '../../widgets/officer_can.dart';
 import '../../widgets/portal/portal.dart';
 
 /// Official notices from WASA to one station or to every station, with
@@ -81,7 +82,7 @@ class _AdminNoticesScreenState extends State<AdminNoticesScreen> {
           title: 'Official notices',
           subtitle: 'Written notices to stations, with who read and acknowledged them',
           actions: [
-            FilledButton.icon(onPressed: _compose, icon: const Icon(Icons.campaign_outlined), label: const Text('New notice')),
+            OfficerCan(area: OfficerArea.stations, child: FilledButton.icon(onPressed: _compose, icon: const Icon(Icons.campaign_outlined), label: const Text('New notice'))),
           ],
         ),
         Expanded(

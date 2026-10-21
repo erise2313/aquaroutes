@@ -16,6 +16,7 @@ import '../../widgets/portal/portal.dart';
 import '../../widgets/skeleton_loader.dart';
 import '../../utils/error_text.dart';
 import '../../widgets/rejection_reason_dialog.dart';
+import '../../widgets/officer_can.dart';
 import '../../constants/admin_palette.dart';
 
 /// wasa_admin review of worker security incidents AND worker credential
@@ -436,12 +437,12 @@ class _WorkerClearanceScreenState extends State<WorkerClearanceScreen> with Sing
             message: incident['appeal_text'] as String? ?? '',
           ),
           const SizedBox(height: 12),
-          PortalActionRow(
+          OfficerCan(area: OfficerArea.workers, child: PortalActionRow(
             children: [
               OutlinedButton(onPressed: () => _decideAppeal(incident['id'] as String, false), child: const Text('Reject appeal')),
               FilledButton(onPressed: () => _decideAppeal(incident['id'] as String, true), child: const Text('Accept appeal')),
             ],
-          ),
+          )),
         ],
       ),
     );
@@ -484,16 +485,16 @@ class _WorkerClearanceScreenState extends State<WorkerClearanceScreen> with Sing
                 child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)),
               )
             else ...[
-              TextButton(
+              OfficerCan(area: OfficerArea.workers, child: TextButton(
                 onPressed: count == 0 ? null : () => _bulkReviewCredentials(false),
                 child: const Text('Reject'),
-              ),
+              )),
               const SizedBox(width: 8),
-              FilledButton(
+              OfficerCan(area: OfficerArea.workers, child: FilledButton(
                 style: FilledButton.styleFrom(backgroundColor: AppColors.cleared, minimumSize: const Size(0, 44)),
                 onPressed: count == 0 ? null : () => _bulkReviewCredentials(true),
                 child: const Text('Approve'),
-              ),
+              )),
             ],
           ],
         ),
@@ -534,7 +535,7 @@ class _WorkerClearanceScreenState extends State<WorkerClearanceScreen> with Sing
           const SizedBox(height: 4),
           Text(incident['description'] ?? ''),
           const SizedBox(height: 12),
-          PortalActionRow(
+          OfficerCan(area: OfficerArea.workers, child: PortalActionRow(
             children: [
               OutlinedButton(
                 onPressed: () => _resolveIncident(incident['id'] as String, false),
@@ -546,7 +547,7 @@ class _WorkerClearanceScreenState extends State<WorkerClearanceScreen> with Sing
                 child: const Text('Confirm flag'),
               ),
             ],
-          ),
+          )),
         ],
       ),
     );
@@ -613,7 +614,7 @@ class _WorkerClearanceScreenState extends State<WorkerClearanceScreen> with Sing
             ],
           ),
           const SizedBox(height: 12),
-          PortalActionRow(
+          OfficerCan(area: OfficerArea.workers, child: PortalActionRow(
             children: [
               OutlinedButton(
                 onPressed: () => _reviewCredential(credential['id'] as String, false),
@@ -625,7 +626,7 @@ class _WorkerClearanceScreenState extends State<WorkerClearanceScreen> with Sing
                 child: const Text('Approve'),
               ),
             ],
-          ),
+          )),
         ],
       ),
     );

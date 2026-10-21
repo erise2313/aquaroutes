@@ -115,6 +115,9 @@ class _MerchantDashboardScreenState extends State<MerchantDashboardScreen> {
   /// next to the driver code so owners don't hand staff the driver one.
   String? _staffCode;
 
+  /// The station's permanent WASA ID (GW-STN-...).
+  String? _stationCode;
+
   /// The station's standing with WASA (patch_compliance.sql); shown at the
   /// top of the dashboard when it needs the owner's attention.
   StationStanding? _standing;
@@ -133,7 +136,7 @@ class _MerchantDashboardScreenState extends State<MerchantDashboardScreen> {
       // 1. Get the owner's station id and invite code.
       final stationData = await supabase
           .from('water_stations')
-          .select('id, invite_code, invite_code_expires_at, staff_invite_code, standing')
+          .select('id, station_code, invite_code, invite_code_expires_at, staff_invite_code, standing')
           .eq('owner_profile_id', userId)
           .maybeSingle();
 
@@ -158,6 +161,7 @@ class _MerchantDashboardScreenState extends State<MerchantDashboardScreen> {
             _renewalDueCount = renewalDueCount;
             _inviteCode = inviteCode;
             _staffCode = stationData['staff_invite_code'] as String?;
+            _stationCode = stationData['station_code'] as String?;
             _inviteExpires = DateTime.tryParse(stationData['invite_code_expires_at'] as String? ?? '')?.toLocal();
             _standing = stationStandingFromString(stationData['standing'] as String?);
             _isLoading = false;
@@ -206,7 +210,9 @@ class _MerchantDashboardScreenState extends State<MerchantDashboardScreen> {
           PortalPageHeader(
             eyebrow: 'Your station',
             title: 'Station Dashboard',
-            subtitle: 'Live orders, takings, and the records the association asks for',
+            subtitle: _stationCode == null
+                ? 'Live orders, takings, and the records the association asks for'
+                : 'WASA station ID $_stationCode · live orders, takings and records',
             actions: PortalShellScope.isPresent(context) ? const [] : const [AppThemeToggle(), NotificationBell()],
           ),
           Expanded(

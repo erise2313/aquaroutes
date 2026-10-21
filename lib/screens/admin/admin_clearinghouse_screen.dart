@@ -13,6 +13,7 @@ import '../../widgets/admin_status_pill.dart';
 import '../../widgets/confirm_dialog.dart';
 import '../../widgets/error_state.dart';
 import '../../widgets/portal/portal.dart';
+import '../../widgets/officer_can.dart';
 import '../../widgets/skeleton_loader.dart';
 
 /// The jug clearinghouse as the association sees it: every outstanding
@@ -303,11 +304,11 @@ class _AdminClearinghouseScreenState extends State<AdminClearinghouseScreen> {
                       const SizedBox(height: 8),
                       Align(
                         alignment: Alignment.centerLeft,
-                        child: FilledButton.icon(
+                        child: OfficerCan(area: OfficerArea.network, child: FilledButton.icon(
                           onPressed: _busyId == null ? () => _resolveDispute(s) : null,
                           icon: const Icon(Icons.gavel),
                           label: const Text('Decide the dispute'),
-                        ),
+                        )),
                       ),
                     ],
                   ],

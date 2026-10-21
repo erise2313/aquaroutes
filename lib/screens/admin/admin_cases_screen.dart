@@ -8,6 +8,7 @@ import '../../utils/error_text.dart';
 import '../../widgets/admin_filter_bar.dart';
 import '../../widgets/admin_page_header.dart';
 import '../../widgets/error_state.dart';
+import '../../widgets/officer_can.dart';
 import '../../widgets/portal/portal.dart';
 
 /// What each case kind is about. Never price: the association governs
@@ -122,7 +123,7 @@ class _AdminCasesScreenState extends State<AdminCasesScreen> {
           title: 'Compliance cases',
           subtitle: 'A written record of each issue with a station, its decision and the station\'s response',
           actions: [
-            FilledButton.icon(onPressed: () => _edit(), icon: const Icon(Icons.add), label: const Text('Open a case')),
+            OfficerCan(area: OfficerArea.stations, child: FilledButton.icon(onPressed: () => _edit(), icon: const Icon(Icons.add), label: const Text('Open a case'))),
           ],
         ),
         Expanded(

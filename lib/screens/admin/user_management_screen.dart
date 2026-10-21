@@ -16,6 +16,7 @@ import '../../utils/csv_download.dart';
 import '../../utils/csv_export.dart';
 import '../../utils/error_text.dart';
 import '../../constants/admin_palette.dart';
+import '../../widgets/officer_can.dart';
 import '../../utils/log.dart';
 
 /// Narrows the loaded membership rows by free-text name/station search plus
@@ -351,10 +352,10 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
               ),
             )
           else
-            TextButton(
+            OfficerCan(area: OfficerArea.accounts, child: TextButton(
               onPressed: () => _toggleStatus(membership),
               child: Text(isActive ? 'Suspend' : 'Reactivate'),
-            ),
+            )),
         ],
       ),
     );
@@ -531,7 +532,7 @@ class _DeletionRequestsPanelState extends State<_DeletionRequestsPanel> {
               child: Text('"${request.reason}"', style: const TextStyle(fontStyle: FontStyle.italic)),
             ),
           const SizedBox(height: 6),
-          Wrap(
+          OfficerCan(area: OfficerArea.accounts, child: Wrap(
             spacing: 8,
             runSpacing: 4,
             children: [
@@ -549,7 +550,7 @@ class _DeletionRequestsPanelState extends State<_DeletionRequestsPanel> {
                     : const Text('Delete account'),
               ),
             ],
-          ),
+          )),
           const Divider(height: 20),
         ],
       ),

@@ -12,6 +12,7 @@ import '../../widgets/error_state.dart';
 import '../../widgets/portal/portal.dart';
 import '../../widgets/skeleton_loader.dart';
 import '../../widgets/trash_note.dart';
+import '../../widgets/officer_can.dart';
 import '../../widgets/star_rating.dart';
 
 /// Narrows loaded reviews by free text (station, reviewer, comment) and
@@ -237,13 +238,13 @@ class _AdminReviewsScreenState extends State<AdminReviewsScreen> {
           const SizedBox(height: 6),
           Align(
             alignment: Alignment.centerRight,
-            child: TextButton.icon(
+            child: OfficerCan(area: OfficerArea.content, child: TextButton.icon(
               onPressed: busy || _busyId != null ? null : () => _delete(review),
               icon: busy
                   ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
                   : const Icon(Icons.delete_outline, size: 18),
               label: const Text('Remove'),
-            ),
+            )),
           ),
         ],
       ),

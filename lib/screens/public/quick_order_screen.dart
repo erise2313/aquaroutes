@@ -33,6 +33,8 @@ import '../app_route.dart';
 import '../../widgets/app_map_tiles.dart';
 import '../../utils/error_text.dart';
 import '../../utils/data_changes.dart';
+import '../../widgets/written_address_fields.dart';
+import '../../utils/written_address.dart';
 import 'package:aquaroute/constants/brand_tokens.dart';
 
 /// Most a single order may contain. Mirrors v_max_qty in insert_quick_order
@@ -113,6 +115,21 @@ class _QuickOrderScreenState extends ConsumerState<QuickOrderScreen> {
   final _mapController = MapController();
   List<CustomerAddress> _addresses = [];
   String? _selectedAddressId;
+
+  // The written delivery address that goes with the pin, filled from a
+  // saved address when one is picked. Required: drivers need words, not
+  // only a dot on a map.
+  final _streetController = TextEditingController();
+  final _cityController = TextEditingController();
+  final _landmarkController = TextEditingController();
+  String? _barangay;
+
+  void _fillWrittenAddress(CustomerAddress address) {
+    _streetController.text = address.street ?? '';
+    _cityController.text = (address.city ?? '').isEmpty ? kDefaultCity : address.city!;
+    _landmarkController.text = address.notes ?? '';
+    _barangay = address.barangay;
+  }
 
   LatLng? _selectedLocation;
   String? _waterTypeFilter;
@@ -199,6 +216,9 @@ class _QuickOrderScreenState extends ConsumerState<QuickOrderScreen> {
     DataChanges.addresses.removeListener(_onAddressesChanged);
     _phoneController.dispose();
     _jugCountController.dispose();
+    _streetController.dispose();
+    _cityController.dispose();
+    _landmarkController.dispose();
     super.dispose();
   }
 
@@ -231,6 +251,7 @@ class _QuickOrderScreenState extends ConsumerState<QuickOrderScreen> {
         final preferred = preferredAddress(addresses);
         if (preferred != null && _selectedLocation == null) {
           _selectedAddressId = preferred.id;
+          _fillWrittenAddress(preferred);
           _selectedLocation = LatLng(preferred.latitude, preferred.longitude);
         }
       });
@@ -251,6 +272,7 @@ class _QuickOrderScreenState extends ConsumerState<QuickOrderScreen> {
     setState(() {
       _selectedAddressId = address.id;
       _selectedLocation = LatLng(address.latitude, address.longitude);
+      _fillWrittenAddress(address);
     });
     try {
       _mapController.move(LatLng(address.latitude, address.longitude), 16);
@@ -544,6 +566,22 @@ class _QuickOrderScreenState extends ConsumerState<QuickOrderScreen> {
         productId: product.id,
       );
 
+      // The written address, kept on the order for the station and driver.
+      // The order is already placed, so a failure here mustn't undo it.
+      try {
+        await Supabase.instance.client.rpc('set_order_delivery_address', params: {
+          'p_order_id': orderId,
+          'p_address': formatWrittenAddress(
+            street: _streetController.text,
+            barangay: _barangay,
+            city: _cityController.text,
+            landmark: _landmarkController.text,
+          ),
+        });
+      } catch (e) {
+        logError('set order delivery address', e);
+      }
+
       // Show the total the server stored rather than this screen's
       // arithmetic: the server prices the order itself, and the two differ
       // if the station changed a price after this screen loaded it.
@@ -667,6 +705,21 @@ class _QuickOrderScreenState extends ConsumerState<QuickOrderScreen> {
                           const SizedBox(height: 12),
                         ],
                         _buildAddressPicker(),
+                        const Text('Delivery address', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Written out, so the driver can find the gate as well as the pin.',
+                          style: TextStyle(fontSize: 16, color: Theme.of(context).colorScheme.onSurfaceVariant),
+                        ),
+                        const SizedBox(height: 8),
+                        WrittenAddressFields(
+                          street: _streetController,
+                          city: _cityController,
+                          landmark: _landmarkController,
+                          barangay: _barangay,
+                          onBarangayChanged: (v) => setState(() => _barangay = v),
+                        ),
+                        const SizedBox(height: 16),
                         DropdownButtonFormField<String?>(
                           isExpanded: true,
                           initialValue: _waterTypeFilter,

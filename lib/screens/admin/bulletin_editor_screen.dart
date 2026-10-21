@@ -20,6 +20,7 @@ import '../../widgets/skeleton_loader.dart';
 import '../public/bulletin_feed.dart';
 import '../../utils/error_text.dart';
 import '../../widgets/trash_note.dart';
+import '../../widgets/officer_can.dart';
 import '../../constants/admin_palette.dart';
 
 /// Validates a container code typed by the admin: lower-case letters,
@@ -267,12 +268,12 @@ class _BulletinEditorScreenState extends State<BulletinEditorScreen> {
                     ),
                     const SizedBox(width: 8),
                     Text('Min ${formatPeso(fp.minPricePerJug)}', style: TextStyle(fontWeight: FontWeight.w600, color: AdminPalette.of(context).ink)),
-                    IconButton(
+                    OfficerCan(area: OfficerArea.content, child: IconButton(
                       icon: const Icon(Icons.delete_outline, size: 20),
                       color: AppColors.flagged,
                       tooltip: 'Remove',
                       onPressed: () => _deleteFloorPrice(fp),
-                    ),
+                    )),
                   ],
                 ),
               ),

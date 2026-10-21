@@ -13,6 +13,7 @@ import '../../widgets/portal/portal.dart';
 import '../../widgets/skeleton_loader.dart';
 import '../../utils/error_text.dart';
 import '../../widgets/trash_note.dart';
+import '../../widgets/officer_can.dart';
 import '../../constants/admin_palette.dart';
 
 /// WASA admin upload/manage screen for the public resources library
@@ -120,7 +121,7 @@ class _ResourcesAdminScreenState extends State<ResourcesAdminScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      floatingActionButton: FloatingActionButton.extended(onPressed: _uploadFlow, icon: const Icon(Icons.upload_file), label: const Text('Upload')),
+      floatingActionButton: OfficerCan(area: OfficerArea.content, child: FloatingActionButton.extended(onPressed: _uploadFlow, icon: const Icon(Icons.upload_file), label: const Text('Upload'))),
       // AdminPageHeader rather than a plain AppBar: this screen and Events
       // were the only two in the portal wearing Material's default bar, so
       // opening them from the dashboard dropped you out of the navy/gold
@@ -179,12 +180,12 @@ class _ResourcesAdminScreenState extends State<ResourcesAdminScreen> {
               ],
             ),
           ),
-          IconButton(
+          OfficerCan(area: OfficerArea.content, child: IconButton(
             icon: const Icon(Icons.delete_outline),
             color: AppColors.flagged,
             tooltip: 'Delete resource',
             onPressed: () => _delete(resource),
-          ),
+          )),
         ],
       ),
     );

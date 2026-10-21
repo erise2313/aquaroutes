@@ -58,6 +58,14 @@ void main() {
       expect(facts.map((f) => f.value), ['None on file with WASA', 'Not on file with WASA', 'Not recorded']);
     });
 
+    test('shows the station ID and landmark when the station has them', () {
+      final facts = stationTrustFacts(
+        _station('a', extra: {'station_code': 'GW-STN-2026-0001', 'landmark': 'beside the chapel'}),
+        now: now,
+      );
+      expect(facts.map((f) => f.value), containsAll(['GW-STN-2026-0001', 'beside the chapel']));
+    });
+
     test('a sanitary permit is valid until, or expired on, its date', () {
       final valid = stationTrustFacts(_station('a', extra: {'sanitary_valid_until': '2027-01-31'}), now: now);
       expect(valid[1].value, 'Valid until Jan 31, 2027');

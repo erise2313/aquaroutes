@@ -20,6 +20,7 @@ import '../../widgets/error_state.dart';
 import '../../widgets/portal/portal.dart';
 import '../../widgets/skeleton_loader.dart';
 import '../../widgets/rejection_reason_dialog.dart';
+import '../../widgets/officer_can.dart';
 import '../../utils/error_text.dart';
 
 /// wasa_admin review of a single station's permit vault. Approving every
@@ -335,7 +336,7 @@ class _PermitReviewScreenState extends State<PermitReviewScreen> {
                 const SizedBox(width: 8),
                 Tooltip(
                   message: 'Required for this station',
-                  child: Switch(value: permit.isRequired, onChanged: (v) => _setRequired(permit, v)),
+                  child: OfficerCan(area: OfficerArea.stations, child: Switch(value: permit.isRequired, onChanged: (v) => _setRequired(permit, v))),
                 ),
               ],
             ),
@@ -369,7 +370,7 @@ class _PermitReviewScreenState extends State<PermitReviewScreen> {
             // so one action looks the same in both places.
             if (isPending) ...[
               const SizedBox(height: 10),
-              PortalActionRow(
+              OfficerCan(area: OfficerArea.stations, child: PortalActionRow(
                 children: [
                   OutlinedButton(
                     onPressed: () => _review(permit, false),
@@ -385,7 +386,7 @@ class _PermitReviewScreenState extends State<PermitReviewScreen> {
                     child: const Text('Approve'),
                   ),
                 ],
-              ),
+              )),
             ],
           ],
         ),

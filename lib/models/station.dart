@@ -154,6 +154,12 @@ class PublicStation {
   final DateTime? lastWaterTestAt;
   final DateTime? sanitaryValidUntil;
 
+  /// Permanent ID, e.g. GW-STN-2026-0001 (patch_ids_and_addresses.sql).
+  final String? stationCode;
+
+  /// "Beside the chapel", to find the station from its address.
+  final String? landmark;
+
   /// "New member" for the first 90 days after accreditation -- so a new
   /// station isn't read as an unknown one.
   bool isNewMember([DateTime? now]) =>
@@ -191,6 +197,8 @@ class PublicStation {
     this.accreditedAt,
     this.lastWaterTestAt,
     this.sanitaryValidUntil,
+    this.stationCode,
+    this.landmark,
   });
 
   bool get offersAlkaline => offeredWaterTypes.contains('alkaline');
@@ -223,6 +231,8 @@ class PublicStation {
       accreditedAt: _date(map['accredited_at']),
       lastWaterTestAt: _date(map['last_water_test_at']),
       sanitaryValidUntil: _date(map['sanitary_valid_until']),
+      stationCode: map['station_code'] as String?,
+      landmark: map['landmark'] as String?,
     );
   }
 

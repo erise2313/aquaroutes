@@ -17,6 +17,9 @@ import '../../utils/error_text.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/services.dart';
 import '../../utils/jug_capacity.dart';
+import '../../widgets/written_address_fields.dart';
+import '../../utils/written_address.dart';
+import '../../services/station_address.dart';
 import 'package:aquaroute/constants/brand_tokens.dart';
 
 /// Self-registration for the three roles that can sign themselves up:
@@ -52,6 +55,13 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
   // Station Owner-Specific Controllers
   final _stationNameController = TextEditingController();
   final _stationAddressController = TextEditingController();
+
+  // The station's written address (house no./street, barangay, city,
+  // landmark); _stationAddressController is no longer shown.
+  final _stationStreetController = TextEditingController();
+  final _stationCityController = TextEditingController();
+  final _stationLandmarkController = TextEditingController();
+  String? _stationBarangay;
 
   /// Where the station is, if the owner pinned it while registering. Without
   /// a pin the station is saved at a placeholder point in General Trias and
@@ -90,6 +100,9 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
     _fullNameController.dispose();
     _stationNameController.dispose();
     _stationAddressController.dispose();
+    _stationStreetController.dispose();
+    _stationCityController.dispose();
+    _stationLandmarkController.dispose();
     _inviteCodeController.dispose();
     _plateNumberController.dispose();
     _capacityController.dispose();
@@ -193,15 +206,35 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
         // a few times before giving up.
         for (var attempt = 0; ; attempt++) {
           try {
-            await supabase.rpc('register_station_owner', params: {
+            final stationId = await supabase.rpc('register_station_owner', params: {
               'p_station_name': _stationNameController.text.trim(),
-              'p_station_address': _stationAddressController.text.trim(),
+              'p_station_address': formatWrittenAddress(
+                street: _stationStreetController.text,
+                barangay: _stationBarangay,
+                city: _stationCityController.text,
+              ),
               'p_invite_code': _generateInviteCode(),
               // The pinned location, or a placeholder until the owner sets
               // it from the location picker in their profile.
               'p_latitude': _stationLat ?? 14.3868,
               'p_longitude': _stationLng ?? 120.8817,
             });
+            // The address parts and barangay, beside the one-line address
+            // the registration function stores. Best effort: the station
+            // exists either way, and the owner can finish it in Profile.
+            if (stationId is String) {
+              try {
+                await supabase.from('water_stations').update(await stationAddressPayload(
+                  supabase,
+                  street: _stationStreetController.text,
+                  barangay: _stationBarangay,
+                  city: _stationCityController.text,
+                  landmark: _stationLandmarkController.text,
+                )).eq('id', stationId);
+              } catch (e) {
+                logError('save station address parts', e);
+              }
+            }
             break;
           } on PostgrestException catch (e) {
             final isInviteCodeCollision = e.code == '23505' && (e.message.contains('invite_code'));
@@ -509,12 +542,12 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
           autofillHints: const [AutofillHints.name],
         ),
         const SizedBox(height: 16),
-        AuthTextField(
-          controller: _stationAddressController,
-          label: "Station Address (San Francisco, General Trias)",
-          icon: Icons.store_mall_directory_outlined,
-          textInputAction: TextInputAction.next,
-          validator: (v) => _requiredField(v, 'your station address'),
+        WrittenAddressFields(
+          street: _stationStreetController,
+          city: _stationCityController,
+          landmark: _stationLandmarkController,
+          barangay: _stationBarangay,
+          onBarangayChanged: (v) => setState(() => _stationBarangay = v),
         ),
         const SizedBox(height: 12),
         Align(

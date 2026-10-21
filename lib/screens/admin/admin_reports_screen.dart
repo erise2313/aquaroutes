@@ -13,6 +13,7 @@ import '../../widgets/admin_page_header.dart';
 import '../../widgets/error_state.dart';
 import '../../widgets/portal/portal.dart';
 import '../../widgets/report_problem_dialog.dart';
+import '../../widgets/officer_can.dart';
 import 'admin_orders_screen.dart' show showReportedOrder;
 
 const adminReportsSelect = 'id, station_id, order_id, category, details, photo_path, status, officer_note, '
@@ -177,7 +178,12 @@ class _AdminReportsScreenState extends ConsumerState<AdminReportsScreen> {
     return PortalCard(
       margin: const EdgeInsets.only(bottom: 10),
       accent: reportStatusColor(r['status'] as String?),
-      onTap: () => _update(r),
+      // Only roles that may change compliance records can open the update
+      // form; others read the report as it is.
+      onTap: switch (currentOfficerRole(ref)) {
+        final role? when !officerAreaAllowed(role, OfficerArea.stations) => null,
+        _ => () => _update(r),
+      },
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

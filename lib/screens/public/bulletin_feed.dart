@@ -26,6 +26,7 @@ import '../auth/registration_screen.dart';
 import '../app_route.dart';
 import '../../utils/error_text.dart';
 import '../../widgets/trash_note.dart';
+import '../../widgets/officer_can.dart';
 import 'package:aquaroute/constants/brand_tokens.dart';
 
 /// Reusable feed body (not a full Scaffold) shared by the guest home
@@ -399,11 +400,11 @@ class _BulletinFeedState extends ConsumerState<BulletinFeed> {
       floatingActionButton:
           membership != null && _bulletinService.allowedCategoriesFor(membership.role).isEmpty
           ? null
-          : FloatingActionButton.extended(
+          : OfficerCan(area: OfficerArea.content, child: FloatingActionButton.extended(
               onPressed: () => _handleNewPostTap(membership),
               icon: const Icon(Icons.add),
               label: const Text('New Post'),
-            ),
+            )),
     );
   }
 
@@ -676,7 +677,7 @@ class _BulletinFeedState extends ConsumerState<BulletinFeed> {
                   // The four officer buttons wrap onto a second line on a
                   // phone; in one row they pushed Delete off the card.
                   Expanded(
-                    child: Wrap(
+                    child: OfficerCan(area: OfficerArea.content, child: Wrap(
                       alignment: WrapAlignment.end,
                       children: [
                       IconButton(
@@ -704,7 +705,7 @@ class _BulletinFeedState extends ConsumerState<BulletinFeed> {
                         onPressed: () => _deleteBulletin(bulletin),
                       ),
                       ],
-                    ),
+                    )),
                   ),
                 ] else if (membership != null && bulletin.postedBy != Supabase.instance.client.auth.currentUser?.id) ...[
                   const Spacer(),

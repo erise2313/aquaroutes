@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:aquaroute/models/officer_role.dart';
+import 'package:aquaroute/widgets/officer_can.dart';
 
 void main() {
   group('OfficerRole.fromMembership', () {
@@ -35,6 +36,23 @@ void main() {
     for (final role in OfficerRole.values) {
       expect(role.label, isNotEmpty);
       expect(role.description, isNotEmpty);
+    }
+  });
+
+  // Mirrors officer_area_allowed() in patch_officer_roles.sql; the two must
+  // agree, or buttons show that the server refuses.
+  test('each role may change exactly its own areas', () {
+    final expected = {
+      OfficerRole.superadmin: OfficerArea.values.toSet(),
+      OfficerRole.officer: OfficerArea.values.toSet()..remove(OfficerArea.settings),
+      OfficerRole.compliance: {OfficerArea.stations, OfficerArea.network},
+      OfficerRole.workforce: {OfficerArea.workers},
+      OfficerRole.content: {OfficerArea.content},
+      OfficerRole.viewer: <OfficerArea>{},
+    };
+    for (final role in OfficerRole.values) {
+      final allowed = {for (final a in OfficerArea.values) if (officerAreaAllowed(role, a)) a};
+      expect(allowed, expected[role], reason: role.name);
     }
   });
 }

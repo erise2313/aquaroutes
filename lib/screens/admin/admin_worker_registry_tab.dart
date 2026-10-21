@@ -11,6 +11,7 @@ import '../../widgets/confirm_dialog.dart';
 import '../../widgets/error_state.dart';
 import '../../widgets/portal/portal.dart';
 import '../../widgets/rejection_reason_dialog.dart';
+import '../../widgets/officer_can.dart';
 import '../../widgets/skeleton_loader.dart';
 
 /// Every worker across all member stations, with their clearance -- the
@@ -390,12 +391,12 @@ class _WorkerRecordDialogState extends State<_WorkerRecordDialog> {
                               label: const Text('View document'),
                             ),
                           if (c['status'] == 'pending_review') ...[
-                            OutlinedButton(onPressed: () => _reviewCredential(c, false), child: const Text('Reject')),
-                            FilledButton(
+                            OfficerCan(area: OfficerArea.workers, child: OutlinedButton(onPressed: () => _reviewCredential(c, false), child: const Text('Reject'))),
+                            OfficerCan(area: OfficerArea.workers, child: FilledButton(
                               style: FilledButton.styleFrom(backgroundColor: AppColors.cleared),
                               onPressed: () => _reviewCredential(c, true),
                               child: const Text('Approve'),
-                            ),
+                            )),
                           ],
                         ],
                       ),
@@ -408,19 +409,19 @@ class _WorkerRecordDialogState extends State<_WorkerRecordDialog> {
                         note: i['appeal_status'] == 'pending' ? 'The driver has appealed this -- see the Appeals tab.' : null,
                         actions: [
                           if (i['status'] == 'pending_review') ...[
-                            OutlinedButton(onPressed: () => _setIncident(i, 'dismissed'), child: const Text('Dismiss')),
-                            FilledButton(
+                            OfficerCan(area: OfficerArea.workers, child: OutlinedButton(onPressed: () => _setIncident(i, 'dismissed'), child: const Text('Dismiss'))),
+                            OfficerCan(area: OfficerArea.workers, child: FilledButton(
                               style: FilledButton.styleFrom(backgroundColor: AppColors.flagged),
                               onPressed: () => _setIncident(i, 'confirmed_flag'),
                               child: const Text('Confirm flag'),
-                            ),
+                            )),
                           ],
                           if (i['status'] == 'confirmed_flag')
-                            OutlinedButton.icon(
+                            OfficerCan(area: OfficerArea.workers, child: OutlinedButton.icon(
                               onPressed: () => _setIncident(i, 'dismissed'),
                               icon: const Icon(Icons.flag_outlined, size: 18),
                               label: const Text('Lift flag'),
-                            ),
+                            )),
                         ],
                       ),
                     heading('Station history'),

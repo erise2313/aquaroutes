@@ -29,6 +29,9 @@ class AddressService {
     required double longitude,
     String? notes,
     bool isDefault = false,
+    String? street,
+    String? barangay,
+    String? city,
   }) async {
     final userId = _supabase.client.auth.currentUser?.id;
     if (userId == null) return null;
@@ -40,6 +43,9 @@ class AddressService {
       'longitude': longitude,
       'notes': trimmedNotes == null || trimmedNotes.isEmpty ? null : trimmedNotes,
       'is_default': isDefault,
+      'street': (street ?? '').trim().isEmpty ? null : street!.trim(),
+      'barangay': (barangay ?? '').trim().isEmpty ? null : barangay!.trim(),
+      'city': (city ?? '').trim().isEmpty ? null : city!.trim(),
     };
     final rows = id == null
         ? await _supabase.client.from('customer_addresses').insert(data).select()

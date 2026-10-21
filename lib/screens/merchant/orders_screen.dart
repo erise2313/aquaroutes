@@ -144,7 +144,7 @@ class _MerchantOrdersScreenState extends State<MerchantOrdersScreen> {
     if (_stationId == null) return;
     final driversResponse = await supabase
         .from('workers')
-        .select('id, full_name, vehicle_plate, phone_number, clearance_status')
+        .select('id, full_name, worker_code, vehicle_plate, phone_number, clearance_status')
         .eq('station_id', _stationId!)
         // Only cleared drivers deliver: a new driver waits for WASA to
         // check their documents, and an open incident puts a driver back to
@@ -246,7 +246,8 @@ class _MerchantOrdersScreenState extends State<MerchantOrdersScreen> {
               return ListTile(
                 leading: const CircleAvatar(child: Icon(Icons.person)),
                 title: Text(driver['full_name'] ?? 'Unnamed Driver'),
-                subtitle: Text('Plate: ${driver['vehicle_plate'] ?? 'N/A'}'),
+                // The worker code tells apart two drivers with the same name.
+                subtitle: Text('${driver['worker_code'] ?? ''} · Plate: ${driver['vehicle_plate'] ?? 'N/A'}'),
                 trailing: IconButton(
                   icon: const Icon(Icons.phone, color: AppColors.cleared),
                   tooltip: 'Call this driver',
@@ -465,6 +466,19 @@ class _MerchantOrdersScreenState extends State<MerchantOrdersScreen> {
               ),
             ),
           ),
+          // The written delivery address, so whoever dispatches knows the
+          // street and landmark, not just the pin.
+          if ((order['delivery_address'] as String?)?.trim().isNotEmpty ?? false) ...[
+            const SizedBox(height: 8),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(Icons.place_outlined, size: 18, color: scheme.onSurfaceVariant),
+                const SizedBox(width: 6),
+                Expanded(child: Text(order['delivery_address'] as String, style: theme.textTheme.bodyMedium)),
+              ],
+            ),
+          ],
           if (listType == 'active') ...[
             const SizedBox(height: 4),
             // Wrap rather than Row: at large system text two buttons side by

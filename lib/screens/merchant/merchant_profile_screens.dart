@@ -14,6 +14,9 @@ import '../../widgets/account_settings_section.dart';
 import '../../widgets/portal/portal.dart';
 import '../../utils/error_text.dart';
 import '../../widgets/station_share_card.dart';
+import '../../widgets/written_address_fields.dart';
+import '../../utils/written_address.dart';
+import '../../services/station_address.dart';
 import '../../utils/log.dart';
 
 /// Builds the `profiles` table update payload (trimmed). Split from
@@ -64,6 +67,12 @@ class _MerchantProfileScreenState extends State<MerchantProfileScreen> {
   final TextEditingController _fullNameController = TextEditingController();
   final TextEditingController _stationNameController = TextEditingController();
   final TextEditingController _stationAddressController = TextEditingController();
+
+  // The written address: street, barangay, city, landmark.
+  final _streetController = TextEditingController();
+  final _cityController = TextEditingController();
+  final _landmarkController = TextEditingController();
+  String? _barangay;
   final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _latitudeController = TextEditingController();
@@ -82,6 +91,9 @@ class _MerchantProfileScreenState extends State<MerchantProfileScreen> {
     _fullNameController.dispose();
     _stationNameController.dispose();
     _stationAddressController.dispose();
+    _streetController.dispose();
+    _cityController.dispose();
+    _landmarkController.dispose();
     _phoneController.dispose();
     _emailController.dispose();
     _latitudeController.dispose();
@@ -128,7 +140,7 @@ class _MerchantProfileScreenState extends State<MerchantProfileScreen> {
       if (userId == null) throw Exception("User not authenticated");
 
       final profile = await supabase.from('profiles').select().eq('id', userId).maybeSingle();
-      final station = await supabase.from('water_stations').select().eq('owner_profile_id', userId).maybeSingle();
+      final station = await supabase.from('water_stations').select('*, barangays(name)').eq('owner_profile_id', userId).maybeSingle();
 
       if (mounted) {
         setState(() {
@@ -141,6 +153,12 @@ class _MerchantProfileScreenState extends State<MerchantProfileScreen> {
           _phoneController.text = (profile?['phone_number'] as String?) ?? '';
           _stationNameController.text = (station?['station_name'] as String?) ?? '';
           _stationAddressController.text = (station?['station_address'] as String?) ?? '';
+          // Stations registered before the address was split keep their old
+          // one-line address in the street box until the owner tidies it.
+          _streetController.text = (station?['street'] as String?) ?? (station?['station_address'] as String?) ?? '';
+          _cityController.text = (station?['city'] as String?) ?? '';
+          _landmarkController.text = (station?['landmark'] as String?) ?? '';
+          _barangay = (station?['barangays'] as Map?)?['name'] as String?;
           _emailController.text = supabase.auth.currentUser?.email ?? '';
           _latitudeController.text = (station?['latitude'] as num?)?.toString() ?? '';
           _longitudeController.text = (station?['longitude'] as num?)?.toString() ?? '';
@@ -236,6 +254,12 @@ class _MerchantProfileScreenState extends State<MerchantProfileScreen> {
     final userId = supabase.auth.currentUser?.id;
     if (userId == null || _stationId == null) return;
 
+    final addressProblem = writtenAddressProblem(street: _streetController.text, barangay: _barangay);
+    if (addressProblem != null) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Station address: $addressProblem.')));
+      return;
+    }
+
     setState(() => _isSaving = true);
 
     try {
@@ -248,6 +272,13 @@ class _MerchantProfileScreenState extends State<MerchantProfileScreen> {
         stationName: _stationNameController.text,
         stationAddress: _stationAddressController.text,
       );
+      stationPayload.addAll(await stationAddressPayload(
+        supabase,
+        street: _streetController.text,
+        barangay: _barangay,
+        city: _cityController.text,
+        landmark: _landmarkController.text,
+      ));
 
       final lat = double.tryParse(_latitudeController.text);
       final lng = double.tryParse(_longitudeController.text);
@@ -650,11 +681,19 @@ class _MerchantProfileScreenState extends State<MerchantProfileScreen> {
             hint: 'Your station name',
           ),
           const SizedBox(height: 12),
-          _buildInputField(
-            controller: _stationAddressController,
-            label: 'Station address',
-            hint: 'Full address for customers',
-            maxLines: 3,
+          Text('Station address', style: Theme.of(context).textTheme.titleSmall),
+          const SizedBox(height: 4),
+          Text(
+            'Written out for customers and drivers, as well as the pin below.',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+          const SizedBox(height: 8),
+          WrittenAddressFields(
+            street: _streetController,
+            city: _cityController,
+            landmark: _landmarkController,
+            barangay: _barangay,
+            onBarangayChanged: (v) => setState(() => _barangay = v),
           ),
           const SizedBox(height: 12),
           _buildInputField(

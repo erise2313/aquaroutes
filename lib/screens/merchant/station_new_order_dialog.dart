@@ -52,6 +52,9 @@ class _StationNewOrderDialogState extends State<_StationNewOrderDialog> {
   final _phone = TextEditingController();
   StationOrderChannel _channel = StationOrderChannel.phone;
   bool _pickup = true;
+
+  /// The delivery address as the caller says it, for the driver.
+  final _address = TextEditingController();
   int _quantity = 1;
   double? _lat;
   double? _lng;
@@ -72,6 +75,7 @@ class _StationNewOrderDialogState extends State<_StationNewOrderDialog> {
   void dispose() {
     _name.dispose();
     _phone.dispose();
+    _address.dispose();
     super.dispose();
   }
 
@@ -123,9 +127,16 @@ class _StationNewOrderDialogState extends State<_StationNewOrderDialog> {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Pin the delivery address on the map.')));
       return;
     }
+    final delivering = _channel == StationOrderChannel.phone && !_pickup;
+    if (delivering && _address.text.trim().length < 8) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Write the delivery address too: house no., street, barangay and a landmark.'),
+      ));
+      return;
+    }
     setState(() => _saving = true);
     try {
-      await Supabase.instance.client.rpc('station_create_order', params: {
+      final orderId = await Supabase.instance.client.rpc('station_create_order', params: {
         'p_product_id': product.id,
         'p_quantity': _quantity,
         'p_customer_name': _name.text.trim(),
@@ -135,6 +146,16 @@ class _StationNewOrderDialogState extends State<_StationNewOrderDialog> {
         'p_lat': _lat,
         'p_lng': _lng,
       });
+      if (delivering && orderId is String) {
+        try {
+          await Supabase.instance.client.rpc('set_order_delivery_address', params: {
+            'p_order_id': orderId,
+            'p_address': _address.text.trim(),
+          });
+        } catch (_) {
+          // The order is in; the address can be read from the pin.
+        }
+      }
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text(_channel == StationOrderChannel.walkIn
@@ -241,12 +262,25 @@ class _StationNewOrderDialogState extends State<_StationNewOrderDialog> {
                                 title: const Text('Deliver to the customer'),
                                 subtitle: Text(_pickup ? 'Off: the customer picks up at the station' : 'A driver delivers it'),
                               ),
-                              if (!_pickup)
+                              if (!_pickup) ...[
                                 OutlinedButton.icon(
                                   onPressed: _pickLocation,
                                   icon: Icon(_lat == null ? Icons.add_location_alt_outlined : Icons.check),
                                   label: Text(_lat == null ? 'Pin the delivery address' : 'Address pinned -- change'),
                                 ),
+                                const SizedBox(height: 12),
+                                TextField(
+                                  controller: _address,
+                                  minLines: 2,
+                                  maxLines: 3,
+                                  maxLength: 300,
+                                  textCapitalization: TextCapitalization.sentences,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Delivery address',
+                                    hintText: 'House no., street, barangay, landmark',
+                                  ),
+                                ),
+                              ],
                             ],
                             if (totals != null) ...[
                               const SizedBox(height: 12),

@@ -16,6 +16,7 @@ import '../../widgets/portal/portal.dart';
 import '../../widgets/skeleton_loader.dart';
 import '../../utils/error_text.dart';
 import '../../widgets/trash_note.dart';
+import '../../widgets/officer_can.dart';
 import '../../constants/admin_palette.dart';
 
 /// wasa_admin editor for the website's static-page content (About, FAQ,
@@ -482,7 +483,7 @@ class _ItemsEditorState extends State<_ItemsEditor> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Expanded(child: Text(widget.label, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16))),
-            TextButton.icon(onPressed: () => _showEditDialog(), icon: const Icon(Icons.add), label: const Text('Add')),
+            OfficerCan(area: OfficerArea.content, child: TextButton.icon(onPressed: () => _showEditDialog(), icon: const Icon(Icons.add), label: const Text('Add'))),
           ],
         ),
         for (final item in _items)
@@ -513,12 +514,12 @@ class _ItemsEditorState extends State<_ItemsEditor> {
                     ],
                   ),
                 ),
-                IconButton(
+                OfficerCan(area: OfficerArea.content, child: IconButton(
                   icon: const Icon(Icons.delete_outline),
                   color: AppColors.flagged,
                   tooltip: 'Delete',
                   onPressed: () => _delete(item),
-                ),
+                )),
               ],
             ),
           ),
@@ -643,7 +644,7 @@ class _FaqEditorState extends State<_FaqEditor> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             const Text('FAQ Entries', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-            TextButton.icon(onPressed: () => _showEditDialog(), icon: const Icon(Icons.add), label: const Text('Add')),
+            OfficerCan(area: OfficerArea.content, child: TextButton.icon(onPressed: () => _showEditDialog(), icon: const Icon(Icons.add), label: const Text('Add'))),
           ],
         ),
         for (final faq in _faqs)
@@ -672,12 +673,12 @@ class _FaqEditorState extends State<_FaqEditor> {
                     ],
                   ),
                 ),
-                IconButton(
+                OfficerCan(area: OfficerArea.content, child: IconButton(
                   icon: const Icon(Icons.delete_outline),
                   color: AppColors.flagged,
                   tooltip: 'Delete',
                   onPressed: () => _delete(faq),
-                ),
+                )),
               ],
             ),
           ),

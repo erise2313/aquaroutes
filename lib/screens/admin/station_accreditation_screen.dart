@@ -20,6 +20,7 @@ import '../../widgets/app_map_tiles.dart';
 import '../../utils/error_text.dart';
 import '../../utils/csv_download.dart';
 import '../../utils/csv_export.dart';
+import '../../widgets/officer_can.dart';
 import '../../constants/admin_palette.dart';
 
 /// Narrows loaded station rows by name/address search and accreditation
@@ -49,7 +50,8 @@ List<Map<String, dynamic>> filterStations(
     if (q.isEmpty) return true;
     final name = (row['station_name'] as String?)?.toLowerCase() ?? '';
     final address = (row['station_address'] as String?)?.toLowerCase() ?? '';
-    return name.contains(q) || address.contains(q);
+    final code = (row['station_code'] as String?)?.toLowerCase() ?? '';
+    return name.contains(q) || address.contains(q) || code.contains(q);
   }).toList();
 }
 
@@ -111,7 +113,7 @@ class _StationAccreditationScreenState extends State<StationAccreditationScreen>
     try {
       final rows = await _supabase
           .from('water_stations')
-          .select('id, station_name, station_address, is_accredited, is_colorum_verified, is_active, latitude, longitude, standing')
+          .select('id, station_code, station_name, station_address, is_accredited, is_colorum_verified, is_active, latitude, longitude, standing')
           .order('station_name');
       if (mounted) {
         setState(() {
@@ -234,7 +236,7 @@ class _StationAccreditationScreenState extends State<StationAccreditationScreen>
     }
 
     final filterBar = AdminFilterBar(
-      searchHint: 'Search by station name or address',
+      searchHint: 'Search by name, address or station ID',
       searchController: _searchController,
       onSearchChanged: (v) => setState(() => _query = v),
       resultSummary: isFiltered ? '${visible.length} of ${_stations.length} stations' : null,
@@ -372,6 +374,12 @@ class _StationAccreditationScreenState extends State<StationAccreditationScreen>
                     station['station_address'] as String? ?? '',
                     style: TextStyle(color: palette.inkMuted, fontSize: 16),
                   ),
+                  // The station's permanent ID: names repeat, codes don't.
+                  if (station['station_code'] != null)
+                    Text(
+                      station['station_code'] as String,
+                      style: TextStyle(color: palette.inkMuted, fontSize: 16, fontWeight: FontWeight.w600),
+                    ),
                   const SizedBox(height: 10),
                   // DEACTIVATED joins the other pills here rather than sitting
                   // beside the name: in that Row it was a non-flexible child
@@ -404,14 +412,14 @@ class _StationAccreditationScreenState extends State<StationAccreditationScreen>
             Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Tooltip(
+                OfficerCan(area: OfficerArea.stations, child: Tooltip(
                   message: isActive ? 'Suspend this station' : 'Reinstate this station',
                   child: Switch(
                     value: isActive,
                     activeTrackColor: AppColors.cleared,
                     onChanged: (_) => _toggleActive(station),
                   ),
-                ),
+                )),
                 Text(
                   isActive ? 'Active' : 'Suspended',
                   style: TextStyle(fontSize: 16, color: palette.inkMuted, fontWeight: FontWeight.w600),

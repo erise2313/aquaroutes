@@ -37,6 +37,12 @@ List<StationTrustFact> stationTrustFacts(PublicStation station, {DateTime? now})
       label: 'Member since',
       value: station.memberSince == null ? 'Not recorded' : month.format(station.memberSince!),
     ),
+    // Stations can share a name; the ID is the one a complaint or a
+    // "Check a station" search can rely on.
+    if (station.stationCode != null)
+      (icon: Icons.tag, label: 'WASA station ID', value: station.stationCode!),
+    if ((station.landmark ?? '').trim().isNotEmpty)
+      (icon: Icons.flag_outlined, label: 'Landmark', value: station.landmark!.trim()),
   ];
 }
 

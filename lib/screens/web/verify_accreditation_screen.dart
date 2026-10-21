@@ -74,7 +74,10 @@ class _VerifyAccreditationScreenState extends ConsumerState<VerifyAccreditationS
   List<PublicStation> get _matches {
     final query = _searchController.text.trim().toLowerCase();
     if (query.isEmpty) return [];
-    return _stations.where((s) => s.stationName.toLowerCase().contains(query)).toList();
+    // By name or by WASA station ID (GW-STN-...), which is unique.
+    return _stations
+        .where((s) => s.stationName.toLowerCase().contains(query) || (s.stationCode ?? '').toLowerCase().contains(query))
+        .toList();
   }
 
   @override
@@ -105,7 +108,7 @@ class _VerifyAccreditationScreenState extends ConsumerState<VerifyAccreditationS
                             controller: _searchController,
                             onChanged: (_) => setState(() => _hasSearched = true),
                             decoration: const InputDecoration(
-                              hintText: 'Enter a station name...',
+                              hintText: 'Station name or WASA station ID (GW-STN-...)',
                               prefixIcon: Icon(Icons.search, color: WebTheme.harborBlue),
                               border: OutlineInputBorder(),
                             ),

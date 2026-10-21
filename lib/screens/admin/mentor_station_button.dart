@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../widgets/officer_can.dart';
 import '../../utils/error_text.dart';
 
 /// Officers pair a new station with an experienced, accredited one
@@ -107,10 +108,10 @@ class _MentorStationButtonState extends State<MentorStationButton> {
 
   @override
   Widget build(BuildContext context) {
-    return TextButton.icon(
+    return OfficerCan(area: OfficerArea.stations, child: TextButton.icon(
       onPressed: _busy ? null : _choose,
       icon: const Icon(Icons.handshake_outlined),
       label: Text(_mentorName == null ? 'Pair with a mentor' : 'Mentor: $_mentorName'),
-    );
+    ));
   }
 }

@@ -56,6 +56,9 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
 
   String _customerName = "Loading...";
   String _customerPhone = "";
+
+  /// The written delivery address the customer gave with the pin.
+  String _deliveryAddress = "";
   String _stationPhone = "";
   String _stationName = "Water Station";
   double _totalAmount = 0.0;
@@ -240,7 +243,7 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
 
         final orderDetails = await supabase
             .from('orders')
-            .select('status, total_amount, guest_name, guest_phone, customer_phone, jug_exchange_origin_station_id')
+            .select('status, total_amount, guest_name, guest_phone, customer_phone, jug_exchange_origin_station_id, delivery_address')
             .eq('id', currentOrder['id'])
             .maybeSingle();
 
@@ -280,6 +283,7 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
             _totalAmount = double.parse((orderDetails?['total_amount'] ?? 0).toString());
             _customerName = custName;
             _customerPhone = custPhone;
+            _deliveryAddress = (orderDetails?['delivery_address'] as String?)?.trim() ?? '';
             _isLoading = false;
           });
         }
@@ -844,6 +848,22 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
                         ),
                       ],
                     ),
+                    // Street, barangay and landmark, to find the gate the
+                    // pin is near.
+                    if (_deliveryAddress.isNotEmpty)
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(Icons.place_outlined, size: 18, color: driverPalette.text.withValues(alpha: 0.7)),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: SelectableText(
+                              _deliveryAddress,
+                              style: TextStyle(fontSize: 16, color: driverPalette.text),
+                            ),
+                          ),
+                        ],
+                      ),
                   ],
                 ),
               ),

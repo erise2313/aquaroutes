@@ -1,3 +1,5 @@
+import '../utils/written_address.dart';
+
 /// A place a customer orders water to -- mirrors `customer_addresses`
 /// (supabase/patch_customer_addresses.sql). Private to the customer; a
 /// station only ever sees the delivery point of an order actually placed.
@@ -9,6 +11,9 @@ class CustomerAddress {
     required this.longitude,
     this.notes,
     required this.isDefault,
+    this.street,
+    this.barangay,
+    this.city,
   });
 
   final String id;
@@ -20,6 +25,19 @@ class CustomerAddress {
   final String? notes;
   final bool isDefault;
 
+  /// The written address (house no. / street / subdivision, barangay, city)
+  /// that goes with the pin. [notes] doubles as the landmark. Null on
+  /// addresses saved before these fields existed.
+  final String? street;
+  final String? barangay;
+  final String? city;
+
+  /// "Blk 3 Lot 5, Sampaguita St., Buenavista I, General Trias (Landmark: ...)".
+  String get writtenAddress => formatWrittenAddress(street: street, barangay: barangay, city: city, landmark: notes);
+
+  /// Whether a driver could find it from the words alone.
+  bool get hasWrittenAddress => writtenAddressProblem(street: street, barangay: barangay) == null;
+
   factory CustomerAddress.fromMap(Map<String, dynamic> map) {
     return CustomerAddress(
       id: map['id'] as String,
@@ -28,6 +46,9 @@ class CustomerAddress {
       longitude: (map['longitude'] as num).toDouble(),
       notes: map['notes'] as String?,
       isDefault: map['is_default'] as bool? ?? false,
+      street: map['street'] as String?,
+      barangay: map['barangay'] as String?,
+      city: map['city'] as String?,
     );
   }
 }
