@@ -28,7 +28,7 @@ enum OfficerRole {
         OfficerRole.superadmin =>
           'Everything, plus officers, association settings and station ownership transfers. Keep this to two people.',
         OfficerRole.officer => 'Everything except managing officers and association settings.',
-        OfficerRole.compliance => 'Stations, permits, notices, cases, customer reports and the jug clearinghouse.',
+        OfficerRole.compliance => 'Stations, permits, notices, cases and customer reports.',
         OfficerRole.workforce => 'Workers, incidents, credentials and appeals.',
         OfficerRole.content => 'Bulletin, floor prices, containers, events, resources, website content and reviews.',
         OfficerRole.viewer => 'Sees everything and can export, but changes nothing.',

@@ -207,6 +207,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
           ],
         ),
         const _DeletionRequestsPanel(),
+        const OfficerCan(area: OfficerArea.accounts, child: _SuspensionAppealsPanel()),
         Expanded(
           child: _isLoading
               ? const Padding(padding: EdgeInsets.all(16), child: SkeletonList(count: 6))
@@ -552,6 +553,149 @@ class _DeletionRequestsPanelState extends State<_DeletionRequestsPanel> {
             ],
           )),
           const Divider(height: 20),
+        ],
+      ),
+    );
+  }
+}
+
+/// Appeals from suspended accounts (submit_account_appeal). A full officer
+/// or super admin reinstates the account or keeps it suspended, with a note
+/// the person reads on their suspended screen.
+class _SuspensionAppealsPanel extends StatefulWidget {
+  const _SuspensionAppealsPanel();
+
+  @override
+  State<_SuspensionAppealsPanel> createState() => _SuspensionAppealsPanelState();
+}
+
+class _SuspensionAppealsPanelState extends State<_SuspensionAppealsPanel> {
+  final _supabase = Supabase.instance.client;
+  List<Map<String, dynamic>> _appeals = [];
+  String? _busyId;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final rows = await _supabase
+          .from('account_appeals')
+          .select('id, profile_id, appeal_text, created_at, profiles!account_appeals_profile_id_fkey(full_name)')
+          .eq('status', 'pending')
+          .order('created_at');
+      if (mounted) setState(() => _appeals = List<Map<String, dynamic>>.from(rows));
+    } catch (_) {
+      // Nothing to show is the same as nothing pending here.
+    }
+  }
+
+  Future<void> _decide(Map<String, dynamic> appeal, bool reinstate) async {
+    final note = TextEditingController();
+    String? error;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Text(reinstate ? 'Reinstate this account?' : 'Keep the account suspended?'),
+          content: TextField(
+            controller: note,
+            minLines: 2,
+            maxLines: 4,
+            decoration: InputDecoration(
+              labelText: 'Note to the person',
+              hintText: reinstate ? 'e.g. Checked your orders; reinstated.' : 'e.g. The incident was confirmed by the station.',
+              errorText: error,
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('Cancel')),
+            FilledButton(
+              onPressed: () {
+                if (note.text.trim().length < 3) {
+                  setDialogState(() => error = 'Write a short note for the person.');
+                  return;
+                }
+                Navigator.pop(dialogContext, true);
+              },
+              child: Text(reinstate ? 'Reinstate' : 'Keep suspended'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (ok != true || !mounted) return;
+    setState(() => _busyId = appeal['id'] as String);
+    try {
+      await _supabase.rpc('decide_account_appeal', params: {
+        'p_appeal_id': appeal['id'],
+        'p_reinstate': reinstate,
+        'p_note': note.text.trim(),
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(reinstate ? 'Account reinstated. Refresh the list to see it as Active.' : 'Kept suspended; they have been told.'),
+        ));
+      }
+      await _load();
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(describeError(e))));
+    } finally {
+      if (mounted) setState(() => _busyId = null);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_appeals.isEmpty) return const SizedBox.shrink();
+    final palette = AdminPalette.of(context);
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
+      decoration: BoxDecoration(
+        color: AppColors.pendingClearance.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.pendingClearance.withValues(alpha: 0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Appeals against suspension (${_appeals.length})',
+            style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: palette.ink),
+          ),
+          for (final a in _appeals) ...[
+            const SizedBox(height: 10),
+            Text(
+              (a['profiles'] as Map?)?['full_name'] as String? ?? 'Unnamed',
+              style: TextStyle(fontWeight: FontWeight.w700, color: palette.ink),
+            ),
+            Text(
+              'Appealed ${DateFormat('MMM d, yyyy').format(DateTime.parse(a['created_at'] as String).toLocal())}',
+              style: TextStyle(color: palette.inkMuted),
+            ),
+            const SizedBox(height: 4),
+            Text('"${a['appeal_text']}"', style: const TextStyle(fontStyle: FontStyle.italic)),
+            const SizedBox(height: 6),
+            Wrap(
+              spacing: 8,
+              runSpacing: 4,
+              children: [
+                TextButton(
+                  onPressed: _busyId != null ? null : () => _decide(a, false),
+                  child: const Text('Keep suspended'),
+                ),
+                FilledButton(
+                  onPressed: _busyId != null ? null : () => _decide(a, true),
+                  child: const Text('Reinstate'),
+                ),
+              ],
+            ),
+            const Divider(height: 16),
+          ],
         ],
       ),
     );

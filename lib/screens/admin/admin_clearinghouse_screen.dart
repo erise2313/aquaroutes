@@ -5,15 +5,11 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../constants/admin_palette.dart';
 import '../../constants/app_colors.dart';
 import '../../models/order.dart';
-import '../../services/jug_ledger_service.dart';
-import '../../services/supabase_service.dart';
 import '../../utils/error_text.dart';
 import '../../widgets/admin_page_header.dart';
 import '../../widgets/admin_status_pill.dart';
-import '../../widgets/confirm_dialog.dart';
 import '../../widgets/error_state.dart';
 import '../../widgets/portal/portal.dart';
-import '../../widgets/officer_can.dart';
 import '../../widgets/skeleton_loader.dart';
 
 /// The jug clearinghouse as the association sees it: every outstanding
@@ -36,13 +32,11 @@ class AdminClearinghouseScreen extends StatefulWidget {
 
 class _AdminClearinghouseScreenState extends State<AdminClearinghouseScreen> {
   final _supabase = Supabase.instance.client;
-  final _jugService = JugLedgerService(SupabaseService.instance);
   bool _isLoading = true;
   String? _error;
   List<Map<String, dynamic>> _balances = [];
   List<Map<String, dynamic>> _settlements = [];
   Map<String, String> _stationNames = {};
-  String? _busyId;
 
   @override
   void initState() {
@@ -85,77 +79,10 @@ class _AdminClearinghouseScreenState extends State<AdminClearinghouseScreen> {
 
   /// Writes WASA's decision on a disputed settlement; both stations are
   /// notified (resolve_jug_dispute, patch_stations_members.sql).
-  Future<void> _resolveDispute(Map<String, dynamic> settlement) async {
-    final controller = TextEditingController();
-    final decision = await showDialog<String>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Decide the dispute'),
-        content: SizedBox(
-          width: 520,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('${_station(settlement['holder_station_id'] as String?)} → ${_station(settlement['owner_station_id'] as String?)}: '
-                  '${settlement['quantity']} ${jugTypeLabel(settlement['jug_type'] as String?) ?? 'jugs'}'),
-              const SizedBox(height: 4),
-              Text('Reason given: ${settlement['dispute_reason']}'),
-              const SizedBox(height: 12),
-              TextField(
-                controller: controller,
-                autofocus: true,
-                minLines: 2,
-                maxLines: 5,
-                decoration: const InputDecoration(labelText: 'Decision and what each station should do'),
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')),
-          FilledButton(onPressed: () => Navigator.pop(dialogContext, controller.text.trim()), child: const Text('Send decision')),
-        ],
-      ),
-    );
-    if (decision == null || decision.isEmpty) return;
-    final id = settlement['id'] as String;
-    setState(() => _busyId = id);
-    try {
-      await _supabase.rpc('resolve_jug_dispute', params: {'p_settlement_id': id, 'p_resolution': decision});
-      await _load();
-    } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(describeError(e))));
-    } finally {
-      if (mounted) setState(() => _busyId = null);
-    }
-  }
 
-  Future<void> _reject(Map<String, dynamic> settlement) async {
-    final ok = await showConfirmDialog(
-      context,
-      title: 'Reject this settlement?',
-      message: '${_station(settlement['holder_station_id'] as String?)} proposed returning ${settlement['quantity']} '
-          '${jugTypeLabel(settlement['jug_type'] as String?) ?? 'jugs'} to ${_station(settlement['owner_station_id'] as String?)}. '
-          'Rejecting closes the proposal; the balance stays as it is, and the stations can settle again once the dispute is resolved.',
-      confirmLabel: 'Reject settlement',
-    );
-    if (!ok) return;
-    final id = settlement['id'] as String;
-    setState(() => _busyId = id);
-    try {
-      await _jugService.rejectSettlement(id);
-      await _load();
-    } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not reject the settlement. ${describeError(e)}')));
-    } finally {
-      if (mounted) setState(() => _busyId = null);
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
-    final proposed = _settlements.where((s) => s['status'] == 'proposed').length;
     return DefaultTabController(
       length: 2,
       child: Column(
@@ -163,13 +90,16 @@ class _AdminClearinghouseScreenState extends State<AdminClearinghouseScreen> {
           AdminPageHeader(
             eyebrow: 'Network',
             title: 'Jug Clearinghouse',
-            subtitle: 'Jugs member stations hold for one another, and the settlements that clear them',
+            // View only: settlements are between the two stations (the
+            // holder proposes, the owner confirms or rejects). WASA watches;
+            // the database refuses any officer change.
+            subtitle: 'View only. Jugs stations hold for one another, and the settlements they agree between themselves',
             bottom: TabBar(
               isScrollable: true,
               tabAlignment: TabAlignment.start,
               tabs: [
                 Tab(text: 'Balances (${_balances.length})'),
-                Tab(text: 'Settlements${proposed > 0 ? ' ($proposed waiting)' : ''}'),
+                Tab(text: 'Settlements (${_settlements.length})'),
               ],
             ),
           ),
@@ -300,33 +230,12 @@ class _AdminClearinghouseScreenState extends State<AdminClearinghouseScreen> {
                     Text('Reason: ${s['dispute_reason']}', style: TextStyle(color: palette.ink)),
                     if (s['dispute_resolution'] != null)
                       Text('Decision: ${s['dispute_resolution']}', style: TextStyle(color: palette.ink, fontWeight: FontWeight.w700)),
-                    if (disputeOpen(s)) ...[
-                      const SizedBox(height: 8),
-                      Align(
-                        alignment: Alignment.centerLeft,
-                        child: OfficerCan(area: OfficerArea.network, child: FilledButton.icon(
-                          onPressed: _busyId == null ? () => _resolveDispute(s) : null,
-                          icon: const Icon(Icons.gavel),
-                          label: const Text('Decide the dispute'),
-                        )),
-                      ),
-                    ],
                   ],
                   if (s['status'] == 'proposed') ...[
                     const SizedBox(height: 4),
                     Text(
                       'Waiting for ${_station(s['owner_station_id'] as String?)} to confirm.',
                       style: TextStyle(color: palette.inkMuted, fontStyle: FontStyle.italic),
-                    ),
-                    const SizedBox(height: 8),
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: OutlinedButton(
-                        onPressed: _busyId == null ? () => _reject(s) : null,
-                        child: _busyId == s['id']
-                            ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
-                            : const Text('Reject settlement'),
-                      ),
                     ),
                   ],
                 ],

@@ -433,45 +433,6 @@ class _JugClearinghouseScreenState extends State<JugClearinghouseScreen> {
     );
   }
 
-  Future<void> _dispute(JugSettlement settlement) async {
-    final controller = TextEditingController();
-    final reason = await showDialog<String>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Dispute this settlement'),
-        content: SizedBox(
-          width: 480,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text("WASA officers will look at both stations' records and decide. The other station will see the decision too."),
-              const SizedBox(height: 12),
-              TextField(
-                controller: controller,
-                autofocus: true,
-                minLines: 2,
-                maxLines: 5,
-                decoration: const InputDecoration(labelText: 'What is wrong (count, jug type, never received...)'),
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')),
-          FilledButton(onPressed: () => Navigator.pop(dialogContext, controller.text.trim()), child: const Text('Send to WASA')),
-        ],
-      ),
-    );
-    if (reason == null || reason.isEmpty) return;
-    try {
-      await Supabase.instance.client.rpc('dispute_jug_settlement', params: {'p_settlement_id': settlement.id, 'p_reason': reason});
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Dispute sent to WASA.')));
-      _load();
-    } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(describeError(e))));
-    }
-  }
 
   Widget _buildSettlementCard(JugSettlement settlement) {
     final canConfirm = settlement.status == SettlementStatus.proposed && settlement.ownerStationId == _stationId;
@@ -517,15 +478,8 @@ class _JugClearinghouseScreenState extends State<JugClearinghouseScreen> {
             const SizedBox(height: 4),
             Text("WASA's decision: ${settlement.disputeResolution}", style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700)),
           ],
-          if (!settlement.isDisputeOpen)
-            Align(
-              alignment: Alignment.centerLeft,
-              child: TextButton.icon(
-                onPressed: () => _dispute(settlement),
-                icon: const Icon(Icons.gavel_outlined),
-                label: const Text('Dispute with WASA'),
-              ),
-            ),
+          // No "Dispute with WASA": settlements are between the two
+          // stations. If a proposal is wrong, the owning station rejects it.
           // Only the owed station can confirm -- enforced by
           // confirm_jug_settlement(), not by hiding the button.
           if (canConfirm) ...[

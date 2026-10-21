@@ -43,9 +43,10 @@ void main() {
   // agree, or buttons show that the server refuses.
   test('each role may change exactly its own areas', () {
     final expected = {
-      OfficerRole.superadmin: OfficerArea.values.toSet(),
-      OfficerRole.officer: OfficerArea.values.toSet()..remove(OfficerArea.settings),
-      OfficerRole.compliance: {OfficerArea.stations, OfficerArea.network},
+      // No role changes the clearinghouse: it is between the two stations.
+      OfficerRole.superadmin: OfficerArea.values.toSet()..remove(OfficerArea.network),
+      OfficerRole.officer: OfficerArea.values.toSet()..removeAll({OfficerArea.settings, OfficerArea.network}),
+      OfficerRole.compliance: {OfficerArea.stations},
       OfficerRole.workforce: {OfficerArea.workers},
       OfficerRole.content: {OfficerArea.content},
       OfficerRole.viewer: <OfficerArea>{},

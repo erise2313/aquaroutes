@@ -9,6 +9,9 @@ import '../providers/app_state.dart';
 /// in supabase/patch_officer_roles.sql, which is what actually enforces it;
 /// this only decides which buttons to show. Pure, so it is unit-tested.
 bool officerAreaAllowed(OfficerRole role, OfficerArea area) => switch (role) {
+      // The jug clearinghouse is between the two stations; no officer
+      // changes it (patch_clearinghouse_appeals.sql).
+      _ when area == OfficerArea.network => false,
       OfficerRole.superadmin => true,
       OfficerRole.officer => area != OfficerArea.settings,
       OfficerRole.compliance => area == OfficerArea.stations || area == OfficerArea.network,
