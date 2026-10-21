@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../constants/app_colors.dart';
 import '../../models/order.dart';
@@ -13,6 +12,7 @@ import '../../services/supabase_service.dart';
 import '../../widgets/app_map_tiles.dart';
 import '../../widgets/error_state.dart';
 import '../../widgets/portal/portal.dart';
+import '../../utils/phone_call.dart';
 import '../../utils/error_text.dart';
 
 /// Per-order detail screen with a live driver map, opened from the
@@ -87,12 +87,7 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
   }
 
   Future<void> _callDriver(String phoneNumber) async {
-    final uri = Uri(scheme: 'tel', path: phoneNumber);
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri);
-    } else if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not open the phone dialer.')));
-    }
+    await callPhone(context, phoneNumber);
   }
 
   @override

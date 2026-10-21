@@ -183,7 +183,7 @@ class _OrgHomeScreenState extends ConsumerState<OrgHomeScreen> {
                 children: [
                   const WebSeal(size: 22),
                   const SizedBox(width: 8),
-                  Text('WATER STATION ASSOCIATION · GENERAL TRIAS', style: WebTheme.eyebrow.copyWith(fontSize: 16)),
+                  Flexible(child: Text('WATER STATION ASSOCIATION · GENERAL TRIAS', style: WebTheme.eyebrow.copyWith(fontSize: 16))),
                 ],
               ),
               const SizedBox(height: 20),

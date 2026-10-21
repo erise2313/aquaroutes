@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:intl/intl.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../constants/app_colors.dart';
 import '../../models/order.dart';
@@ -16,6 +15,7 @@ import '../../utils/formatters.dart';
 import '../../utils/log.dart';
 import 'station_new_order_dialog.dart';
 import '../../widgets/cancel_order_dialog.dart';
+import '../../utils/phone_call.dart';
 import '../../services/my_station.dart';
 
 /// How one order's status reads on screen: its pill, its colour and the icon
@@ -160,12 +160,7 @@ class _MerchantOrdersScreenState extends State<MerchantOrdersScreen> {
       );
       return;
     }
-    final Uri launchUri = Uri(scheme: 'tel', path: phoneNumber);
-    if (await canLaunchUrl(launchUri)) {
-      await launchUrl(launchUri);
-    } else {
-      logError('merchant orders dialer', 'no installed app handled the tel: intent');
-    }
+    await callPhone(context, phoneNumber);
   }
 
   Future<void> _rejectOrder(String orderId) async {
@@ -309,6 +304,10 @@ class _MerchantOrdersScreenState extends State<MerchantOrdersScreen> {
               bottom: MediaQuery.withClampedTextScaling(
                 maxScaleFactor: 1.3,
                 child: TabBar(
+                  // Tabs scroll sideways on a phone; fixed, the last ones were cut
+                  // off ("Crede...", "Settlements (3 waitin...").
+                  isScrollable: MediaQuery.sizeOf(context).width < 600,
+                  tabAlignment: MediaQuery.sizeOf(context).width < 600 ? TabAlignment.start : null,
                   labelColor: scheme.primary,
                   unselectedLabelColor: scheme.onSurfaceVariant,
                   indicatorColor: scheme.primary,

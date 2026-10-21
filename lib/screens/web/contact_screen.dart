@@ -128,7 +128,7 @@ class _ContactScreenState extends ConsumerState<ContactScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Row(children: [Icon(Icons.storefront, color: WebTheme.harborBlue), SizedBox(width: 10), Text('Looking for a water station instead?', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: WebTheme.of(context).ink))]),
+                                Row(children: [Icon(Icons.storefront, color: WebTheme.harborBlue), SizedBox(width: 10), Expanded(child: Text('Looking for a water station instead?', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: WebTheme.of(context).ink)))]),
                                 const SizedBox(height: 8),
                                 Text(
                                   'Browse every accredited station in General Trias, filter by water type or barangay, and see them on the map.',

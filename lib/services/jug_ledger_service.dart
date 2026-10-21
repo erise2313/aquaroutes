@@ -83,8 +83,18 @@ class JugLedgerService {
     return _supabase.client.rpc('reject_jug_settlement', params: {'p_settlement_id': settlementId});
   }
 
+  /// Every other station's id and name. Owners, staff and drivers can read
+  /// only their own station's row, so this goes through
+  /// member_station_names() -- a direct read came back empty, leaving the
+  /// settlement and jug-exchange station pickers with nothing in them.
   Future<List<Map<String, dynamic>>> fetchOtherStations(String excludingStationId) async {
-    final rows = await _supabase.client.from('water_stations').select('id, station_name').neq('id', excludingStationId);
-    return List<Map<String, dynamic>>.from(rows);
+    final rows = await fetchStationNames();
+    return [for (final r in rows) if (r['id'] != excludingStationId) r];
+  }
+
+  /// Every station's id and name (see [fetchOtherStations]).
+  Future<List<Map<String, dynamic>>> fetchStationNames() async {
+    final rows = await _supabase.client.rpc('member_station_names');
+    return List<Map<String, dynamic>>.from(rows as List);
   }
 }

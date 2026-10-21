@@ -54,6 +54,11 @@ class PortalPageHeader extends StatelessWidget {
     final routeCanPop = ModalRoute.of(context)?.canPop ?? false;
     final portalBack = PortalBackScope.of(context);
     final canPop = showBack ?? (routeCanPop || (portalBack?.canGoBack ?? false));
+    // On a phone this header stays pinned above the page's scrolling area,
+    // and at full size it took a quarter to a third of the screen -- on
+    // Users, with the filters, the list itself was pushed off the bottom.
+    // There it drops the eyebrow and keeps the subtitle to two lines.
+    final compact = MediaQuery.sizeOf(context).width < 600;
 
     return Container(
       width: double.infinity,
@@ -96,7 +101,7 @@ class PortalPageHeader extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        if (eyebrow != null) ...[
+                        if (eyebrow != null && !compact) ...[
                           Text(
                             eyebrow!.toUpperCase(),
                             style: theme.textTheme.labelSmall?.copyWith(
@@ -113,6 +118,8 @@ class PortalPageHeader extends StatelessWidget {
                           const SizedBox(height: 4),
                           Text(
                             subtitle!,
+                            maxLines: compact ? 2 : null,
+                            overflow: compact ? TextOverflow.ellipsis : null,
                             style: theme.textTheme.bodyMedium?.copyWith(color: scheme.onSurfaceVariant),
                           ),
                         ],

@@ -2,16 +2,17 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../constants/app_colors.dart';
 import '../../models/worker.dart';
 import '../../services/supabase_service.dart';
 import '../../services/worker_service.dart';
 import '../../widgets/portal/portal.dart';
-import '../../utils/log.dart';
 import 'package:flutter/services.dart';
 import '../../utils/jug_capacity.dart';
+import '../../widgets/error_state.dart';
+import '../../utils/error_text.dart';
+import '../../utils/phone_call.dart';
 import '../../services/my_station.dart';
 
 /// Station-scoped fleet roster. Fixes the most severe bug found in the old
@@ -66,6 +67,11 @@ class _DriverManagementScreenState extends State<DriverManagementScreen> {
     super.dispose();
   }
 
+  /// Made once, not on every build: the refresh timer rebuilds this screen
+  /// every few seconds, and a new stream each time resubscribed and flashed
+  /// the loading spinner.
+  Stream<List<Map<String, dynamic>>>? _workers;
+
   Future<void> _resolveStation() async {
     final userId = _supabase.auth.currentUser?.id;
     if (userId == null) {
@@ -77,6 +83,7 @@ class _DriverManagementScreenState extends State<DriverManagementScreen> {
     if (mounted) {
       setState(() {
         _stationId = station?['id'] as String?;
+        if (_stationId != null) _workers = _workerService.watchStationWorkers(_stationId!);
         _isLoading = false;
       });
     }
@@ -111,8 +118,14 @@ class _DriverManagementScreenState extends State<DriverManagementScreen> {
                     message: 'Your account is not linked to a water station, so it has no fleet.',
                   )
                 : StreamBuilder<List<Map<String, dynamic>>>(
-                    stream: _workerService.watchStationWorkers(_stationId!),
+                    stream: _workers,
                     builder: (context, snapshot) {
+                      if (snapshot.hasError) {
+                        return ErrorState(
+                          message: 'Could not load your drivers. ${describeError(snapshot.error!)}',
+                          onRetry: () => setState(() => _workers = _workerService.watchStationWorkers(_stationId!)),
+                        );
+                      }
                       if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
                       final workers = snapshot.data!.map((m) => Worker.fromMap(m)).toList();
 
@@ -146,12 +159,7 @@ class _DriverManagementScreenState extends State<DriverManagementScreen> {
       );
       return;
     }
-    final Uri launchUri = Uri(scheme: 'tel', path: phoneNumber);
-    if (await canLaunchUrl(launchUri)) {
-      await launchUrl(launchUri);
-    } else {
-      logError('merchant driver dialer', 'no installed app handled the tel: intent');
-    }
+    await callPhone(context, phoneNumber);
   }
 
   Widget _buildDriverCard(Worker worker, {required bool last, required PortalDensity density}) {

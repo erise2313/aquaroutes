@@ -481,6 +481,10 @@ class _MerchantProfileScreenState extends State<MerchantProfileScreen> {
           MediaQuery.withClampedTextScaling(
             maxScaleFactor: 1.3,
             child: TabBar(
+              // Tabs scroll sideways on a phone; fixed, the last ones were cut
+              // off ("Crede...", "Settlements (3 waitin...").
+              isScrollable: MediaQuery.sizeOf(context).width < 600,
+              tabAlignment: MediaQuery.sizeOf(context).width < 600 ? TabAlignment.start : null,
               onTap: (index) => setState(() => _selectedTabIndex = index),
               labelColor: scheme.primary,
               unselectedLabelColor: scheme.onSurfaceVariant,

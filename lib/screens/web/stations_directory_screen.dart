@@ -231,6 +231,10 @@ class _StationsDirectoryScreenState extends ConsumerState<StationsDirectoryScree
   }
 
   Widget _buildFilters(String Function(String) t) {
+    // On a phone each field takes the full width instead of a fixed
+    // 200-260 px that left odd gaps beside it.
+    return LayoutBuilder(builder: (context, constraints) {
+    final phone = constraints.maxWidth < 600;
     return Wrap(
       spacing: 12,
       runSpacing: 12,
@@ -243,7 +247,7 @@ class _StationsDirectoryScreenState extends ConsumerState<StationsDirectoryScree
           onSelected: (v) => setState(() => _accreditedOnly = v),
         ),
         SizedBox(
-          width: 260,
+          width: phone ? constraints.maxWidth : 260,
           child: TextField(
             controller: _searchController,
             onChanged: (_) => setState(() {}),
@@ -256,7 +260,7 @@ class _StationsDirectoryScreenState extends ConsumerState<StationsDirectoryScree
           ),
         ),
         SizedBox(
-          width: 200,
+          width: phone ? constraints.maxWidth : 200,
           child: DropdownButtonFormField<String?>(
             isExpanded: true,
             initialValue: _waterTypeFilter,
@@ -271,7 +275,7 @@ class _StationsDirectoryScreenState extends ConsumerState<StationsDirectoryScree
           ),
         ),
         SizedBox(
-          width: 220,
+          width: phone ? constraints.maxWidth : 220,
           child: DropdownButtonFormField<String?>(
             isExpanded: true,
             initialValue: _barangayFilter,
@@ -285,6 +289,7 @@ class _StationsDirectoryScreenState extends ConsumerState<StationsDirectoryScree
         ),
       ],
     );
+    });
   }
 
   Widget _buildStationCard(PublicStation station) {

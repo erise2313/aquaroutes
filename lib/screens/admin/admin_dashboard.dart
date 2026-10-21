@@ -20,6 +20,7 @@ import '../../widgets/skeleton_loader.dart';
 import '../../widgets/web_seal.dart';
 import '../../utils/error_text.dart';
 import '../../constants/admin_palette.dart';
+import '../../widgets/portal/fill_grid.dart';
 import '../../utils/log.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
@@ -232,9 +233,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                           PortalSection(
                             title: 'Needs your attention',
                             subtitle: 'Queues that stay open until somebody works them',
-                            child: Wrap(
-                              spacing: 12,
-                              runSpacing: 12,
+                            child: FillGrid(
                               children: [
                                 _kpiTile(icon: Icons.description_outlined, label: 'Permits to review', value: _pendingPermits, color: AdminTheme.harborBlue, onTap: () => _go('Permits', const PermitQueueScreen())),
                                 _kpiTile(icon: Icons.warning_amber_rounded, label: 'Open incidents', value: _openIncidents, color: AppColors.pendingClearance, onTap: () => WorkerClearanceScreen.open(context, tab: 1).then((_) => _fetchStats())),
@@ -470,7 +469,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     final palette = AdminPalette.of(context);
 
     return SizedBox(
-      width: 200,
       child: PortalCard(
         lift: false,
         onTap: onTap,
@@ -551,6 +549,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         subtitle: 'Every registered station, by current status',
         isEmpty: a.accreditationMix.values.every((v) => v == 0),
         emptyMessage: 'No stations registered yet.',
+        height: null,
         child: AdminDonutChart(slices: _friendlyMix(a.accreditationMix)),
       ),
       AdminChartCard(

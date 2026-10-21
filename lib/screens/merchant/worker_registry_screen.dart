@@ -41,6 +41,10 @@ class _WorkerRegistryScreenState extends State<WorkerRegistryScreen> {
   String? _inviteCode;
   bool _isLoading = true;
 
+  /// Made once per station, not on every build: a new stream each rebuild
+  /// resubscribed and sent the list back to its loading spinner.
+  Stream<List<Map<String, dynamic>>>? _workers;
+
   @override
   void initState() {
     super.initState();
@@ -54,6 +58,7 @@ class _WorkerRegistryScreenState extends State<WorkerRegistryScreen> {
       setState(() {
         _stationId = station?['id'] as String?;
         _inviteCode = station?['invite_code'] as String?;
+        if (_stationId != null) _workers = _workerService.watchStationWorkers(_stationId!);
         _isLoading = false;
       });
     }
@@ -353,8 +358,16 @@ class _WorkerRegistryScreenState extends State<WorkerRegistryScreen> {
                     message: 'Your account is not linked to a water station, so it has no worker roster.',
                   )
                 : StreamBuilder<List<Map<String, dynamic>>>(
-                    stream: _workerService.watchStationWorkers(_stationId!),
+                    stream: _workers,
                     builder: (context, snapshot) {
+                      // A failed subscription used to leave this spinning
+                      // forever; now it says so and offers Retry.
+                      if (snapshot.hasError) {
+                        return ErrorState(
+                          message: 'Could not load your workers. ${describeError(snapshot.error!)}',
+                          onRetry: () => setState(() => _workers = _workerService.watchStationWorkers(_stationId!)),
+                        );
+                      }
                       if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
                       final workers = snapshot.data!.map((m) => Worker.fromMap(m)).toList();
                       if (workers.isEmpty) {

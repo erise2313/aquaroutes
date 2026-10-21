@@ -62,7 +62,17 @@ class PortalStatTile extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 2),
-        Text(label, style: theme.textTheme.titleSmall?.copyWith(color: theme.colorScheme.onSurface)),
+        // A one-word label in a narrow tile shrinks rather than breaking
+        // mid-word ("Pendin / g" on a phone at large text). Longer labels
+        // wrap between words as usual.
+        if (label.contains(' '))
+          Text(label, style: theme.textTheme.titleSmall?.copyWith(color: theme.colorScheme.onSurface))
+        else
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(label, maxLines: 1, style: theme.textTheme.titleSmall?.copyWith(color: theme.colorScheme.onSurface)),
+          ),
         if (caption != null) ...[
           const SizedBox(height: 2),
           Text(caption!, style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),

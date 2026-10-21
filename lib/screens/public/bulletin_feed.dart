@@ -673,30 +673,38 @@ class _BulletinFeedState extends ConsumerState<BulletinFeed> {
                   child: Text(categoryLabel, style: TextStyle(color: categoryColor, fontSize: 16, fontWeight: FontWeight.bold)),
                 ),
                 if (membership?.role.isOfficer ?? false) ...[
-                  const Spacer(),
-                  IconButton(
-                    icon: Icon(bulletin.isPinned ? Icons.push_pin : Icons.push_pin_outlined, size: 18),
-                    tooltip: bulletin.isPinned ? 'Unpin' : 'Pin',
-                    constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
-                    onPressed: () => _togglePin(bulletin),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.edit_outlined, size: 18),
-                    tooltip: 'Edit',
-                    constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
-                    onPressed: () => _editBulletin(bulletin),
-                  ),
-                  IconButton(
-                    icon: Icon(bulletin.isHidden ? Icons.visibility_outlined : Icons.visibility_off_outlined, size: 18),
-                    tooltip: bulletin.isHidden ? 'Show this post again' : 'Hide from the board',
-                    constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
-                    onPressed: () => _toggleHidden(bulletin),
-                  ),
-                  IconButton(
-                    icon: Icon(Icons.delete_outline, size: 18, color: Theme.of(context).colorScheme.error),
-                    tooltip: 'Delete',
-                    constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
-                    onPressed: () => _deleteBulletin(bulletin),
+                  // The four officer buttons wrap onto a second line on a
+                  // phone; in one row they pushed Delete off the card.
+                  Expanded(
+                    child: Wrap(
+                      alignment: WrapAlignment.end,
+                      children: [
+                      IconButton(
+                        icon: Icon(bulletin.isPinned ? Icons.push_pin : Icons.push_pin_outlined, size: 18),
+                        tooltip: bulletin.isPinned ? 'Unpin' : 'Pin',
+                        constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+                        onPressed: () => _togglePin(bulletin),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.edit_outlined, size: 18),
+                        tooltip: 'Edit',
+                        constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+                        onPressed: () => _editBulletin(bulletin),
+                      ),
+                      IconButton(
+                        icon: Icon(bulletin.isHidden ? Icons.visibility_outlined : Icons.visibility_off_outlined, size: 18),
+                        tooltip: bulletin.isHidden ? 'Show this post again' : 'Hide from the board',
+                        constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+                        onPressed: () => _toggleHidden(bulletin),
+                      ),
+                      IconButton(
+                        icon: Icon(Icons.delete_outline, size: 18, color: Theme.of(context).colorScheme.error),
+                        tooltip: 'Delete',
+                        constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+                        onPressed: () => _deleteBulletin(bulletin),
+                      ),
+                      ],
+                    ),
                   ),
                 ] else if (membership != null && bulletin.postedBy != Supabase.instance.client.auth.currentUser?.id) ...[
                   const Spacer(),

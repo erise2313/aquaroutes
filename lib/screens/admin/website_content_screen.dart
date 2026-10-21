@@ -174,11 +174,12 @@ class _WebsiteContentScreenState extends State<WebsiteContentScreen> {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              SizedBox(
-                height: 48,
-                child: ListView(
-                  scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              // Sized by its chips, not a fixed 48 px that clipped them at
+              // larger text sizes.
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                child: Row(
                   children: [
                     for (final page in _ContentPage.values)
                       Padding(
@@ -480,7 +481,7 @@ class _ItemsEditorState extends State<_ItemsEditor> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(widget.label, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            Expanded(child: Text(widget.label, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16))),
             TextButton.icon(onPressed: () => _showEditDialog(), icon: const Icon(Icons.add), label: const Text('Add')),
           ],
         ),

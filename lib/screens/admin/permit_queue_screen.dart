@@ -11,6 +11,7 @@ import '../../widgets/error_state.dart';
 import '../../widgets/portal/portal.dart';
 import '../../widgets/skeleton_loader.dart';
 import 'admin_route.dart';
+import '../../widgets/portal/fill_grid.dart';
 import 'permit_review_screen.dart';
 
 /// Every permit waiting for an officer, across all stations, oldest first.
@@ -98,25 +99,18 @@ class _PermitQueueScreenState extends State<PermitQueueScreen> {
                         child: ListView(
                           padding: const EdgeInsets.all(16),
                           children: [
-                            Wrap(
-                              spacing: 12,
-                              runSpacing: 12,
+                            FillGrid(
+                              maxColumns: 2,
                               children: [
-                                SizedBox(
-                                  width: 220,
-                                  child: PortalStatTile(
-                                    value: _queue.length,
-                                    label: 'Waiting for review',
-                                    icon: Icons.pending_actions_outlined,
-                                  ),
+                                PortalStatTile(
+                                  value: _queue.length,
+                                  label: 'Waiting for review',
+                                  icon: Icons.pending_actions_outlined,
                                 ),
-                                SizedBox(
-                                  width: 220,
-                                  child: PortalStatTile(
-                                    value: stations,
-                                    label: 'Stations affected',
-                                    icon: Icons.store_mall_directory_outlined,
-                                  ),
+                                PortalStatTile(
+                                  value: stations,
+                                  label: 'Stations affected',
+                                  icon: Icons.store_mall_directory_outlined,
                                 ),
                               ],
                             ),

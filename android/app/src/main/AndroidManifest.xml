@@ -48,5 +48,11 @@
             <action android:name="android.intent.action.DIAL"/>
             <data android:scheme="tel"/>
         </intent>
+        <!-- canLaunchUrl checks tel: links with VIEW, not DIAL; without this
+             it said no and the Call buttons did nothing. -->
+        <intent>
+            <action android:name="android.intent.action.VIEW"/>
+            <data android:scheme="tel"/>
+        </intent>
     </queries>
 </manifest>

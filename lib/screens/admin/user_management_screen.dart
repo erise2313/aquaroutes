@@ -487,7 +487,9 @@ class _DeletionRequestsPanelState extends State<_DeletionRequestsPanel> {
             ),
           ),
           ConstrainedBox(
-            constraints: const BoxConstraints(maxHeight: 320),
+            // A share of the screen, not a fixed 320 px: on a phone that,
+            // with the header and filters, left no room for the user list.
+            constraints: BoxConstraints(maxHeight: (MediaQuery.sizeOf(context).height * 0.25).clamp(140.0, 320.0)),
             child: ListView(
               shrinkWrap: true,
               padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),

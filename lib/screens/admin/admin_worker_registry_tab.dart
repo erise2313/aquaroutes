@@ -159,7 +159,15 @@ class _AdminWorkerRegistryTabState extends State<AdminWorkerRegistryTab> {
                 onTap: () async {
                   if (await showWorkerRecord(context, w)) _load();
                 },
-                child: Row(
+                child: Builder(builder: (context) {
+                  // On a phone the pill goes under the name: beside it, it
+                  // squeezed the worker code into a narrow column.
+                  final narrow = MediaQuery.sizeOf(context).width < 480;
+                  final pill = StatusPill(
+                    label: _clearanceLabels[w['clearance_status']] ?? 'Unknown',
+                    color: _colorFor(w['clearance_status'] as String?),
+                  );
+                  return Row(
                   children: [
                     Expanded(
                       child: Column(
@@ -170,17 +178,16 @@ class _AdminWorkerRegistryTabState extends State<AdminWorkerRegistryTab> {
                             '${w['worker_code'] ?? ''} · ${(w['water_stations'] as Map?)?['station_name'] ?? 'No station'}',
                             style: theme.textTheme.bodySmall,
                           ),
+                          if (narrow) ...[const SizedBox(height: 6), pill],
                         ],
                       ),
                     ),
-                    StatusPill(
-                      label: _clearanceLabels[w['clearance_status']] ?? 'Unknown',
-                      color: _colorFor(w['clearance_status'] as String?),
-                    ),
+                    if (!narrow) pill,
                     const SizedBox(width: 4),
                     Icon(Icons.chevron_right, color: theme.colorScheme.onSurfaceVariant),
                   ],
-                ),
+                );
+                }),
               ),
         ],
       ),

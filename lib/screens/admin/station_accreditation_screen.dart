@@ -344,16 +344,21 @@ class _StationAccreditationScreenState extends State<StationAccreditationScreen>
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            CircleAvatar(
-              radius: 26,
-              backgroundColor: StatusTint.surface(context, statusColor),
-              child: Icon(
-                isAccredited ? Icons.verified : Icons.hourglass_top,
-                color: StatusTint.onTint(context, statusColor),
-                size: 26,
+            // On a phone the status icon is dropped: it took the room the
+            // pills needed, and they broke mid-word ("DEACTIVATE / D"). The
+            // pills say the same thing in words.
+            if (MediaQuery.sizeOf(context).width >= 480) ...[
+              CircleAvatar(
+                radius: 26,
+                backgroundColor: StatusTint.surface(context, statusColor),
+                child: Icon(
+                  isAccredited ? Icons.verified : Icons.hourglass_top,
+                  color: StatusTint.onTint(context, statusColor),
+                  size: 26,
+                ),
               ),
-            ),
-            const SizedBox(width: 14),
+              const SizedBox(width: 14),
+            ],
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,

@@ -23,6 +23,8 @@ class AdminChartCard extends StatelessWidget {
     this.height = 220,
   });
 
+  /// A card whose chart sizes itself to the width it gets (the donut).
+
   final String title;
   final String? subtitle;
   final Widget child;
@@ -32,7 +34,8 @@ class AdminChartCard extends StatelessWidget {
   /// Caveat printed under the chart -- e.g. that some rows predate the column
   /// the trend is built from, so the reader knows what isn't counted.
   final String? footnote;
-  final double height;
+  /// Null lets the chart choose its own height (it may stack on a phone).
+  final double? height;
 
   @override
   Widget build(BuildContext context) {
@@ -49,7 +52,7 @@ class AdminChartCard extends StatelessWidget {
             ],
             const SizedBox(height: 16),
             SizedBox(
-              height: height,
+              height: isEmpty ? (height ?? 160) : height,
               child: isEmpty
                   ? Center(
                       child: Padding(
@@ -183,63 +186,88 @@ class AdminDonutChart extends StatelessWidget {
     final total = entries.fold<int>(0, (sum, e) => sum + e.value);
     if (total == 0) return const SizedBox.shrink();
 
-    return Row(
-      children: [
-        Expanded(
-          flex: 2,
-          child: PieChart(
-            PieChartData(
-              sectionsSpace: 2,
-              centerSpaceRadius: 40,
-              sections: [
-                for (var i = 0; i < entries.length; i++)
-                  PieChartSectionData(
-                    value: entries[i].value.toDouble(),
-                    color: AdminTheme.chartSeries[i % AdminTheme.chartSeries.length],
-                    title: '${entries[i].value}',
-                    radius: 46,
-                    titleStyle: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 16),
-                  ),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          flex: 3,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
+    Widget legend() => Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            for (var i = 0; i < entries.length; i++)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 12,
+                      height: 12,
+                      decoration: BoxDecoration(
+                        color: AdminTheme.chartSeries[i % AdminTheme.chartSeries.length],
+                        borderRadius: BorderRadius.circular(3),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        entries[i].key,
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text('${entries[i].value}', style: TextStyle(fontSize: 16, color: AdminPalette.of(context).chartAxis)),
+                  ],
+                ),
+              ),
+          ],
+        );
+
+    // The ring is sized from the room it actually gets. It used to be a
+    // fixed 40 px hole + 46 px ring beside the legend, which on a phone was
+    // wider than its share of the card and spilled off the left edge.
+    Widget pie(double size) {
+      final outer = size / 2 - 2;
+      final hole = outer * 0.45;
+      return SizedBox(
+        width: size,
+        height: size,
+        child: PieChart(
+          PieChartData(
+            sectionsSpace: 2,
+            centerSpaceRadius: hole,
+            sections: [
               for (var i = 0; i < entries.length; i++)
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 12,
-                        height: 12,
-                        decoration: BoxDecoration(
-                          color: AdminTheme.chartSeries[i % AdminTheme.chartSeries.length],
-                          borderRadius: BorderRadius.circular(3),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          entries[i].key,
-                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      Text('${entries[i].value}', style: TextStyle(fontSize: 16, color: AdminPalette.of(context).chartAxis)),
-                    ],
-                  ),
+                PieChartSectionData(
+                  value: entries[i].value.toDouble(),
+                  color: AdminTheme.chartSeries[i % AdminTheme.chartSeries.length],
+                  title: '${entries[i].value}',
+                  radius: outer - hole,
+                  titleStyle: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 16),
                 ),
             ],
           ),
         ),
-      ],
-    );
+      );
+    }
+
+    return LayoutBuilder(builder: (context, constraints) {
+      final width = constraints.maxWidth;
+      // Phone: the ring on top, the legend under it, full width.
+      if (width < 440) {
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Center(child: pie((width * 0.7).clamp(120.0, 200.0))),
+            const SizedBox(height: 12),
+            legend(),
+          ],
+        );
+      }
+      // Wider: side by side, the ring as big as the row allows.
+      final size = (width * 0.4).clamp(140.0, 220.0);
+      return Row(
+        children: [
+          pie(size),
+          const SizedBox(width: 16),
+          Expanded(child: legend()),
+        ],
+      );
+    });
   }
 }

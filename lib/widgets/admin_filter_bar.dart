@@ -74,9 +74,8 @@ class AdminFilterBar extends StatelessWidget {
           ),
           for (final group in filters) ...[
             const SizedBox(height: 10),
-            // Label beside the chips on a wide screen; above them on a
-            // phone, where a label column squeezed the chips into one per
-            // line and left the label floating beside them.
+            // Label beside the chips on a wide screen. A label column on a
+            // phone squeezed the chips into one per line.
             LayoutBuilder(builder: (context, constraints) {
               final label = Text(
                 group.label,
@@ -101,10 +100,31 @@ class AdminFilterBar extends StatelessWidget {
                         ))
                     .toList(),
               );
+              // Phone: one line per group that scrolls sideways. Wrapped
+              // chips took three or four lines each, and with the pinned
+              // header the list below had almost no room (Users, Reports).
               if (constraints.maxWidth < 560) {
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [label, const SizedBox(height: 6), chips],
+                return SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      label,
+                      const SizedBox(width: 10),
+                      for (final e in group.options.entries) ...[
+                        ChoiceChip(
+                          label: Text(e.value),
+                          selected: group.selected == e.key,
+                          onSelected: (_) => group.onChanged(e.key),
+                          selectedColor: AdminTheme.harborBlue.withValues(alpha: 0.16),
+                          labelStyle: TextStyle(
+                            fontWeight: group.selected == e.key ? FontWeight.w700 : FontWeight.w500,
+                            color: AdminPalette.of(context).ink,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                      ],
+                    ],
+                  ),
                 );
               }
               return Row(

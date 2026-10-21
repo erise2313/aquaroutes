@@ -25,6 +25,7 @@ import 'driver_profile_screen.dart';
 import '../../utils/error_text.dart';
 import '../../utils/log.dart';
 import '../../widgets/delivery_panel_layout.dart';
+import '../../utils/phone_call.dart';
 import 'package:aquaroute/constants/brand_tokens.dart';
 
 
@@ -114,16 +115,20 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
 
       final station = await supabase
           .from('water_stations')
-          .select('station_name, latitude, longitude, owner_profile_id, profiles!water_stations_owner_profile_id_fkey(phone_number)')
+          .select('station_name, latitude, longitude')
           .eq('id', _stationId!)
           .maybeSingle();
 
       if (station != null) {
         _stationName = station['station_name'] ?? 'Water Station';
         _stationLocation = LatLng((station['latitude'] as num).toDouble(), (station['longitude'] as num).toDouble());
-        final ownerProfile = station['profiles'];
-        if (ownerProfile is Map) {
-          _stationPhone = ownerProfile['phone_number']?.toString() ?? '';
+        // Drivers can't read the owner's profile, so the phone comes from
+        // my_station_phone(); the old embed left "Call Station" with no
+        // number to call.
+        try {
+          _stationPhone = (await supabase.rpc('my_station_phone') as String?) ?? '';
+        } catch (_) {
+          _stationPhone = '';
         }
       }
 
@@ -304,12 +309,7 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
       );
       return;
     }
-    final Uri launchUri = Uri(scheme: 'tel', path: phoneNumber);
-    if (await canLaunchUrl(launchUri)) {
-      await launchUrl(launchUri);
-    } else {
-      logError('driver dialer', 'no installed app handled the tel: intent');
-    }
+    await callPhone(context, phoneNumber);
   }
 
   /// Metres from the phone to the drop-off pin, or null when the position

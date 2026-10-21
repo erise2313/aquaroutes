@@ -61,7 +61,9 @@ class _JugClearinghouseScreenState extends State<JugClearinghouseScreen> {
       final balances = await _jugService.fetchBalancesForStation(stationId);
       final settlements = await _jugService.fetchSettlementsForStation(stationId);
       final ledgerEntries = await _jugService.fetchLedgerEntriesForStation(stationId);
-      final allStations = await _supabase.from('water_stations').select('id, station_name');
+      // Not a direct read: owners can see only their own station's row,
+      // which left the other side of every balance as "Unknown Station".
+      final allStations = await _jugService.fetchStationNames();
       final names = {for (final s in allStations) s['id'] as String: s['station_name'] as String};
 
       if (mounted) {
