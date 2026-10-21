@@ -52,6 +52,9 @@ supabase/functions/.env
 
 # Secret Environment Variables
 .env
+# Other environments' settings and backups (the example stays tracked)
+.env.*
+!.env.example
 
 # Personal editor tool settings (not shared with the team)
 .claude/settings.local.json
