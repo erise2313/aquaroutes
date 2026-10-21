@@ -139,7 +139,7 @@ station.
   *(new)*; reminders 30 and 7 days before expiry.
 - **WASA notices** *(new)* — official notices to read and acknowledge;
   compliance cases with a written response.
-- **Clearinghouse** — **Dispute with WASA** on a settlement *(new)*.
+- **Clearinghouse** — settlements are between the two stations: the holder proposes, the owning station confirms or rejects. No WASA step *(changed)*.
 - **Reviews** — now with a **Reports to WASA** tab *(new)*: what customers
   reported about the station, never who; answer in writing.
 - **Board** — posting rules shown and ticked before posting *(new)*.
@@ -181,8 +181,11 @@ What a full officer sees:
 - **No Orders page** *(changed)* — officers don't see stations' orders.
   An order opens only from a customer's report about it (Reports → **View
   the order**), with the customer's name and phone.
-- **Clearinghouse** — disputed settlements first, with **Decide the
-  dispute** *(new)*.
+- **Clearinghouse** — view only *(changed)*: balances and settlements for
+  oversight; officers can't reject or decide anything there.
+- **Users** — **Appeals against suspension** *(new)*: Reinstate or Keep
+  suspended, each with a note the person sees. Full officers and super
+  admins only.
 - **Events** — shows how many are going, and who *(new)*.
 - **Website** — now includes the Safe Drinking Water articles *(new)*.
 - **Bulletin**, **Reviews**, **Resources**, **Users**, **Activity** — as
@@ -242,8 +245,8 @@ barangay".
 | N18 | owner3 | Try to change mentor (no control offered) | Only officers can pair |
 | N19 | owner1 | Costs → enter rent, power, refills → Save | Cost per refill and margin per product; saved |
 | N20 | admin | Look for any station's costs | Not available anywhere |
-| N21 | owner1 | Clearinghouse → a settlement → Dispute with WASA | "Disputed -- with WASA"; officers notified |
-| N22 | admin | Clearinghouse → the dispute → Decide | Both owners notified with the decision |
+| N21 | owner1 | Clearinghouse → a proposed settlement owed to Buenavista → Confirm (or Reject) | Balance goes down on Confirm; unchanged on Reject; no WASA step |
+| N22 | suspended | Sign in → write an appeal → Send appeal to WASA; admin → Users → Reinstate with a note | "Your appeal is with WASA"; after Reinstate the account opens normally |
 | N23 | owner1 | Board → New post | Posting rules shown; Post refused until ticked |
 | N24 | owner1 | Website → Events → I'll attend | Count goes up; admin → Events → see who lists Juan Dela Cruz |
 | N25 | owner1 | Profile → station QR code → Save as image (website) | PNG downloads; scanning it opens the station's page |
