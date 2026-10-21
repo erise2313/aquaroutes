@@ -106,7 +106,7 @@ class _StationNewOrderDialogState extends State<_StationNewOrderDialog> {
   Future<void> _pickLocation() async {
     final result = await Navigator.push<Map<String, dynamic>>(
       context,
-      MaterialPageRoute(builder: (_) => LocationPickerScreen(initialLatitude: _lat, initialLongitude: _lng, askStationName: false)),
+      MaterialPageRoute(builder: (_) => LocationPickerScreen(initialLatitude: _lat, initialLongitude: _lng, forStation: false)),
     );
     if (result != null && mounted) {
       setState(() {

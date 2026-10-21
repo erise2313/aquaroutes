@@ -15,8 +15,8 @@ class LocationPickerScreen extends StatefulWidget {
   final double? initialLongitude;
   final String? initialStationName;
 
-  /// False to pin a delivery address only (a phone order) -- no station
-  /// name field, a delivery pin, and "Pick delivery location" as the title.
+  /// Shows a station-name box over the map. Nothing uses it any more:
+  /// every caller already has its own name field.
   final bool askStationName;
 
   const LocationPickerScreen({
@@ -24,8 +24,12 @@ class LocationPickerScreen extends StatefulWidget {
     this.initialLatitude,
     this.initialLongitude,
     this.initialStationName,
-    this.askStationName = true,
+    this.askStationName = false,
+    this.forStation = true,
   });
+
+  /// A station's pin rather than a delivery-address pin.
+  final bool forStation;
 
   @override
   State<LocationPickerScreen> createState() => _LocationPickerScreenState();
@@ -121,7 +125,7 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.askStationName ? 'Pick Station Location' : 'Pick delivery location'),
+        title: Text(widget.forStation ? 'Pick Station Location' : 'Pick delivery location'),
         centerTitle: true,
         elevation: 0,
       ),
@@ -142,12 +146,15 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
                     point: _selectedLocation!,
                     width: 40,
                     height: 40,
-                    child: MapPin(kind: widget.askStationName ? MapPinKind.station : MapPinKind.deliveryAddress),
+                    child: MapPin(kind: widget.forStation ? MapPinKind.station : MapPinKind.deliveryAddress),
                   ),
                 ]),
               const AppMapAttribution(),
             ],
           ),
+          // Off by default: registration and the profile already have a
+          // station-name field, and this box over the map read as a search
+          // bar ("Enter water station name").
           if (widget.askStationName)
           Positioned(
             top: 16,

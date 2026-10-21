@@ -22,8 +22,12 @@ All emails end in `@gentriwasa.test`.
 |---|---|---|---|---|
 | superadmin1@ | Admin123! | WASA super admin | — | Active |
 | superadmin2@ | Admin123! | WASA super admin | — | Active |
-| admin@ | Admin123! | WASA officer | WASA Admin | Active |
-| admin2@ | Admin123! | WASA officer | Rosa Mendoza | Active |
+| admin@ | Admin123! | WASA officer (full) | WASA Admin | Active |
+| admin2@ | Admin123! | WASA officer (full) | Rosa Mendoza | Active |
+| compliance1@ | Officer123! | Compliance officer | Carmen Reyes | Active |
+| workforce1@ | Officer123! | Workforce officer | Wilfredo Lim | Active |
+| content1@ | Officer123! | Content editor | Cora Bautista | Active |
+| viewer1@ | Officer123! | Viewer (auditor) | Vilma Santos | Active |
 | owner1@ | Owner123! | Station owner | Juan Dela Cruz | Buenavista Water Refilling Station — accredited, good standing |
 | owner2@ | Owner123! | Station owner | Juan Dela Rosa | Navarro Springs Water Station — accredited, good standing |
 | owner3@ | Owner123! | Station owner | Elena Ramos | Tejero Aqua Station — **not accredited**, permits waiting for upload |
@@ -38,11 +42,16 @@ All emails end in `@gentriwasa.test`.
 
 Each station has two codes, and they are not interchangeable:
 
-| Station | Driver invite code | Staff code |
-|---|---|---|
-| Buenavista | **BUENAV1** | **STAFFBV** |
-| Navarro Springs | **XYT856** (until 27 Oct) | **STAFFNV** |
-| Tejero | **TEJERO1** | **STAFFTJ** |
+| Station | WASA station ID | Driver invite code | Staff code |
+|---|---|---|---|
+| Buenavista | GW-STN-2026-0001 | **BUENAV1** | **STAFFBV** |
+| Navarro Springs | GW-STN-2026-0002 | **XYT856** (until 27 Oct) | **STAFFNV** |
+| Tejero | GW-STN-2026-0008 | **TEJERO1** | **STAFFTJ** |
+
+Every station has a permanent WASA station ID (GW-STN-year-number) and every
+driver a worker code (GW-WRK-year-number), so two with the same name can be
+told apart. Driver and staff codes are typed in upper case; O/0 and I/1 are
+treated as the same.
 
 Codes as of 20 Oct 2026; none expire except where shown. A code issued anew
 expires after 7 days. Drivers register with the driver code; staff register
@@ -137,7 +146,28 @@ station.
 - **Profile** — **station QR code and link** *(new)*: copy, show large, save
   as an image on the website.
 
-### WASA officer — admin portal (website) and app
+### WASA officer — admin portal (website only)
+
+Officers can't use the phone app: signing in there shows "WASA Admin is on
+the web" with a link to the admin portal. The public website sends them to
+the admin portal too.
+
+**Officer roles** *(new)*. Every officer can see everything; the role decides
+what they can change. The server refuses anything else ("Your officer role
+(Content) can't change ..."), and buttons for it are hidden.
+
+| Role | Can change |
+|---|---|
+| Officer (full) | Everything except officers and settings |
+| Compliance officer | Stations, permits, notices, cases, customer reports, clearinghouse |
+| Workforce officer | Workers, incidents, credentials, appeals |
+| Content editor | Bulletin, floor prices, containers, events, resources, website, reviews |
+| Viewer (auditor) | Nothing; sees and exports everything |
+
+A limited role sees "You are signed in as a ..." on the Overview. Deleting
+accounts needs a full officer or super admin.
+
+What a full officer sees:
 
 - **Overview**, **Stations** (now with standing), **Permits**, **Workers** —
   as before. Opening a station also offers **Pair with a mentor** *(new)*.
@@ -168,12 +198,25 @@ station.
 
 Everything an officer has, plus:
 
-- **Officers** — promote an account to officer or super admin by email,
-  demote, suspend. The last super admin can't be removed.
+- **Officers** — **Create officer account** *(new)*: name, email and role;
+  a temporary password is shown once, and the new officer must choose their
+  own at first sign-in. **Promote an existing account** (by email, with a
+  role), **Change role**, suspend, end access. The last super admin can't be
+  removed.
 - **Settings** — grace period before a station lapses (30 days) and invite
   code validity (7 days).
 - **Transfer ownership** of a station (on the station's page) — orders,
   permits and jug balances stay with the station.
+
+## Addresses *(new)*
+
+Stations, saved customer addresses and orders now have a written address
+beside the map pin: house no. / street / subdivision, barangay (from the
+association's list), city (General Trias) and an optional landmark. The
+owner and staff see it on each order card, and the driver under "Deliver
+to". Phone orders delivered by the station need a typed address as well.
+Older saved addresses with only a pin show "Tap to add the street and
+barangay".
 
 ## Test cases for the new features
 
@@ -229,6 +272,34 @@ Everything an officer has, plus:
 | T6 | owner2 | Account → Trash | Doesn't see owner1's deleted product |
 | T7 | admin | Resources → delete a PDF → Trash → Delete for good | Gone from Trash; the file is removed from storage |
 | T8 | customer2 | Delete account | Their comments and addresses are removed at once, not kept in Trash |
+| R1 | superadmin1 | Admin portal → Officers → Create officer account → name, new email, Content editor | "Account created" with a temporary password shown once |
+| R2 | the new officer | Sign in to the admin portal with the temporary password | "Choose your password" first; after saving, the Overview opens |
+| R3 | content1 | Overview | "You are signed in as a content editor" and what it can change |
+| R4 | content1 | Events → New Event → save | Allowed |
+| R5 | content1 | Stations, Notices, Cases, Workers, Users | No switch, New notice, Open a case, decision or Suspend buttons |
+| R6 | viewer1 | Every section | Can read and export; no buttons that change anything |
+| R7 | compliance1 | Permits → approve a pending permit | Allowed; Workers has no decision buttons |
+| R8 | workforce1 | Workers → Incidents → Confirm flag | Allowed; Permits has no Approve/Reject |
+| R9 | admin | Officers in the sidebar | Not shown; only super admins manage officers |
+| R10 | admin | Phone app → sign in | "WASA Admin is on the web" with a link to the admin portal |
+| R11 | superadmin1 | Officers → an officer → Change role → Viewer | Role pill changes; that officer's buttons disappear on next load |
+| I1 | admin | Stations | Each station shows its WASA station ID; searching "GW-STN-2026-0002" finds Navarro Springs |
+| I2 | visitor | Website → Verify → type "GW-STN-2026-0001" | Buenavista Water Refilling Station, accredited |
+| I3 | visitor | Website → a station's page | "WASA station ID" in the association record |
+| I4 | owner1 | Home | Header shows "WASA station ID GW-STN-2026-0001" |
+| I5 | owner1 | Orders → New orders → Assign & accept | Each driver shows a GW-WRK code with the plate |
+| A1 | customer1 | Account → Addresses → Add → pin, street, barangay, landmark → Save | The list shows the written address |
+| A2 | customer1 | Order → pick the saved address | Street, barangay and landmark fill in |
+| A3 | customer1 | Order with the street blank | Refused: "Enter the house no., street or subdivision" |
+| A4 | owner2 | Orders → the new order | The written address under the amount |
+| A5 | driver4 | Driver dashboard → the assigned order | The written address under "Deliver to" |
+| A6 | owner1 | New order → Phone order → Deliver → pin, no typed address | Refused: "Write the delivery address too" |
+| A7 | owner1 | Profile → Station Info → street, barangay, landmark → Save | Saved; the station's page shows the address and landmark; the directory's barangay filter finds it |
+| A8 | visitor | Website → Register Your Station | Station address asks for street, barangay, city, landmark |
+| L1 | customer1 | Order 51 jugs | Refused: at most 50 per order |
+| L2 | owner1 | Drivers → edit capacity to 25 | "Between 1 and 20 jugs" |
+| L3 | visitor | Website → Register | Only "Water Station Owner" and "Station Staff" are offered |
+| L4 | customer1 | Website → Login | Refused: customers sign in on the mobile app |
 
 Reset the data you changed afterwards if another tester needs the same
 starting point (re-running the seed scripts restores the accounts but not
