@@ -87,7 +87,11 @@ class AuthGate extends ConsumerWidget {
             // from gentri-wasa-admin.web.app. Mobile is untouched (this
             // guard only applies to the main *website* build), since admin
             // access there wasn't part of this change.
-            if (kIsWeb && !kIsAdminPortalBuild && membership.role.isOfficer) {
+            //
+            // The phone app is closed to officers too: association
+            // administration happens only on the admin portal, a separate
+            // site, never in the app customers and drivers install.
+            if (!kIsAdminPortalBuild && membership.role.isOfficer) {
               return const _UseAdminPortalScreen();
             }
             // Each role's home shows its welcome tour once (help/first_run_tour.dart).
@@ -190,7 +194,7 @@ class _UseAdminPortalScreen extends StatelessWidget {
   /// signing in on the new site was sent to the old project's portal.
   static const _adminPortalUrl = String.fromEnvironment(
     'ADMIN_PORTAL_URL',
-    defaultValue: 'https://gentriwasa-eval-admin.web.app',
+    defaultValue: 'https://gentri-wasa-admin.web.app',
   );
 
   @override
@@ -204,14 +208,16 @@ class _UseAdminPortalScreen extends StatelessWidget {
             children: [
               Icon(Icons.admin_panel_settings_outlined, size: 48, color: Theme.of(context).colorScheme.onSurfaceVariant),
               const SizedBox(height: 16),
-              const Text(
-                'WASA Admin has moved.',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              Text(
+                kIsWeb ? 'WASA Admin has moved.' : 'WASA Admin is on the web.',
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 8),
               Text(
-                'Admin sign-in is no longer available on the main site. Please use the dedicated admin portal instead.',
+                kIsWeb
+                    ? 'Admin sign-in is no longer available on the main site. Please use the dedicated admin portal instead.'
+                    : 'Officer accounts sign in on the WASA admin portal in a browser, not in the app.',
                 style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
                 textAlign: TextAlign.center,
               ),
