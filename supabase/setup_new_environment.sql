@@ -8560,6 +8560,12 @@ do $$ begin
   end if;
 end $$;
 
+-- The station's written-address columns, before the view below that
+-- shows the landmark (section 2 repeats them harmlessly).
+alter table water_stations add column if not exists street text;
+alter table water_stations add column if not exists city text default 'General Trias';
+alter table water_stations add column if not exists landmark text;
+
 -- The public directory and pages show the code and the landmark. New
 -- columns go at the end so the view keeps its existing ones.
 create or replace view public_stations as
