@@ -18,6 +18,7 @@
 --     6. seed_demo_content.sql
 --     7. seed_evaluation_data.sql
 --     8. seed_test_extras.sql
+--     9. seed_lapsed_stations.sql
 --
 -- WARNING: step 1 drops every application table before recreating it.
 -- Run this ONLY against a project you intend to build from scratch. It is
@@ -33,7 +34,7 @@
 
 
 -- =====================================================================
--- STEP 1 of 8 -- SCHEMA  (reset_and_rebuild.sql)
+-- STEP 1 of 9 -- SCHEMA  (reset_and_rebuild.sql)
 -- =====================================================================
 -- All tables, views, functions, triggers, RLS policies, storage buckets,
 -- scheduled jobs and reference data (33 barangays, permit types,

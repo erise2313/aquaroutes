@@ -793,7 +793,7 @@ grant execute on function station_order_details(uuid[]) to authenticated;
 
 
 -- =====================================================================
--- STEP 2 of 8 -- ACCOUNTS AND STATIONS  (seed_test_accounts.sql)
+-- STEP 2 of 9 -- ACCOUNTS AND STATIONS  (seed_test_accounts.sql)
 -- =====================================================================
 -- admin@, owner1@ (Buenavista), owner2@ (Navarro Springs), driver1@,
 -- driver2@, customer1@ -- pre-confirmed, stations accredited.
@@ -1029,7 +1029,7 @@ end $$;
 
 
 -- =====================================================================
--- STEP 3 of 8 -- MORE ROLE ACCOUNTS  (seed_role_accounts.sql)
+-- STEP 3 of 9 -- MORE ROLE ACCOUNTS  (seed_role_accounts.sql)
 -- =====================================================================
 -- admin2@, driver3@, driver4@, customer2@, suspended@, owner3@ (station
 -- not yet accredited), superadmin1@, superadmin2@, staff1@.
@@ -1194,7 +1194,7 @@ select u.email, m.role, m.status,
 
 
 -- =====================================================================
--- STEP 4 of 8 -- OFFICER ROLE ACCOUNTS  (seed_officer_accounts.sql)
+-- STEP 4 of 9 -- OFFICER ROLE ACCOUNTS  (seed_officer_accounts.sql)
 -- =====================================================================
 -- compliance1@, workforce1@, content1@, viewer1@ (Officer123!).
 -- =====================================================================
@@ -1275,7 +1275,7 @@ select u.email, m.role, coalesce(m.officer_role, 'officer') as officer_role, m.s
 
 
 -- =====================================================================
--- STEP 5 of 8 -- SAMPLE PRODUCTS  (seed_sample_products.sql)
+-- STEP 5 of 9 -- SAMPLE PRODUCTS  (seed_sample_products.sql)
 -- =====================================================================
 -- What each seeded station sells and for how much, so customers can order.
 -- =====================================================================
@@ -1346,7 +1346,7 @@ select ws.station_name, count(*) as products, min(sp.price) as from_price
 
 
 -- =====================================================================
--- STEP 6 of 8 -- DEMO CONTENT  (seed_demo_content.sql)
+-- STEP 6 of 9 -- DEMO CONTENT  (seed_demo_content.sql)
 -- =====================================================================
 -- Bulletins with reactions and comments, station reviews, events.
 -- =====================================================================
@@ -1497,7 +1497,7 @@ end $$;
 
 
 -- =====================================================================
--- STEP 7 of 8 -- EVALUATION DATA  (seed_evaluation_data.sql)
+-- STEP 7 of 9 -- EVALUATION DATA  (seed_evaluation_data.sql)
 -- =====================================================================
 -- Orders in every live status (one mid-delivery), container balances,
 -- settlements awaiting confirmation, a permit pending review, and a
@@ -1753,7 +1753,7 @@ order by item, detail;
 
 
 -- =====================================================================
--- STEP 8 of 8 -- TEST EXTRAS  (seed_test_extras.sql)
+-- STEP 8 of 9 -- TEST EXTRAS  (seed_test_extras.sql)
 -- =====================================================================
 -- Fixed staff codes, and driver2 flagged through a confirmed incident.
 -- =====================================================================

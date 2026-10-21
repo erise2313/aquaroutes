@@ -30,6 +30,8 @@ PARTS = [
      '-- disposable account for testing deletion.'),
     ('TEST EXTRAS', 'seed_test_extras.sql',
      'Fixed staff codes, and driver2 flagged through a confirmed incident.'),
+    ('LAPSED STATIONS', 'seed_lapsed_stations.sql',
+     'owner4@ and owner5@ with two stations that were accredited and have lapsed.'),
 ]
 
 HEADER = """-- =====================================================================
@@ -73,13 +75,14 @@ union all select 'scheduled jobs (expect 2)', count(*)::text from cron.job
 union all select 'realtime tables (expect 3)', count(*)::text from pg_publication_tables
  where pubname = 'supabase_realtime' and tablename in ('notifications', 'orders', 'workers')
 union all select 'barangays (expect 33)', count(*)::text from barangays
-union all select 'test login accounts (>= 20)', count(*)::text from auth.users where email like '%@gentriwasa.test'
+union all select 'test login accounts (>= 22)', count(*)::text from auth.users where email like '%@gentriwasa.test'
 union all select 'officer accounts (expect 6)', count(*)::text from memberships where role = 'wasa_admin'
 union all select 'super admins (expect 2)', count(*)::text from memberships where role = 'wasa_superadmin'
 union all select 'flagged drivers (expect 1)', count(*)::text from workers where clearance_status = 'flagged'
-union all select 'stations (expect 3)', count(*)::text from water_stations
+union all select 'lapsed stations (expect 2)', count(*)::text from water_stations where standing = 'lapsed'
+union all select 'stations (expect 5)', count(*)::text from water_stations
 union all select 'publicly listed stations (>= 2)', count(*)::text from public_stations
-union all select 'station products (expect 14)', count(*)::text from station_products
+union all select 'station products (expect 18)', count(*)::text from station_products
 union all select 'orders (> 0)', count(*)::text from orders
 union all select 'bulletins (> 0)', count(*)::text from bulletins
 order by item;
